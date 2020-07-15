@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/shopware/platform/master/src/Core/System/SystemConfig/Schema/config.xsd">
+
+    <card>
+        <title>QuickPay API key</title>
+        <input-field>
+            <name>quickpayApiKey</name>
+            <label>QuickPay API key</label>
+            <helpText>User API key</helpText>
+        </input-field>
+    </card>
+
+    <card>
+        <title>MobilePay ID</title>
+        <input-field>
+            <name>mobilepayId</name>
+            <label>MobilePay ID</label>
+        </input-field>
+    </card>
+</config>

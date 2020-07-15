@@ -1,0 +1,54 @@
+{
+    "name": "wexo/quickpay",
+    "description": "QuickPay Payment Integration",
+    "type": "shopware-platform-plugin",
+    "license": "proprietary",
+    "version": "0.0.1",
+    "authors": [
+        {
+            "name": "WEXO A/S",
+            "homepage": "https://www.wexo.dk/"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Wexo\\Quickpay\\": "src/"
+        }
+    },
+    "repositories": [
+        {
+            "type": "composer",
+            "url": "https://shopware-repo.wexo.dk/"
+        }
+    ],
+    "require": {
+        "shopware/core": "*",
+        "wexo/custom-shopware-coding-standard": "*"
+    },
+    "extra": {
+        "shopware-plugin-class": "Wexo\\Quickpay\\WexoQuickpay",
+        "plugin-icon": "src/Resources/config/plugin.png",
+        "copyright": "(c) by WEXO A/S",
+        "label": {
+            "da-DK": "QuickPay",
+            "en-GB": "QuickPay",
+            "de-DE": "QuickPay"
+        },
+        "description": {
+            "da-DK": "QuickPay betalingsintegration",
+            "en-GB": "QuickPay Payment Integration",
+            "de-DE": "QuickPay Zahlungsintegration"
+        },
+        "manufacturerLink": {
+            "dk-DK": "https://www.wexo.dk",
+            "en-GB": "https://www.wexo.dk",
+            "de-DE": "https://www.wexo.dk"
+        },
+        "supportLink": {
+            "da-DK": "https://www.wexo.dk/shopware-support",
+            "en-GB": "https://www.wexo.dk/shopware-support",
+            "de-DE": "https://www.wexo.dk/shopware-support"
+        }
+    }
+}
+
