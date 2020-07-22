@@ -125,7 +125,8 @@ class OrderDetailSubscriber implements EventSubscriberInterface
                 }
 
                 $response = $this->quickpayPaymentService->http->request(
-                    'POST', 'payments/' . $paymentResponse->id . '/capture',
+                    'POST',
+                    'payments/' . $paymentResponse->id . '/capture',
                     [
                         'form_params' => [
                             'amount' => $order->getPrice()->getTotalPrice() * 100
