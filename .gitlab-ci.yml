@@ -8,7 +8,7 @@ before_script:
 
 codesniffer:
   stage: syntax
-  image: registry.services.wexo.dk:4567/wexo-services/docker-magento:shopware6-codesniffer-7.4
+  image: registry.services.wexo.dk:4567/wexo-services/docker-magento:shopware-plugins-codesniffer-7.4
   script:
-    - ~/phpcs.sh --ignore=*/dist/*
+    - ~/phpcs.sh
   allow_failure: false
