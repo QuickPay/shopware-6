@@ -190,7 +190,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             $payload = $orderLineItem->getPayload();
             $itemNo = ($payload && isset($payload['productNumber']))
                 ? $payload['productNumber']
-                : $orderLineItem->getProductId();
+                : $orderLineItem->getReferencedId();
             $formParams['basket[][qty]'] = $orderLineItem->getQuantity();
             $formParams['basket[][item_no]'] = $itemNo;
             $formParams['basket[][item_name]'] = $orderLineItem->getLabel();
