@@ -99,7 +99,9 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                     $order->getLineItems(),
                     $order->getAmountTotal(),
                     $transaction->getReturnUrl(),
-                    $mobilepayId === $paymentOptionId
+                    $mobilepayId === $paymentOptionId,
+                    $order->getShippingTotal(),
+                    $order->getShippingCosts()->getTaxRules()->first()->getTaxRate()
                 );
             } catch (ServiceUnavailableHttpException $exception) {
                 return new RedirectResponse('/', 503);
@@ -181,6 +183,8 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
      * @param float $amount
      * @param string $callbackUrl
      * @param bool $isMobilepay
+     * @param float $shippingTotal
+     * @param float $shippingTaxes
      * @return array
      * @throws Exception
      */
@@ -189,7 +193,9 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         $orderLineItems,
         float $amount,
         string $callbackUrl,
-        bool $isMobilepay = false
+        bool $isMobilepay = false,
+        float $shippingTotal = 0,
+        float $shippingTaxes = 0
     ) {
         $formParams['basket'] = [];
         foreach ($orderLineItems as $orderLineItem) {
@@ -203,6 +209,16 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 'item_name' => $orderLineItem->getLabel(),
                 'item_price' => (int)($orderLineItem->getUnitPrice() * 100),
                 'vat_rate' => $orderLineItem->getPrice()->getTaxRules()->first()->getTaxRate() / 100,
+            ];
+        }
+
+        if ($shippingTotal and $shippingTaxes) {
+            $formParams['basket'][] = [
+                'qty' => 1,
+                'item_no' => 'Shipping',
+                'item_name' => 'Shipping',
+                'item_price' => (int)($shippingTotal * 100),
+                'vat_rate' => $shippingTaxes / 100,
             ];
         }
 
