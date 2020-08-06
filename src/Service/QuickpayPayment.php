@@ -18,6 +18,7 @@ use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 use TypeError;
 use Wexo\Quickpay\WexoQuickpay;
 
@@ -89,16 +90,20 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             $currency = $salesChannelContext->getCurrency()->getIsoCode()
                 ?? WexoQuickpay::FALLBACK_CURRENCY;
 
-            $response = $this->createPayment(
-                [
-                    'currency' => $currency,
-                    'order_id' => $orderNumber
-                ],
-                $order->getLineItems(),
-                $order->getAmountTotal(),
-                $transaction->getReturnUrl(),
-                $mobilepayId === $paymentOptionId
-            );
+            try {
+                $response = $this->createPayment(
+                    [
+                        'currency' => $currency,
+                        'order_id' => $orderNumber
+                    ],
+                    $order->getLineItems(),
+                    $order->getAmountTotal(),
+                    $transaction->getReturnUrl(),
+                    $mobilepayId === $paymentOptionId
+                );
+            } catch (ServiceUnavailableHttpException $exception) {
+                return new RedirectResponse('/', 503);
+            }
 
             $customFields = $order->getCustomFields();
             $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = json_encode($response['response']);
@@ -161,7 +166,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         $context = $salesChannelContext->getContext();
         if ($request->get('status') == "accepted") {
             // Payment completed
-            $this->transactionStateHandler->pay($transaction->getOrderTransaction()->getId(), $context);
+            $this->transactionStateHandler->paid($transaction->getOrderTransaction()->getId(), $context);
         } elseif ($request->get('status') == "cancel") {
             throw new CustomerCanceledAsyncPaymentException(
                 $transactionId,
@@ -186,21 +191,38 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         string $callbackUrl,
         bool $isMobilepay = false
     ) {
+        $formParams['basket'] = [];
         foreach ($orderLineItems as $orderLineItem) {
             $payload = $orderLineItem->getPayload();
             $itemNo = ($payload && isset($payload['productNumber']))
                 ? $payload['productNumber']
-                : $orderLineItem->getReferencedId();
-            $formParams['basket[][qty]'] = $orderLineItem->getQuantity();
-            $formParams['basket[][item_no]'] = $itemNo;
-            $formParams['basket[][item_name]'] = $orderLineItem->getLabel();
-            $formParams['basket[][item_price]'] = (int)$orderLineItem->getUnitPrice();
-            $formParams['basket[][vat_rate]'] = $orderLineItem->getPrice()->getTaxRules()->first()->getTaxRate() / 100;
+                : $orderLineItem->getLabel();
+            $formParams['basket'][] = [
+                'qty' => (int)$orderLineItem->getQuantity(),
+                'item_no' => $itemNo,
+                'item_name' => $orderLineItem->getLabel(),
+                'item_price' => (int)($orderLineItem->getUnitPrice() * 100),
+                'vat_rate' => $orderLineItem->getPrice()->getTaxRules()->first()->getTaxRate() / 100,
+            ];
         }
 
-        $createResponse = $this->http->request('POST', 'payments', [
-            'form_params' => $formParams
-        ]);
+        try {
+            $createResponse = $this->http->request('POST', 'payments', [
+                'json' => $formParams
+            ]);
+        } catch (\Exception $e) {
+            $this->paymentLogger(
+                WexoQuickpay::ORDER_CREATE_ERROR,
+                [
+                    'formParams' => $formParams,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                    'errorType' => get_class($e)
+                ]
+            );
+
+            throw new ServiceUnavailableHttpException();
+        }
 
         if ($createResponse->getStatusCode() !== 201) {
             throw new Exception(
