@@ -92,7 +92,8 @@ class OrderDetailSubscriber implements EventSubscriberInterface
                         [
                             'error' => 'QuickPay response could not be found on order',
                             'orderId' => $orderId,
-                            'orderNumber' => $order->getOrderNumber() ?? null
+                            'orderNumber' => $order->getOrderNumber() ?? null,
+                            'customFields' => $customFields
                         ]
                     );
 
