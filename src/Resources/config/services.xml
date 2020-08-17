@@ -10,6 +10,7 @@
             <argument type="service" id="log_entry.repository" />
             <argument type="service" id="order.repository"/>
             <argument type="service" id="Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler"/>
+            <argument type="service" id="Shopware\Core\Checkout\Order\SalesChannel\OrderService" />
             <tag name="shopware.payment.method.async" />
         </service>
 

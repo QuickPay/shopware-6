@@ -7,6 +7,7 @@ use GuzzleHttp\Client;
 use Monolog\Logger;
 use Shopware\Core\Checkout\Order\Aggregate\OrderLineItem\OrderLineItemCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
+use Shopware\Core\Checkout\Order\SalesChannel\OrderService;
 use Shopware\Core\Checkout\Payment\Cart\AsyncPaymentTransactionStruct;
 use Shopware\Core\Checkout\Payment\Cart\PaymentHandler\AsynchronousPaymentHandlerInterface;
 use Shopware\Core\Checkout\Payment\Exception\AsyncPaymentProcessException;
@@ -16,6 +17,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
+use Symfony\Component\HttpFoundation\ParameterBag;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
@@ -33,6 +35,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
     private EntityRepositoryInterface $orderRepository;
     private OrderTransactionStateHandler $transactionStateHandler;
     public Client $http;
+    private OrderService $orderService;
 
     /**
      * QuickpayPayment constructor.
@@ -45,12 +48,14 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         SystemConfigService $systemConfigService,
         EntityRepositoryInterface $logEntryRepository,
         EntityRepositoryInterface $orderRepository,
-        OrderTransactionStateHandler $transactionStateHandler
+        OrderTransactionStateHandler $transactionStateHandler,
+        OrderService $orderService
     ) {
         $this->systemConfigService = $systemConfigService;
         $this->logEntryRepository = $logEntryRepository;
         $this->orderRepository = $orderRepository;
         $this->transactionStateHandler = $transactionStateHandler;
+        $this->orderService = $orderService;
 
         $this->http = new Client([
             'base_uri' => 'https://api.quickpay.net/',
@@ -170,6 +175,14 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             // Payment completed
             $this->transactionStateHandler->paid($transaction->getOrderTransaction()->getId(), $context);
         } elseif ($request->get('status') == "cancel") {
+            $this->orderService->orderStateTransition(
+                $transaction->getOrder()->getId(),
+                'cancel',
+                new ParameterBag(),
+                $salesChannelContext->getContext(),
+                $salesChannelContext->getCustomer()->getId()
+            );
+
             throw new CustomerCanceledAsyncPaymentException(
                 $transactionId,
                 'Customer canceled the payment on the payment page'
@@ -207,7 +220,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 'qty' => (int)$orderLineItem->getQuantity(),
                 'item_no' => $itemNo,
                 'item_name' => $orderLineItem->getLabel(),
-                'item_price' => (int)($orderLineItem->getUnitPrice() * 100),
+                'item_price' => $orderLineItem->getUnitPrice(),
                 'vat_rate' => $orderLineItem->getPrice()->getTaxRules()->first()->getTaxRate() / 100,
             ];
         }
@@ -217,7 +230,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 'qty' => 1,
                 'item_no' => 'Shipping',
                 'item_name' => 'Shipping',
-                'item_price' => (int)($shippingTotal * 100),
+                'item_price' => $shippingTotal,
                 'vat_rate' => $shippingTaxes / 100,
             ];
         }
