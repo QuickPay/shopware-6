@@ -3,7 +3,7 @@
     "description": "QuickPay Payment Integration",
     "type": "shopware-platform-plugin",
     "license": "proprietary",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "authors": [
         {
             "name": "WEXO A/S",
@@ -23,7 +23,6 @@
     ],
     "require": {
         "shopware/core": "*",
-        "wexo/custom-shopware-coding-standard": "*",
         "ext-json": "*"
     },
     "extra": {

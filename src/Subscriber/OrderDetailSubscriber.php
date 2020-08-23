@@ -21,9 +21,12 @@ use Wexo\Quickpay\WexoQuickpay;
  */
 class OrderDetailSubscriber implements EventSubscriberInterface
 {
-    protected EntityRepositoryInterface $orderRepository;
-    protected SystemConfigService $systemConfigService;
-    protected QuickpayPayment $quickpayPaymentService;
+    /** @var EntityRepositoryInterface $orderRepository */
+    protected $orderRepository;
+    /** @var SystemConfigService $systemConfigService */
+    protected $systemConfigService;
+    /** @var QuickpayPayment $quickpayPaymentService */
+    protected $quickpayPaymentService;
 
     /**
      * OrderDetailSubscriber constructor.

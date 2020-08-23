@@ -17,7 +17,6 @@ use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
-use Symfony\Component\HttpFoundation\ParameterBag;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
@@ -30,12 +29,18 @@ use Wexo\Quickpay\WexoQuickpay;
  */
 class QuickpayPayment implements AsynchronousPaymentHandlerInterface
 {
-    private SystemConfigService $systemConfigService;
-    protected EntityRepositoryInterface $logEntryRepository;
-    private EntityRepositoryInterface $orderRepository;
-    private OrderTransactionStateHandler $transactionStateHandler;
-    public Client $http;
-    private OrderService $orderService;
+    /** @var SystemConfigService $systemConfigService */
+    private $systemConfigService;
+    /** @var EntityRepositoryInterface $orderRepository */
+    private $orderRepository;
+    /** @var OrderTransactionStateHandler $transactionStateHandler */
+    private $transactionStateHandler;
+    /** @var OrderService $orderService */
+    private $orderService;
+    /** @var EntityRepositoryInterface $logEntryRepository */
+    protected $logEntryRepository;
+    /** @var Client $http */
+    public $http;
 
     /**
      * QuickpayPayment constructor.
@@ -43,6 +48,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
      * @param EntityRepositoryInterface $logEntryRepository
      * @param EntityRepositoryInterface $orderRepository
      * @param OrderTransactionStateHandler $transactionStateHandler
+     * @param OrderService $orderService
      */
     public function __construct(
         SystemConfigService $systemConfigService,
@@ -142,8 +148,6 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 $e->getMessage()
             );
         }
-
-        // TODO: Hmm, correct way to check if invalid?
 
         // Check if gateway link got created, if not, mark order as canceled
         if ($response['link'] == null) {
