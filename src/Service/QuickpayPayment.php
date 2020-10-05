@@ -333,4 +333,31 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             Context::createDefaultContext()
         );
     }
+
+    /**
+     *
+     * @param array $options [description]
+     *
+     * @param array $config [Quickpay config]
+     * @option string "quickpayApiKey" [Quickpay Api Key]
+     * @option string "mobilepayId" [Mobilepay id]
+     * @return bool
+     */
+    public function isConfigValid(array $config): bool
+    {
+        try {
+            $response = $this->http->request('GET', 'payments', [
+                'auth' => [
+                    '',
+                    $config['quickpayApiKey']
+                ]
+            ]);
+
+            return $response->getStatusCode() === 200;
+        } catch (\Exception $exception) {
+            $this->paymentLogger($exception->getMessage(), $exception->getTrace());
+
+            return false;
+        }
+    }
 }

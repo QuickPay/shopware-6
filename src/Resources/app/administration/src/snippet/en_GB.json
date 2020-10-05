@@ -1,0 +1,7 @@
+{
+  "quickpay-api-test-button": {
+    "title": "API Test",
+    "success": "Connection tested with success",
+    "error": "Connection could not be established. Please check the access data"
+  }
+}

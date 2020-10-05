@@ -20,5 +20,10 @@
             <argument type="service" id="Wexo\Quickpay\Service\QuickpayPayment" />
             <tag name="kernel.event_subscriber"/>
         </service>
+
+        <service id="Wexo\Quickpay\Controller\Api\ApiTestController">
+            <argument type="service" id="Wexo\Quickpay\Service\QuickpayPayment"/>
+            <tag name="controller.service_arguments"/>
+        </service>
     </services>
 </container>
