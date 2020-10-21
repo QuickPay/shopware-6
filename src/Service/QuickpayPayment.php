@@ -52,6 +52,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
      * @param EntityRepositoryInterface $orderRepository
      * @param OrderTransactionStateHandler $transactionStateHandler
      * @param OrderService $orderService
+     * @param CartPersisterInterface $cartPersister
      */
     public function __construct(
         SystemConfigService $systemConfigService,
