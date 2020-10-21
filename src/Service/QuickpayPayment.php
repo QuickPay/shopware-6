@@ -5,6 +5,7 @@ namespace Wexo\Quickpay\Service;
 use Exception;
 use GuzzleHttp\Client;
 use Monolog\Logger;
+use Shopware\Core\Checkout\Cart\CartPersisterInterface;
 use Shopware\Core\Checkout\Order\Aggregate\OrderLineItem\OrderLineItemCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
 use Shopware\Core\Checkout\Order\SalesChannel\OrderService;
@@ -41,6 +42,8 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
     protected $logEntryRepository;
     /** @var Client $http */
     public $http;
+    /** @var CartPersisterInterface */
+    protected $cartPersister;
 
     /**
      * QuickpayPayment constructor.
@@ -55,13 +58,15 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         EntityRepositoryInterface $logEntryRepository,
         EntityRepositoryInterface $orderRepository,
         OrderTransactionStateHandler $transactionStateHandler,
-        OrderService $orderService
+        OrderService $orderService,
+        CartPersisterInterface $cartPersister
     ) {
         $this->systemConfigService = $systemConfigService;
         $this->logEntryRepository = $logEntryRepository;
         $this->orderRepository = $orderRepository;
         $this->transactionStateHandler = $transactionStateHandler;
         $this->orderService = $orderService;
+        $this->cartPersister = $cartPersister;
 
         $this->http = new Client([
             'base_uri' => 'https://api.quickpay.net/',
@@ -177,6 +182,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         $context = $salesChannelContext->getContext();
         if ($request->get('status') == "accepted") {
             // Payment completed
+            $this->cartPersister->delete($salesChannelContext->getToken(), $salesChannelContext);
             $this->transactionStateHandler->paid($transaction->getOrderTransaction()->getId(), $context);
         } elseif ($request->get('status') == "cancel") {
             throw new CustomerCanceledAsyncPaymentException(

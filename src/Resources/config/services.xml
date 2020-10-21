@@ -5,12 +5,24 @@
            xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
 
     <services>
+        <service id="Wexo\Quickpay\Core\Checkout\Cart\SalesChannel\CartOrderRouteDecorator"
+                 decorates="Shopware\Core\Checkout\Cart\SalesChannel\CartOrderRoute">
+            <argument type="service" id="Wexo\Quickpay\Core\Checkout\Cart\SalesChannel\CartOrderRouteDecorator.inner" />
+            <argument type="service" id="Shopware\Core\Checkout\Cart\CartCalculator"/>
+            <argument type="service" id="order.repository"/>
+            <argument type="service" id="order_customer.repository"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\Order\OrderPersister"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
+            <argument type="service" id="event_dispatcher"/>
+        </service>
+
         <service id="Wexo\Quickpay\Service\QuickpayPayment">
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
             <argument type="service" id="log_entry.repository" />
             <argument type="service" id="order.repository"/>
             <argument type="service" id="Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler"/>
             <argument type="service" id="Shopware\Core\Checkout\Order\SalesChannel\OrderService" />
+            <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
             <tag name="shopware.payment.method.async" />
         </service>
 
