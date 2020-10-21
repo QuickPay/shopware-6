@@ -63,8 +63,7 @@ class CartOrderRouteDecorator extends AbstractCartOrderRoute
         OrderPersisterInterface $orderPersister,
         CartPersisterInterface $cartPersister,
         EventDispatcherInterface $eventDispatcher
-    )
-    {
+    ) {
         $this->decoratedService = $cartOrderRoute;
         $this->cartCalculator = $cartCalculator;
         $this->orderRepository = $orderRepository;
