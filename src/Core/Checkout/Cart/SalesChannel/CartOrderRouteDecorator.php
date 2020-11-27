@@ -10,14 +10,18 @@ use Shopware\Core\Checkout\Cart\Order\OrderPersisterInterface;
 use Shopware\Core\Checkout\Cart\SalesChannel\AbstractCartOrderRoute;
 use Shopware\Core\Checkout\Cart\SalesChannel\CartOrderRouteResponse;
 use Shopware\Core\Checkout\Order\Aggregate\OrderCustomer\OrderCustomerEntity;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Payment\Exception\InvalidOrderException;
+use Shopware\Core\Checkout\Payment\PaymentMethodEntity;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
+use Shopware\Core\Framework\Plugin\Util\PluginIdProvider;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
+use Wexo\Quickpay\WexoQuickpay;
 
 class CartOrderRouteDecorator extends AbstractCartOrderRoute
 {
@@ -55,6 +59,28 @@ class CartOrderRouteDecorator extends AbstractCartOrderRoute
      */
     protected $orderCustomerRepository;
 
+    /**
+     * @var EntityRepositoryInterface
+     */
+    protected $orderTransactionRepository;
+
+    /**
+     * @var PluginIdProvider
+     */
+    protected $pluginIdProvider;
+
+    /**
+     * CartOrderRouteDecorator constructor.
+     * @param \Shopware\Core\Checkout\Cart\SalesChannel\CartOrderRoute $cartOrderRoute
+     * @param CartCalculator $cartCalculator
+     * @param EntityRepositoryInterface $orderRepository
+     * @param EntityRepositoryInterface $orderCustomerRepository
+     * @param OrderPersisterInterface $orderPersister
+     * @param CartPersisterInterface $cartPersister
+     * @param EventDispatcherInterface $eventDispatcher
+     * @param EntityRepositoryInterface $orderTransactionRepository
+     * @param PluginIdProvider $pluginIdProvider
+     */
     public function __construct(
         \Shopware\Core\Checkout\Cart\SalesChannel\CartOrderRoute $cartOrderRoute,
         CartCalculator $cartCalculator,
@@ -62,7 +88,9 @@ class CartOrderRouteDecorator extends AbstractCartOrderRoute
         EntityRepositoryInterface $orderCustomerRepository,
         OrderPersisterInterface $orderPersister,
         CartPersisterInterface $cartPersister,
-        EventDispatcherInterface $eventDispatcher
+        EventDispatcherInterface $eventDispatcher,
+        EntityRepositoryInterface $orderTransactionRepository,
+        PluginIdProvider $pluginIdProvider
     ) {
         $this->decoratedService = $cartOrderRoute;
         $this->cartCalculator = $cartCalculator;
@@ -71,13 +99,23 @@ class CartOrderRouteDecorator extends AbstractCartOrderRoute
         $this->orderPersister = $orderPersister;
         $this->cartPersister = $cartPersister;
         $this->eventDispatcher = $eventDispatcher;
+        $this->orderTransactionRepository = $orderTransactionRepository;
+        $this->pluginIdProvider = $pluginIdProvider;
     }
 
+    /**
+     * @return AbstractCartOrderRoute
+     */
     public function getDecorated(): AbstractCartOrderRoute
     {
         return $this->decoratedService->getDecorated();
     }
 
+    /**
+     * @param Cart $cart
+     * @param SalesChannelContext $context
+     * @return CartOrderRouteResponse
+     */
     public function order(Cart $cart, SalesChannelContext $context): CartOrderRouteResponse
     {
         $calculatedCart = $this->cartCalculator->calculate($cart, $context);
@@ -109,11 +147,36 @@ class CartOrderRouteDecorator extends AbstractCartOrderRoute
             $context->getSalesChannel()->getId()
         );
 
+        $criteria = new Criteria();
+        $criteria->addFilter(new EqualsFilter('orderId', $orderEntity->getId()));
+        $criteria->addAssociation('paymentMethod');
+
+        /** @var OrderTransactionEntity $orderTransaction */
+        $orderTransaction = $this->orderTransactionRepository->search($criteria, $context->getContext());
+
+        if ($orderTransaction && $orderTransaction = $orderTransaction->first()) {
+            /** @var PaymentMethodEntity $paymentMethod */
+            $paymentMethod = $orderTransaction->getPaymentMethod();
+
+            $pluginId = $this->pluginIdProvider->getPluginIdByBaseClass(WexoQuickpay::class, $context->getContext());
+
+            // Only clear cart here if payment_method is not a quickpay method
+            // If a quickpay method is used the cart will be cleared in QuickPayPayment::finalize()
+            if ($paymentMethod->getPluginId() !== $pluginId) {
+                $this->cartPersister->delete($context->getToken(), $context);
+            }
+        }
+
         $this->eventDispatcher->dispatch($orderPlacedEvent);
 
         return new CartOrderRouteResponse($orderEntity);
     }
 
+    /**
+     * @param string $orderId
+     * @param Context $context
+     * @return OrderCustomerEntity
+     */
     private function fetchCustomer(string $orderId, Context $context): OrderCustomerEntity
     {
         $criteria = new Criteria();
