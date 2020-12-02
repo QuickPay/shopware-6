@@ -68,22 +68,35 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         $this->transactionStateHandler = $transactionStateHandler;
         $this->orderService = $orderService;
         $this->cartPersister = $cartPersister;
+    }
 
-        $this->http = new Client([
-            'base_uri' => 'https://api.quickpay.net/',
-            'headers' => [
-                "Accept" => "*/*",
-                "Accept-Encoding" => "gzip, deflate",
-                "Accept-Version" => "v10",
-                "Connection" => "keep-alive",
-                "Host" => "api.quickpay.net",
-                "cache-control" => "no-cache"
-            ],
-            'auth' => [
-                '',
-                $this->systemConfigService->get('WexoQuickpay.config.quickpayApiKey')
-            ],
-        ]);
+    /**
+     * @param SalesChannelContext $salesChannelContext
+     */
+    public function initClient(?SalesChannelContext $salesChannelContext) {
+        if (! $this->http) {
+            if ($salesChannelContext) {
+                $salesChannelId = $salesChannelContext->getSalesChannel()->getId();
+                $apiKey = $this->systemConfigService->get('WexoQuickpay.config.quickpayApiKey', $salesChannelId);
+            } else {
+                $apiKey = $this->systemConfigService->get('WexoQuickpay.config.quickpayApiKey');
+            }
+            $this->http = new Client([
+                'base_uri' => 'https://api.quickpay.net/',
+                'headers' => [
+                    "Accept" => "*/*",
+                    "Accept-Encoding" => "gzip, deflate",
+                    "Accept-Version" => "v10",
+                    "Connection" => "keep-alive",
+                    "Host" => "api.quickpay.net",
+                    "cache-control" => "no-cache"
+                ],
+                'auth' => [
+                    '',
+                    $apiKey
+                ],
+            ]);
+        }
     }
 
     /**
@@ -99,6 +112,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
     ): RedirectResponse {
         // Method that sends the return URL to the external gateway and gets a redirect URL back
         try {
+            $this->initClient($salesChannelContext);
             $order = $transaction->getOrder();
             $paymentOptionId = $order->getTransactions()->first()->getPaymentMethod()->getId();
             $mobilepayId = $this->systemConfigService->get('WexoQuickpay.config.mobilepayId');
@@ -184,7 +198,10 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         if ($request->get('status') == "accepted") {
             // Payment completed
             $this->cartPersister->delete($salesChannelContext->getToken(), $salesChannelContext);
-            $this->transactionStateHandler->paid($transaction->getOrderTransaction()->getId(), $context);
+            $this->transactionStateHandler->paid(
+                $transaction->getOrderTransaction()->getId(),
+                Context::createDefaultContext()
+            );
         } elseif ($request->get('status') == "cancel") {
             throw new CustomerCanceledAsyncPaymentException(
                 $transactionId,
@@ -353,6 +370,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
     public function isConfigValid(array $config): bool
     {
         try {
+            $this->initClient();
             $response = $this->http->request('GET', 'payments', [
                 'auth' => [
                     '',
