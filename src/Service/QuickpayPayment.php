@@ -73,7 +73,8 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
     /**
      * @param SalesChannelContext $salesChannelContext
      */
-    public function initClient(?SalesChannelContext $salesChannelContext) {
+    public function initClient(?SalesChannelContext $salesChannelContext)
+    {
         if (! $this->http) {
             if ($salesChannelContext) {
                 $salesChannelId = $salesChannelContext->getSalesChannel()->getId();
