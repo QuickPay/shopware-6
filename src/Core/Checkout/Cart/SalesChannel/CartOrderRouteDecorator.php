@@ -19,6 +19,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Plugin\Util\PluginIdProvider;
+use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Wexo\Quickpay\WexoQuickpay;
@@ -114,10 +115,14 @@ class CartOrderRouteDecorator extends AbstractCartOrderRoute
     /**
      * @param Cart $cart
      * @param SalesChannelContext $context
+     * @param RequestDataBag|null $data
      * @return CartOrderRouteResponse
      */
-    public function order(Cart $cart, SalesChannelContext $context): CartOrderRouteResponse
-    {
+    public function order(
+        Cart $cart,
+        SalesChannelContext $context,
+        ?RequestDataBag $data = null
+    ): CartOrderRouteResponse {
         $calculatedCart = $this->cartCalculator->calculate($cart, $context);
         $orderId = $this->orderPersister->persist($calculatedCart, $context);
 
