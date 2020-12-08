@@ -128,6 +128,7 @@ class OrderDetailSubscriber implements EventSubscriberInterface
                     return;
                 }
 
+                $this->quickpayPaymentService->initClient(null);
                 $response = $this->quickpayPaymentService->http->request(
                     'POST',
                     'payments/' . $paymentResponse->id . '/capture',
