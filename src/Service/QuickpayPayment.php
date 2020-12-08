@@ -257,6 +257,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         }
 
         try {
+            $this->initClient(null);
             $createResponse = $this->http->request('POST', 'payments', [
                 'json' => $formParams
             ]);
@@ -295,6 +296,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 $updateFormParams['acquirer'] = 'mobilepay';
             }
 
+            $this->initClient(null);
             $responseUpdateLink = $this->http->request('put', 'payments/' . $createContent->id . "/link", [
                 'form_params' => $updateFormParams
             ]);
@@ -371,7 +373,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
     public function isConfigValid(array $config): bool
     {
         try {
-            $this->initClient();
+            $this->initClient(null);
             $response = $this->http->request('GET', 'payments', [
                 'auth' => [
                     '',
