@@ -4,10 +4,14 @@ namespace Wexo\Quickpay\Subscriber;
 
 use Error;
 use Monolog\Logger;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
+use Shopware\Core\Framework\Struct\ArrayStruct;
 use Shopware\Core\System\StateMachine\Event\StateMachineTransitionEvent;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
 use stdClass;
@@ -21,11 +25,17 @@ use Wexo\Quickpay\WexoQuickpay;
  */
 class OrderDetailSubscriber implements EventSubscriberInterface
 {
-    /** @var EntityRepositoryInterface $orderRepository */
+    /**
+     * @var EntityRepositoryInterface $orderRepository
+     */
     protected $orderRepository;
-    /** @var SystemConfigService $systemConfigService */
+    /**
+     * @var SystemConfigService $systemConfigService
+     */
     protected $systemConfigService;
-    /** @var QuickpayPayment $quickpayPaymentService */
+    /**
+     * @var QuickpayPayment $quickpayPaymentService
+     */
     protected $quickpayPaymentService;
 
     /**
@@ -59,128 +69,34 @@ class OrderDetailSubscriber implements EventSubscriberInterface
      */
     public function onStateMachineTransitionEvent(StateMachineTransitionEvent $event)
     {
-        $context = Context::createDefaultContext();
         $eventName = $event->getToPlace()->getTechnicalName();
-        if ($eventName == "completed") {
-            try {
-                $orderId = $event->getEntityId();
+        $transactionId = $event->getEntityId();
 
-                if (!$orderId) {
-                    return;
-                }
+        $criteria = new Criteria();
+        $criteria->addFilter(new EqualsFilter('transactions.id', $transactionId));
 
-                /** @var OrderEntity $order */
-                $order = $this->orderRepository->search(
-                    new Criteria([$orderId]),
-                    $context
-                )->first();
+        /** @var OrderEntity $orderTransaction */
+        $order = $this->orderRepository->search(
+            $criteria,
+            $event->getContext()
+        )->first();
 
-                // TODO: Send emails to shop admin on payment error
+        $capture = $event->getContext()->getExtension('capture');
+        if ($order) {
+            if ($capture && ! $capture->get('amount')) {
+                return;
+            }
 
-                if (!$order) {
-                    $this->quickpayPaymentService->paymentLogger(
-                        WexoQuickpay::ORDER_COMPLETE_ERROR,
-                        [
-                            'error' => 'Order with ID ' . $orderId . ' could no be found'
-                        ]
-                    );
+            if ($eventName === OrderTransactionStates::STATE_PAID) {
+                $this->quickpayPaymentService->capturePayment($order->getId());
+            }
 
-                    return;
-                }
-
-                $customFields = $order->getCustomFields();
-                if (!isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
-                    $this->quickpayPaymentService->paymentLogger(
-                        WexoQuickpay::ORDER_COMPLETE_ERROR,
-                        [
-                            'error' => 'QuickPay response could not be found on order',
-                            'orderId' => $orderId,
-                            'orderNumber' => $order->getOrderNumber() ?? null,
-                            'customFields' => $customFields
-                        ]
-                    );
-
-                    return;
-                }
-
-                /** @var stdClass $paymentResponse */
-                $paymentResponse = json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
-
-                if (!$paymentResponse
-                    || !property_exists($paymentResponse, 'id')
-                    || !property_exists($paymentResponse, 'order_id')
-                ) {
-                    $this->quickpayPaymentService->paymentLogger(
-                        WexoQuickpay::ORDER_COMPLETE_ERROR,
-                        [
-                            'error' => 'QuickPay ID or order ID could not be found in the orders QuickPay response',
-                            'orderId' => $orderId,
-                            'orderNumber' => $order->getOrderNumber() ?? null,
-                            'paymentResponse' => $paymentResponse ?? null
-                        ]
-                    );
-
-                    return;
-                }
-
-                // Ensure it's the correct order we're trying to capture
-                if ($paymentResponse->order_id != $order->getOrderNumber()) {
-                    return;
-                }
-
-                $this->quickpayPaymentService->initClient(null);
-                $response = $this->quickpayPaymentService->http->request(
-                    'POST',
-                    'payments/' . $paymentResponse->id . '/capture',
-                    [
-                        'form_params' => [
-                            'amount' => $order->getPrice()->getTotalPrice() * 100
-                        ]
-                    ]
-                );
-
-                $statusCode = $response->getStatusCode();
-                $responseBody = $response->getBody()->getContents();
-                $logEntry = [
-                    'orderId' => $orderId,
-                    'orderNumber' => $order->getOrderNumber() ?? null,
-                    'paymentId' => $paymentResponse->id,
-                    'responseStatusCode' => $statusCode,
-                    'response' => json_decode($responseBody)
-                ];
-                if ($statusCode === 202) {
-                    $this->quickpayPaymentService->paymentLogger(
-                        WexoQuickpay::ORDER_COMPLETE_SUCCESS,
-                        $logEntry,
-                        Logger::INFO
-                    );
-
-                    $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $responseBody;
-
-                    $this->orderRepository->update(
-                        [
-                            [
-                                'id' => $orderId,
-                                'customFields' => $customFields
-                            ]
-                        ],
-                        Context::createDefaultContext()
-                    );
-                } else {
-                    $this->quickpayPaymentService->paymentLogger(
-                        WexoQuickpay::ORDER_COMPLETE_ERROR,
-                        $logEntry
-                    );
-                }
-            } catch (Error | \TypeError | \Exception $e) {
-                $this->quickpayPaymentService->paymentLogger(
-                    WexoQuickpay::ORDER_COMPLETE_ERROR,
-                    [
-                        'orderId' => $orderId ?? null,
-                        'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString(),
-                        'errorType' => get_class($e)
-                    ]
+            if ($eventName === OrderTransactionStates::STATE_PARTIALLY_PAID &&
+                $capture && $capture->get('amount')
+            ) {
+                $this->quickpayPaymentService->capturePayment(
+                    $order->getId(),
+                    (float) $capture->get('amount')
                 );
             }
         }

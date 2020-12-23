@@ -3,5 +3,14 @@
     "title": "API Test",
     "success": "Oprettelse af forbindelse testet med success",
     "error": "Forbindelse kunne ikke oprettes. Check konfigurations data"
-  }
+  },
+    "quickpay": {
+        "label": {
+            "capture": "Hæv beløb"
+        },
+        "capture": {
+            "messageSaveSuccess": "Beløb hævet successfuldt",
+            "messageSaveError": "Noget gik galt"
+        }
+    }
 }

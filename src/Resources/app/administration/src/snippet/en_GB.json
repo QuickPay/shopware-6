@@ -1,7 +1,16 @@
 {
-  "quickpay-api-test-button": {
-    "title": "API Test",
-    "success": "Connection tested with success",
-    "error": "Connection could not be established. Please check the access data"
-  }
+    "quickpay-api-test-button": {
+        "title": "API Test",
+        "success": "Connection tested with success",
+        "error": "Connection could not be established. Please check the access data"
+    },
+    "quickpay": {
+        "label": {
+            "capture": "Capture amount"
+        },
+        "capture": {
+            "messageSaveSuccess": "Amount captured successfully",
+            "messageSaveError": "Something went wrong"
+        }
+    }
 }

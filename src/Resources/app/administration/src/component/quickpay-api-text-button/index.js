@@ -1,11 +1,11 @@
 const { Component, Mixin } = Shopware;
-import template from './quickpay-api-test-button.html.twig';
+import template from './quickpay-api-text-button.html.twig';
 
 Component.register('quickpay-api-test-button', {
     template: template,
 
     props: ['label'],
-    inject: ['quickpayApiTest'],
+    inject: ['quickpayApiService'],
 
     mixins: [
         Mixin.getByName('notification')
@@ -31,7 +31,7 @@ Component.register('quickpay-api-test-button', {
 
         check() {
             this.isLoading = true;
-            this.quickpayApiTest.check(this.pluginConfig).then((res) => {
+            this.quickpayApiService.check(this.pluginConfig).then((res) => {
                 if (res.success) {
                     this.isSaveSuccessful = true;
                     this.createNotificationSuccess({
