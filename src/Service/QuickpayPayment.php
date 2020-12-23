@@ -253,7 +253,6 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 $context
             );
 
-            $this->initClient($salesChannelContext);
             $customFields = $transaction->getOrder()->getCustomFields();
             if ($customFields && isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
                 $data = json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
@@ -354,7 +353,6 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 $updateFormParams['acquirer'] = 'mobilepay';
             }
 
-            $this->initClient(null);
             $responseUpdateLink = $this->http->request('put', 'payments/' . $createContent->id . "/link", [
                 'form_params' => $updateFormParams
             ]);
@@ -427,7 +425,6 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             }
 
             $this->initClient();
-
             $response = $this->http->request('GET', 'payments/' . $paymentId);
             if ($response->getStatusCode() === 200) {
                 $this->orderRepository->update(
@@ -435,7 +432,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                         [
                             'id'           => $orderId,
                             'customFields' => [
-                                WexoQuickpay::QUICKPAY_RESPONSE_FIELD => $response
+                                WexoQuickpay::QUICKPAY_RESPONSE_FIELD => $response->getBody()->getContents()
                             ]
                         ]
                     ],
