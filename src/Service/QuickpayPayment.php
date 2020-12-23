@@ -583,7 +583,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             // TODO: The customer could go into quickpay and withdraw manually.
             $availableAmount = $this->getAvailableAmount($paymentResponse);
             if (! $amount) {
-                $amount = ($order->getPrice()->getTotalPrice() * 100) - $availableAmount;
+                $amount = $availableAmount;
             } elseif ($amount > $availableAmount) {
                 $this->paymentLogger(
                     WexoQuickpay::ORDER_COMPLETE_ERROR,
