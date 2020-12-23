@@ -6,14 +6,13 @@ use GuzzleHttp\Client;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Wexo\Quickpay\Service\QuickpayPayment;
 
 /**
  * @RouteScope(scopes={"administration"})
  */
-class ApiTestController
+class QuickpayApiController
 {
     /**
      * @var QuickpayPayment
@@ -21,24 +20,17 @@ class ApiTestController
     protected $quickpayPayment;
 
     /**
-     * @var Client
-     */
-    protected $client;
-
-    /**
-     * ApiTestController constructor.
+     * QuickpayApiController constructor.
      * @param QuickpayPayment $quickpayPayment
      */
     public function __construct(
         QuickpayPayment $quickpayPayment
     ) {
         $this->quickpayPayment = $quickpayPayment;
-
-        $this->client = new Client();
     }
 
     /**
-     * @Route(path="/api/v{version}/_action/quickpay-api-test/verify")
+     * @Route(path="/api/v{version}/_action/quickpay-api/verify")
      * @param RequestDataBag $dataBag
      * @return JsonResponse
      */
@@ -54,5 +46,45 @@ class ApiTestController
         }
 
         return new JsonResponse(['isValid' => false]);
+    }
+
+    /**
+     * @Route(
+     *     path="/api/v{version}/_action/quickpay-api/capture",
+     *     methods={"POST"},
+     *     defaults={"auth_required"=false}
+     * )
+     * @param RequestDataBag $dataBag
+     * @return JsonResponse
+     */
+    public function capture(RequestDataBag $dataBag): JsonResponse
+    {
+        $amount = $dataBag->get('amount');
+        $orderId = $dataBag->get('orderId');
+
+
+        $success = $this->quickpayPayment->capturePayment($orderId, $amount);
+
+        return new JsonResponse([
+            'success' => $success
+        ]);
+    }
+
+    /**
+     * @Route(
+     *     path="/api/v{version}/_action/quickpay-api/update",
+     *     methods={"POST"},
+     *     defaults={"auth_required"=false}
+     * )
+     * @param RequestDataBag $dataBag
+     * @return JsonResponse
+     */
+    public function update(RequestDataBag $dataBag): JsonResponse
+    {
+        $orderId = $dataBag->get('orderId');
+
+        $this->quickpayPayment->updateResponse($orderId);
+
+        return new JsonResponse();
     }
 }

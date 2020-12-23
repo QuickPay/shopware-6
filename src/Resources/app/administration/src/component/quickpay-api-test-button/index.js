@@ -5,7 +5,7 @@ Component.register('quickpay-api-test-button', {
     template: template,
 
     props: ['label'],
-    inject: ['quickpayApiTestService'],
+    inject: ['quickpayApiService'],
 
     mixins: [
         Mixin.getByName('notification')
@@ -36,7 +36,7 @@ Component.register('quickpay-api-test-button', {
 
         testApi() {
             this.isLoading = true;
-            this.quickpayApiTestService
+            this.quickpayApiService
                 .testConfig(this.pluginConfig)
                 .then((res) => {
                     if (res.isValid) {

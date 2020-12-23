@@ -1,0 +1,34 @@
+{% block quickpay_order_payment_details %}
+    <sw-card v-if="orderId"
+             :orderId="orderId"
+             :title="'Payment Details'"
+             :isLoading="isLoading"
+             :isEditing="isEditing"
+             class="quickpay-order-payment-details">
+        {% block quickpay_order_payment_details_payment_data_title %}
+            <strong>QuickPay | Payment solution</strong><br><br>
+        {% endblock %}
+        {% block quickpay_order_payment_details_payment_data %}
+            <sw-data-grid v-if="quickpayResponse"
+                          :dataSource="dataSource"
+                          :columns="orderColumns"
+                          :showActions="false"
+                          :showSelection="false"
+                          :showHeader="false">
+            </sw-data-grid><br>
+            <sw-field
+                type="number"
+                :label="$t('quickpay.label.capture')"
+                v-model="amount"
+                min="0"
+                :max="available"
+                input-change="updateAmount()">
+            </sw-field>
+            <sw-button
+                @click="capture()"
+                size="small">
+                {{ $tc('quickpay.label.capture') }}
+            </sw-button>
+        {% endblock %}
+    </sw-card>
+{% endblock %}

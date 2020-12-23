@@ -25,6 +25,7 @@
             <argument type="service" id="Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler"/>
             <argument type="service" id="Shopware\Core\Checkout\Order\SalesChannel\OrderService" />
             <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
+            <argument type="service" id="Shopware\Core\System\StateMachine\StateMachineRegistry"/>
             <tag name="shopware.payment.method.async" />
         </service>
 
@@ -35,7 +36,7 @@
             <tag name="kernel.event_subscriber"/>
         </service>
 
-        <service id="Wexo\Quickpay\Controller\Api\ApiTestController">
+        <service id="Wexo\Quickpay\Controller\Api\QuickpayApiController">
             <argument type="service" id="Wexo\Quickpay\Service\QuickpayPayment"/>
             <tag name="controller.service_arguments"/>
         </service>

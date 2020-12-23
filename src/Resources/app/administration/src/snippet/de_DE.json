@@ -3,5 +3,14 @@
     "title": "API Test",
     "success": "Verbindung wurde erfolgreich getestet",
     "error": "Verbindung konnte nicht hergestellt werden. Bitte prüfe die Zugangsdaten"
-  }
+  },
+    "quickpay": {
+        "label": {
+            "capture": "Erfassung amount"
+        },
+        "capture": {
+            "messageSaveSuccess": "Amount captured successfully",
+            "messageSaveError": "Something went wrong"
+        }
+    }
 }
