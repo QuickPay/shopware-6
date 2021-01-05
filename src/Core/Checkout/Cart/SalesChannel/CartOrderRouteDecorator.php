@@ -8,6 +8,7 @@ use Shopware\Core\Checkout\Cart\CartPersisterInterface;
 use Shopware\Core\Checkout\Cart\Event\CheckoutOrderPlacedEvent;
 use Shopware\Core\Checkout\Cart\Order\OrderPersisterInterface;
 use Shopware\Core\Checkout\Cart\SalesChannel\AbstractCartOrderRoute;
+use Shopware\Core\Checkout\Cart\SalesChannel\CartOrderRoute;
 use Shopware\Core\Checkout\Cart\SalesChannel\CartOrderRouteResponse;
 use Shopware\Core\Checkout\Order\Aggregate\OrderCustomer\OrderCustomerEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
@@ -27,7 +28,7 @@ use Wexo\Quickpay\WexoQuickpay;
 class CartOrderRouteDecorator extends AbstractCartOrderRoute
 {
     /**
-     * @var \Shopware\Core\Checkout\Cart\SalesChannel\CartOrderRoute
+     * @var CartOrderRoute
      */
     protected $decoratedService;
     /**
@@ -72,7 +73,7 @@ class CartOrderRouteDecorator extends AbstractCartOrderRoute
 
     /**
      * CartOrderRouteDecorator constructor.
-     * @param \Shopware\Core\Checkout\Cart\SalesChannel\CartOrderRoute $cartOrderRoute
+     * @param CartOrderRoute $cartOrderRoute
      * @param CartCalculator $cartCalculator
      * @param EntityRepositoryInterface $orderRepository
      * @param EntityRepositoryInterface $orderCustomerRepository
@@ -83,7 +84,7 @@ class CartOrderRouteDecorator extends AbstractCartOrderRoute
      * @param PluginIdProvider $pluginIdProvider
      */
     public function __construct(
-        \Shopware\Core\Checkout\Cart\SalesChannel\CartOrderRoute $cartOrderRoute,
+        CartOrderRoute $cartOrderRoute,
         CartCalculator $cartCalculator,
         EntityRepositoryInterface $orderRepository,
         EntityRepositoryInterface $orderCustomerRepository,
@@ -123,74 +124,44 @@ class CartOrderRouteDecorator extends AbstractCartOrderRoute
         SalesChannelContext $context,
         ?RequestDataBag $data = null
     ): CartOrderRouteResponse {
-        $calculatedCart = $this->cartCalculator->calculate($cart, $context);
-        $orderId = $this->orderPersister->persist($calculatedCart, $context);
+        $originalCart = $this->cartPersister->load($context->getToken(), $context);
 
-        $criteria = new Criteria([$orderId]);
-        $criteria
-            ->addAssociation('deliveries.shippingMethod')
-            ->addAssociation('deliveries.shippingOrderAddress.country')
-            ->addAssociation('transactions.paymentMethod')
-            ->addAssociation('lineItems')
-            ->addAssociation('currency')
-            ->addAssociation('addresses.country');
+        $response = $this->decoratedService->order($cart, $context, $data);
 
-        /** @var OrderEntity|null $orderEntity */
-        $orderEntity = $this->orderRepository->search($criteria, $context->getContext())->first();
+        // Restore cart if quickpay payment method was used
+        $this->restoreCartIfQuickpay($originalCart, $response->getOrder(), $context);
 
-        if (!$orderEntity) {
-            throw new InvalidOrderException($orderId);
-        }
-
-        $orderEntity->setOrderCustomer(
-            $this->fetchCustomer($orderEntity->getId(), $context->getContext())
-        );
-
-        $orderPlacedEvent = new CheckoutOrderPlacedEvent(
-            $context->getContext(),
-            $orderEntity,
-            $context->getSalesChannel()->getId()
-        );
-
-        $criteria = new Criteria();
-        $criteria->addFilter(new EqualsFilter('orderId', $orderEntity->getId()));
-        $criteria->addAssociation('paymentMethod');
-
-        /** @var OrderTransactionEntity $orderTransaction */
-        $orderTransaction = $this->orderTransactionRepository->search($criteria, $context->getContext());
-
-        if ($orderTransaction && $orderTransaction = $orderTransaction->first()) {
-            /** @var PaymentMethodEntity $paymentMethod */
-            $paymentMethod = $orderTransaction->getPaymentMethod();
-
-            $pluginId = $this->pluginIdProvider->getPluginIdByBaseClass(WexoQuickpay::class, $context->getContext());
-
-            // Only clear cart here if payment_method is not a quickpay method
-            // If a quickpay method is used the cart will be cleared in QuickPayPayment::finalize()
-            if ($paymentMethod->getPluginId() !== $pluginId) {
-                $this->cartPersister->delete($context->getToken(), $context);
-            }
-        }
-
-        $this->eventDispatcher->dispatch($orderPlacedEvent);
-
-        return new CartOrderRouteResponse($orderEntity);
+        return $response;
     }
 
     /**
-     * @param string $orderId
-     * @param Context $context
-     * @return OrderCustomerEntity
+     * @param Cart $cart
+     * @param OrderEntity $orderEntity
+     * @param SalesChannelContext $context
      */
-    private function fetchCustomer(string $orderId, Context $context): OrderCustomerEntity
+    protected function restoreCartIfQuickpay(Cart $cart, OrderEntity $orderEntity, SalesChannelContext $context)
     {
-        $criteria = new Criteria();
-        $criteria->addFilter(new EqualsFilter('orderId', $orderId));
-        $criteria->addAssociation('customer');
-        $criteria->addAssociation('salutation');
+        $criteria = (new Criteria())
+            ->addFilter(new EqualsFilter('orderId', $orderEntity->getId()))
+            ->addAssociation('paymentMethod');
 
-        return $this->orderCustomerRepository
-            ->search($criteria, $context)
-            ->first();
+        /** @var OrderTransactionEntity $orderTransaction */
+        $orderTransaction = $this->orderTransactionRepository->search($criteria, $context->getContext())->first();
+
+        if ($orderTransaction) {
+            /** @var PaymentMethodEntity $paymentMethod */
+            $paymentMethod = $orderTransaction->getPaymentMethod();
+
+            $pluginId = $this->pluginIdProvider->getPluginIdByBaseClass(
+                WexoQuickpay::class,
+                $context->getContext()
+            );
+
+            // If a quickpay payment method was used we restore the cart
+            // If a quickpay method is used the cart will be cleared in QuickPayPayment::finalize()
+            if ($paymentMethod->getPluginId() === $pluginId) {
+                $this->cartPersister->save($cart, $context);
+            }
+        }
     }
 }
