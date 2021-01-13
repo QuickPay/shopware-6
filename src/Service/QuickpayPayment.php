@@ -609,7 +609,6 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 ]
             );
 
-
             $statusCode = $response->getStatusCode();
             $responseBody = $response->getBody()->getContents();
             $logEntry = [
@@ -643,7 +642,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
 
                 $orderComplete = true;
                 $stateName = $transaction->getStateMachineState()->getTechnicalName();
-                if ((int) $availableAmount == 0 && $stateName !== OrderTransactionStates::STATE_PAID) {
+                if ($availableAmount == 0 && $stateName !== OrderTransactionStates::STATE_PAID) {
                     $this->stateMachineRegistry->transition(
                         new Transition(
                             OrderTransactionDefinition::ENTITY_NAME,
@@ -658,9 +657,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                         $transaction->getId(),
                         $context
                     );
-                } elseif (! in_array($stateName,
-                    [OrderTransactionStates::STATE_PARTIALLY_PAID, OrderTransactionStates::STATE_PAID]
-                )) {
+                } elseif ($stateName !== OrderTransactionStates::STATE_PARTIALLY_PAID) {
                     $this->transactionStateHandler->payPartially(
                         $transaction->getId(),
                         $context
@@ -685,7 +682,11 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                     $logEntry
                 );
 
-                $this->fail($transaction->getId(), $context);
+                $quickPayResponse = json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
+                $availableAmount = $this->getAvailableAmount($quickPayResponse);
+                if ($availableAmount != 0) {
+                    $this->fail($transaction->getId(), $context);
+                }
             }
         } catch (\Error | \TypeError | \Exception $e) {
             $this->paymentLogger(
@@ -697,8 +698,6 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                     'errorType' => get_class($e)
                 ]
             );
-
-            $this->fail($transaction->getId(), $context);
         }
 
         return false;
