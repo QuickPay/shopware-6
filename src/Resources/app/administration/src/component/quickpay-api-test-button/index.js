@@ -23,8 +23,7 @@ Component.register('quickpay-api-test-button', {
             const configData = this.$parent.$parent.$parent.actualConfigData.null;
 
             return {
-                quickpayApiKey: configData['WexoQuickpay.config.quickpayApiKey'],
-                mobilepayId: configData['WexoQuickpay.config.mobilepayId']
+                quickpayApiKey: configData['WexoQuickpay.config.quickpayApiKey']
             };
         }
     },

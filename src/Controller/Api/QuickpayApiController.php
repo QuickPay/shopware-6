@@ -37,8 +37,7 @@ class QuickpayApiController
     public function check(RequestDataBag $dataBag): JsonResponse
     {
         $config = [
-            'quickpayApiKey' => $dataBag->get('quickpayApiKey'),
-            'mobilepayId' => $dataBag->get('mobilepayId')
+            'quickpayApiKey' => $dataBag->get('quickpayApiKey')
         ];
 
         if ($this->quickpayPayment->isConfigValid($config)) {

@@ -10,12 +10,6 @@
             <label>QuickPay API key</label>
             <helpText>User API key</helpText>
         </input-field>
-
-        <input-field>
-            <name>mobilepayId</name>
-            <label>MobilePay ID</label>
-        </input-field>
-
         <component name="quickpay-api-test-button">
             <name>quickpayApiTest</name>
             <label>Test API Connection</label>

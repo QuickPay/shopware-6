@@ -29,6 +29,26 @@
             <tag name="shopware.payment.method.async" />
         </service>
 
+        <service id="Wexo\Quickpay\Service\KlarnaPayment">
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
+            <argument type="service" id="log_entry.repository" />
+            <argument type="service" id="order.repository"/>
+            <argument type="service" id="Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler"/>
+            <argument type="service" id="Shopware\Core\Checkout\Order\SalesChannel\OrderService" />
+            <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
+            <tag name="shopware.payment.method.async" />
+        </service>
+
+        <service id="Wexo\Quickpay\Service\MobilepayPayment">
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
+            <argument type="service" id="log_entry.repository" />
+            <argument type="service" id="order.repository"/>
+            <argument type="service" id="Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler"/>
+            <argument type="service" id="Shopware\Core\Checkout\Order\SalesChannel\OrderService" />
+            <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
+            <tag name="shopware.payment.method.async" />
+        </service>
+
         <service id="Wexo\Quickpay\Subscriber\OrderDetailSubscriber" public="true">
             <argument type="service" id="order.repository"/>
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
