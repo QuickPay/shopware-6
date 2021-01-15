@@ -597,6 +597,9 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             return false;
         }
 
+        $payment = false;
+        $orderComplete = true;
+
         try {
             $this->initClient();
             $response = $this->http->request(
@@ -640,7 +643,6 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
 
                 $availableAmount = $this->getAvailableAmount(json_decode($responseBody));
 
-                $orderComplete = true;
                 $stateName = $transaction->getStateMachineState()->getTechnicalName();
                 if ($availableAmount == 0 && $stateName !== OrderTransactionStates::STATE_PAID) {
                     $this->stateMachineRegistry->transition(
@@ -666,16 +668,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                     $orderComplete = false;
                 }
 
-                if ($orderComplete) {
-                    $this->orderService->orderStateTransition(
-                        $order->getId(),
-                        StateMachineTransitionActions::ACTION_COMPLETE,
-                        new ParameterBag(),
-                        $context
-                    );
-                }
-
-                return true;
+                $payment = true;
             } else {
                 $this->paymentLogger(
                     WexoQuickpay::ORDER_COMPLETE_ERROR,
@@ -686,6 +679,8 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 $availableAmount = $this->getAvailableAmount($quickPayResponse);
                 if ($availableAmount != 0) {
                     $this->fail($transaction->getId(), $context);
+
+                    $orderComplete = false;
                 }
             }
         } catch (\Error | \TypeError | \Exception $e) {
@@ -700,7 +695,16 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             );
         }
 
-        return false;
+        if ($orderComplete) {
+            $this->orderService->orderStateTransition(
+                $order->getId(),
+                StateMachineTransitionActions::ACTION_COMPLETE,
+                new ParameterBag(),
+                $context
+            );
+        }
+
+        return $payment;
     }
 
     /**
