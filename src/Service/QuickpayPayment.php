@@ -758,7 +758,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             foreach ($quickpayResponse->operations as $operation) {
                 if (! property_exists($operation, 'type') ||
                     ! property_exists($operation, 'amount') ||
-                    ! property_exists($operation, 'qp_status_msg') &&
+                    ! property_exists($operation, 'qp_status_msg') ||
                     $operation->qp_status_msg != 'Approved'
                 ) {
                     continue;
