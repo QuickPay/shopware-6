@@ -13,6 +13,7 @@ use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Wexo\Quickpay\Service\QuickpayPayment;
+use Shopware\Core\System\StateMachine\StateMachineRegistry;
 
 /**
  * Class KlarnaPayment
@@ -34,6 +35,8 @@ class KlarnaPayment extends QuickpayPayment
     public $http;
     /** @var CartPersisterInterface */
     protected $cartPersister;
+    /** @var StateMachineRegistry */
+    protected $stateMachineRegistry;
 
     /**
      * KlarnaPayment constructor.
@@ -43,6 +46,7 @@ class KlarnaPayment extends QuickpayPayment
      * @param OrderTransactionStateHandler $transactionStateHandler
      * @param OrderService $orderService
      * @param CartPersisterInterface $cartPersister
+     * @param StateMachineRegistry $stateMachineRegistry
      */
     public function __construct(
         SystemConfigService $systemConfigService,
@@ -50,7 +54,8 @@ class KlarnaPayment extends QuickpayPayment
         EntityRepositoryInterface $orderRepository,
         OrderTransactionStateHandler $transactionStateHandler,
         OrderService $orderService,
-        CartPersisterInterface $cartPersister
+        CartPersisterInterface $cartPersister,
+        StateMachineRegistry $stateMachineRegistry
     ) {
         $this->systemConfigService = $systemConfigService;
         $this->logEntryRepository = $logEntryRepository;
@@ -58,13 +63,15 @@ class KlarnaPayment extends QuickpayPayment
         $this->transactionStateHandler = $transactionStateHandler;
         $this->orderService = $orderService;
         $this->cartPersister = $cartPersister;
+        $this->stateMachineRegistry = $stateMachineRegistry;
         parent::__construct(
             $systemConfigService,
             $logEntryRepository,
             $orderRepository,
             $transactionStateHandler,
             $orderService,
-            $cartPersister
+            $cartPersister,
+            $stateMachineRegistry
         );
     }
 
