@@ -348,9 +348,9 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 'cancel_url' => $callbackUrl . '&status=cancel'
             ];
 
-            if ($paymentHandler == Wexo\Quickpay\Service\MobilepayPayment::class) {
+            if ($paymentHandler == MobilepayPayment::class) {
                 $updateFormParams['payment_methods'] = 'mobilepay';
-            } elseif ($paymentHandler == Wexo\Quickpay\Service\KlarnaPayment::class) {
+            } elseif ($paymentHandler == KlarnaPayment::class) {
                 $updateFormParams['payment_methods'] = 'klarna-payments';
             }
 
