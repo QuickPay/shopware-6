@@ -152,8 +152,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         try {
             $this->initClient($salesChannelContext);
             $order = $transaction->getOrder();
-            $paymentOptionId = $order->getTransactions()->first()->getPaymentMethod()->getId();
-            $mobilepayId = $this->systemConfigService->get('WexoQuickpay.config.mobilepayId');
+            $paymentHandler = $order->getTransactions()->first()->getPaymentMethod()->getHandlerIdentifier();
             $orderNumber = $order->getOrderNumber();
 
             $currency = $salesChannelContext->getCurrency()->getIsoCode()
@@ -168,7 +167,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                     $order->getLineItems(),
                     $order->getAmountTotal(),
                     $transaction->getReturnUrl(),
-                    $mobilepayId === $paymentOptionId,
+                    $paymentHandler,
                     $order->getShippingTotal(),
                     $order->getShippingCosts()->getTaxRules()->first()->getTaxRate()
                 );
@@ -273,7 +272,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
      * @param OrderLineItemCollection $orderLineItems
      * @param float $amount
      * @param string $callbackUrl
-     * @param bool $isMobilepay
+     * @param string $paymentHandler
      * @param float $shippingTotal
      * @param float $shippingTaxes
      * @return array
@@ -284,7 +283,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         $orderLineItems,
         float $amount,
         string $callbackUrl,
-        bool $isMobilepay = false,
+        string $paymentHandler,
         float $shippingTotal = 0,
         float $shippingTaxes = 0
     ) {
@@ -349,8 +348,10 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 'cancel_url' => $callbackUrl . '&status=cancel'
             ];
 
-            if ($isMobilepay) {
-                $updateFormParams['acquirer'] = 'mobilepay';
+            if ($paymentHandler == Wexo\Quickpay\Service\MobilepayPayment::class) {
+                $updateFormParams['payment_methods'] = 'mobilepay';
+            } elseif ($paymentHandler == Wexo\Quickpay\Service\KlarnaPayment::class) {
+                $updateFormParams['payment_methods'] = 'klarna-payments';
             }
 
             $responseUpdateLink = $this->http->request('put', 'payments/' . $createContent->id . "/link", [
@@ -481,7 +482,6 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
      *
      * @param array $config [Quickpay config]
      * @option string "quickpayApiKey" [Quickpay Api Key]
-     * @option string "mobilepayId" [Mobilepay id]
      * @return bool
      */
     public function isConfigValid(array $config): bool

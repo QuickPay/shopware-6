@@ -8,7 +8,6 @@ use Shopware\Core\Checkout\Cart\CartPersisterInterface;
 use Shopware\Core\Checkout\Cart\Event\CheckoutOrderPlacedEvent;
 use Shopware\Core\Checkout\Cart\Order\OrderPersisterInterface;
 use Shopware\Core\Checkout\Cart\SalesChannel\AbstractCartOrderRoute;
-use Shopware\Core\Checkout\Cart\SalesChannel\CartOrderRoute;
 use Shopware\Core\Checkout\Cart\SalesChannel\CartOrderRouteResponse;
 use Shopware\Core\Checkout\Order\Aggregate\OrderCustomer\OrderCustomerEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
@@ -28,7 +27,7 @@ use Wexo\Quickpay\WexoQuickpay;
 class CartOrderRouteDecorator extends AbstractCartOrderRoute
 {
     /**
-     * @var CartOrderRoute
+     * @var AbstractCartOrderRoute
      */
     protected $decoratedService;
     /**
@@ -73,7 +72,7 @@ class CartOrderRouteDecorator extends AbstractCartOrderRoute
 
     /**
      * CartOrderRouteDecorator constructor.
-     * @param CartOrderRoute $cartOrderRoute
+     * @param AbstractCartOrderRoute $cartOrderRoute
      * @param CartCalculator $cartCalculator
      * @param EntityRepositoryInterface $orderRepository
      * @param EntityRepositoryInterface $orderCustomerRepository
@@ -84,7 +83,7 @@ class CartOrderRouteDecorator extends AbstractCartOrderRoute
      * @param PluginIdProvider $pluginIdProvider
      */
     public function __construct(
-        CartOrderRoute $cartOrderRoute,
+        AbstractCartOrderRoute $cartOrderRoute,
         CartCalculator $cartCalculator,
         EntityRepositoryInterface $orderRepository,
         EntityRepositoryInterface $orderCustomerRepository,
