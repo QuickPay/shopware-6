@@ -4,7 +4,9 @@ namespace Wexo\Quickpay;
 
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\ContainsFilter;
 use Shopware\Core\Framework\Plugin;
+use Shopware\Core\Framework\Plugin\Context\UpdateContext;
 use Shopware\Core\Framework\Plugin\Util\PluginIdProvider;
 use Shopware\Core\System\CustomField\Aggregate\CustomFieldSet\CustomFieldSetEntity;
 use Shopware\Core\System\CustomField\CustomFieldTypes;
@@ -112,6 +114,22 @@ class WexoQuickpay extends Plugin
             $paymentMethodId = $this->getPaymentMethodId($handlerIdentifier);
             $this->setPaymentMethodIsActive(false, $context->getContext(), $paymentMethodId);
         }
+    }
+
+    public function update(UpdateContext $context): void
+    {
+        if (version_compare($context->getCurrentPluginVersion(), '3.0.2', '<')) {
+            $oldMobilePayId = $this->getPaymentMethodIdByName(QuickpayPayment::class, 'MobilePay');
+            if ($oldMobilePayId) {
+                $paymentRepository = $this->container->get('payment_method.repository');
+                $paymentMethod = [
+                    'id' => $oldMobilePayId,
+                    'handlerIdentifier' => MobilepayPayment::class,
+                ];
+                $paymentRepository->update([$paymentMethod], Context::createDefaultContext());
+            }
+        }
+        $this->addPaymentMethods(Context::createDefaultContext());
     }
 
     /**
@@ -222,6 +240,21 @@ class WexoQuickpay extends Plugin
         $paymentRepository = $this->container->get('payment_method.repository');
         // Fetch ID for update
         $paymentCriteria = (new Criteria())->addFilter(new EqualsFilter('handlerIdentifier', $identifier));
+        $paymentIds = $paymentRepository->searchIds($paymentCriteria, Context::createDefaultContext());
+        if ($paymentIds->getTotal() === 0) {
+            return null;
+        }
+        return $paymentIds->getIds()[0];
+    }
+
+    private function getPaymentMethodIdByName($identifier, $name): ?string
+    {
+        /** @var EntityRepositoryInterface $paymentRepository */
+        $paymentRepository = $this->container->get('payment_method.repository');
+        // Fetch ID for update
+        $paymentCriteria = (new Criteria())
+            ->addFilter(new EqualsFilter('handlerIdentifier', $identifier))
+            ->addFilter(new ContainsFilter('name', $name));
         $paymentIds = $paymentRepository->searchIds($paymentCriteria, Context::createDefaultContext());
         if ($paymentIds->getTotal() === 0) {
             return null;
