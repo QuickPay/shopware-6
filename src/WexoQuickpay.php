@@ -240,11 +240,11 @@ class WexoQuickpay extends Plugin
         $paymentRepository = $this->container->get('payment_method.repository');
         // Fetch ID for update
         $paymentCriteria = (new Criteria())->addFilter(new EqualsFilter('handlerIdentifier', $identifier));
-        $paymentIds = $paymentRepository->searchIds($paymentCriteria, Context::createDefaultContext());
-        if ($paymentIds->getTotal() === 0) {
+        $paymentId = $paymentRepository->searchIds($paymentCriteria, Context::createDefaultContext())->firstId();
+        if (empty($paymentId)) {
             return null;
         }
-        return $paymentIds->getIds()[0];
+        return $paymentId;
     }
 
     private function getPaymentMethodIdByName($identifier, $name): ?string
@@ -255,10 +255,10 @@ class WexoQuickpay extends Plugin
         $paymentCriteria = (new Criteria())
             ->addFilter(new EqualsFilter('handlerIdentifier', $identifier))
             ->addFilter(new ContainsFilter('name', $name));
-        $paymentIds = $paymentRepository->searchIds($paymentCriteria, Context::createDefaultContext());
-        if ($paymentIds->getTotal() === 0) {
+        $paymentId = $paymentRepository->searchIds($paymentCriteria, Context::createDefaultContext())->firstId();
+        if (empty($paymentId)) {
             return null;
         }
-        return $paymentIds->getIds()[0];
+        return $paymentId;
     }
 }
