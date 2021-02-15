@@ -666,6 +666,8 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                     );
 
                     $orderComplete = false;
+                } elseif ($stateName === OrderTransactionStates::STATE_PARTIALLY_PAID) {
+                    $orderComplete = false;
                 }
 
                 $payment = true;
