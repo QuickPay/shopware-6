@@ -37,7 +37,7 @@ class QuickpayApiController
     public function check(RequestDataBag $dataBag): JsonResponse
     {
         $config = [
-            'quickpayApiKey' => $dataBag->get('quickpayApiKey')
+            'quickpayApiKey' => $dataBag->get('WexoQuickpay.config.quickpayApiKey')
         ];
 
         if ($this->quickpayPayment->isConfigValid($config)) {

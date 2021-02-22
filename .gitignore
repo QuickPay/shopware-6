@@ -11,3 +11,5 @@
 Icon?
 ehthumbs.db
 Thumbs.db
+
+src/Resources/public/administration/js/*.js

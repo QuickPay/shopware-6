@@ -12,7 +12,7 @@
         </input-field>
         <component name="quickpay-api-test-button">
             <name>quickpayApiTest</name>
-            <label>Test API Connection</label>
+            <btnLabel>Test API Connection</btnLabel>
         </component>
     </card>
 </config>

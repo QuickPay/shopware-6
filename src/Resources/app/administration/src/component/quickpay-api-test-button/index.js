@@ -4,7 +4,7 @@ import template from './quickpay-api-test-button.html.twig';
 Component.register('quickpay-api-test-button', {
     template: template,
 
-    props: ['label'],
+    props: ['btnLabel'],
     inject: ['quickpayApiService'],
 
     mixins: [
@@ -20,11 +20,13 @@ Component.register('quickpay-api-test-button', {
 
     computed: {
         pluginConfig() {
-            const configData = this.$parent.$parent.$parent.actualConfigData.null;
+            let config = this.$parent.$parent.$parent.actualConfigData;
+            if (config) {
+                return config.null;
+            }
 
-            return {
-                quickpayApiKey: configData['WexoQuickpay.config.quickpayApiKey']
-            };
+            // in SW6.3.4 it's one step above
+            return this.$parent.$parent.$parent.$parent.actualConfigData.null;
         }
     },
 
@@ -50,6 +52,10 @@ Component.register('quickpay-api-test-button', {
                             message: this.$tc('quickpay-api-test-button.error')
                         });
                     }
+
+                    setTimeout(() => {
+                        this.isLoading = false;
+                    }, 2500);
                 })
                 .catch((error) => {
                     this.createNotificationError({
