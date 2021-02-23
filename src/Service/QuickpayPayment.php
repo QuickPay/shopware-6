@@ -695,6 +695,8 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                     'errorType' => get_class($e)
                 ]
             );
+
+            return $payment;
         }
 
         if ($orderComplete) {
