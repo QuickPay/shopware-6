@@ -23,6 +23,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Struct\ArrayStruct;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
+use Shopware\Core\System\Locale\LocaleEntity;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineTransition\StateMachineTransitionActions;
 use Shopware\Core\System\StateMachine\Exception\IllegalTransitionException;
@@ -45,37 +46,23 @@ use Wexo\Quickpay\WexoQuickpay;
  */
 class QuickpayPayment implements AsynchronousPaymentHandlerInterface
 {
-    /**
-     * @var SystemConfigService $systemConfigService
-     */
+    /** @var SystemConfigService $systemConfigService */
     protected $systemConfigService;
-    /**
-     * @var EntityRepositoryInterface $orderRepository
-     */
+    /** @var EntityRepositoryInterface $orderRepository */
     protected $orderRepository;
-    /**
-     * @var OrderTransactionStateHandler $transactionStateHandler
-     */
+    /** @var EntityRepositoryInterface $languageRepository */
+    protected $languageRepository;
+    /** @var OrderTransactionStateHandler $transactionStateHandler */
     protected $transactionStateHandler;
-    /**
-     * @var OrderService $orderService
-     */
+    /** @var OrderService $orderService */
     protected $orderService;
-    /**
-     * @var EntityRepositoryInterface $logEntryRepository
-     */
+    /** @var EntityRepositoryInterface $logEntryRepository */
     protected $logEntryRepository;
-    /**
-     * @var Client $http
-     */
+    /** @var Client $http */
     public $http;
-    /**
-     * @var CartPersisterInterface
-     */
+    /** @var CartPersisterInterface */
     protected $cartPersister;
-    /**
-     * @var StateMachineRegistry
-     */
+    /** @var StateMachineRegistry */
     protected $stateMachineRegistry;
 
     /**
@@ -83,6 +70,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
      * @param SystemConfigService $systemConfigService
      * @param EntityRepositoryInterface $logEntryRepository
      * @param EntityRepositoryInterface $orderRepository
+     * @param EntityRepositoryInterface $languageRepository
      * @param OrderTransactionStateHandler $transactionStateHandler
      * @param OrderService $orderService
      * @param CartPersisterInterface $cartPersister
@@ -92,6 +80,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         SystemConfigService $systemConfigService,
         EntityRepositoryInterface $logEntryRepository,
         EntityRepositoryInterface $orderRepository,
+        EntityRepositoryInterface $languageRepository,
         OrderTransactionStateHandler $transactionStateHandler,
         OrderService $orderService,
         CartPersisterInterface $cartPersister,
@@ -100,6 +89,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         $this->systemConfigService = $systemConfigService;
         $this->logEntryRepository = $logEntryRepository;
         $this->orderRepository = $orderRepository;
+        $this->languageRepository = $languageRepository;
         $this->transactionStateHandler = $transactionStateHandler;
         $this->orderService = $orderService;
         $this->cartPersister = $cartPersister;
@@ -158,6 +148,11 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             $currency = $salesChannelContext->getCurrency()->getIsoCode()
                 ?? WexoQuickpay::FALLBACK_CURRENCY;
 
+            $language = $this->getLanguage(
+                $salesChannelContext->getSalesChannel()->getLanguageId(),
+                $salesChannelContext->getContext()
+            );
+
             try {
                 $response = $this->createPayment(
                     [
@@ -166,6 +161,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                     ],
                     $order->getLineItems(),
                     $order->getAmountTotal(),
+                    $language,
                     $transaction->getReturnUrl(),
                     $paymentHandler,
                     $order->getShippingTotal(),
@@ -232,6 +228,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         $transactionId = $transaction->getOrderTransaction()->getId();
 
         $context = $salesChannelContext->getContext();
+
         if ($request->get('status') == "accepted") {
             // Payment completed
             $this->cartPersister->delete($salesChannelContext->getToken(), $salesChannelContext);
@@ -269,12 +266,13 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
 
     /**
      * @param array $formParams
-     * @param OrderLineItemCollection $orderLineItems
+     * @param $orderLineItems
      * @param float $amount
+     * @param string $language
      * @param string $callbackUrl
      * @param string $paymentHandler
-     * @param float $shippingTotal
-     * @param float $shippingTaxes
+     * @param float|int $shippingTotal
+     * @param float|int $shippingTaxes
      * @return array
      * @throws Exception
      */
@@ -282,6 +280,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         array $formParams,
         $orderLineItems,
         float $amount,
+        string $language,
         string $callbackUrl,
         string $paymentHandler,
         float $shippingTotal = 0,
@@ -345,7 +344,8 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             $updateFormParams = [
                 'amount' => $amount * 100,
                 'continue_url' => $callbackUrl . '&status=accepted',
-                'cancel_url' => $callbackUrl . '&status=cancel'
+                'cancel_url' => $callbackUrl . '&status=cancel',
+                'language' => $language
             ];
 
             if ($paymentHandler == MobilepayPayment::class) {
@@ -779,5 +779,31 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         $availableAmount = $authorizedAmount - $capturedAmount;
 
         return (float) $availableAmount;
+    }
+
+    /**
+     * @param string $languageId
+     * @param Context $context
+     * @return string
+     */
+    private function getLanguage(string $languageId, Context $context): string
+    {
+        $criteria = new Criteria([$languageId]);
+        $criteria->addAssociation('locale');
+        $language = $this->languageRepository->search($criteria, $context)->first();
+
+        // Map both norwegian locales to no
+        $map = [
+            'nb' => 'no',
+            'nn' => 'no',
+        ];
+
+        $language = explode('-', $language->getLocale()->getCode())[0];
+
+        if (isset($map[$language])) {
+            return $map[$language];
+        }
+
+        return $language;
     }
 }

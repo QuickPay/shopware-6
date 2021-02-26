@@ -25,6 +25,8 @@ class MobilepayPayment extends QuickpayPayment
     protected $systemConfigService;
     /** @var EntityRepositoryInterface $orderRepository */
     protected $orderRepository;
+    /** @var EntityRepositoryInterface $languageRepository */
+    protected $languageRepository;
     /** @var OrderTransactionStateHandler $transactionStateHandler */
     protected $transactionStateHandler;
     /** @var OrderService $orderService */
@@ -43,6 +45,7 @@ class MobilepayPayment extends QuickpayPayment
      * @param SystemConfigService $systemConfigService
      * @param EntityRepositoryInterface $logEntryRepository
      * @param EntityRepositoryInterface $orderRepository
+     * @param EntityRepositoryInterface $languageRepository
      * @param OrderTransactionStateHandler $transactionStateHandler
      * @param OrderService $orderService
      * @param CartPersisterInterface $cartPersister
@@ -52,6 +55,7 @@ class MobilepayPayment extends QuickpayPayment
         SystemConfigService $systemConfigService,
         EntityRepositoryInterface $logEntryRepository,
         EntityRepositoryInterface $orderRepository,
+        EntityRepositoryInterface $languageRepository,
         OrderTransactionStateHandler $transactionStateHandler,
         OrderService $orderService,
         CartPersisterInterface $cartPersister,
@@ -60,6 +64,7 @@ class MobilepayPayment extends QuickpayPayment
         $this->systemConfigService = $systemConfigService;
         $this->logEntryRepository = $logEntryRepository;
         $this->orderRepository = $orderRepository;
+        $this->languageRepository = $languageRepository;
         $this->transactionStateHandler = $transactionStateHandler;
         $this->orderService = $orderService;
         $this->cartPersister = $cartPersister;
@@ -68,6 +73,7 @@ class MobilepayPayment extends QuickpayPayment
             $systemConfigService,
             $logEntryRepository,
             $orderRepository,
+            $languageRepository,
             $transactionStateHandler,
             $orderService,
             $cartPersister,
