@@ -266,7 +266,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
 
     /**
      * @param array $formParams
-     * @param $orderLineItems
+     * @param OrderLineItemCollection|null $orderLineItems
      * @param float $amount
      * @param string $language
      * @param string $callbackUrl
@@ -296,7 +296,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 'qty' => (int)$orderLineItem->getQuantity(),
                 'item_no' => $itemNo,
                 'item_name' => $orderLineItem->getLabel(),
-                'item_price' => $orderLineItem->getUnitPrice(),
+                'item_price' => $orderLineItem->getUnitPrice() * 100,
                 'vat_rate' => $orderLineItem->getPrice()->getTaxRules()->first()->getTaxRate() / 100,
             ];
         }
@@ -306,7 +306,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 'qty' => 1,
                 'item_no' => 'Shipping',
                 'item_name' => 'Shipping',
-                'item_price' => $shippingTotal,
+                'item_price' => $shippingTotal * 100,
                 'vat_rate' => $shippingTaxes / 100,
             ];
         }
