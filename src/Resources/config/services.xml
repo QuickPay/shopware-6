@@ -42,6 +42,18 @@
             <tag name="shopware.payment.method.async" />
         </service>
 
+        <service id="Wexo\Quickpay\Service\ViabillPayment">
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
+            <argument type="service" id="log_entry.repository" />
+            <argument type="service" id="order.repository"/>
+            <argument type="service" id="language.repository"/>
+            <argument type="service" id="Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler"/>
+            <argument type="service" id="Shopware\Core\Checkout\Order\SalesChannel\OrderService" />
+            <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
+            <argument type="service" id="Shopware\Core\System\StateMachine\StateMachineRegistry"/>
+            <tag name="shopware.payment.method.async" />
+        </service>
+
         <service id="Wexo\Quickpay\Service\MobilepayPayment">
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
             <argument type="service" id="log_entry.repository" />
