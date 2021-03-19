@@ -611,12 +611,12 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                         $transaction->getId(),
                         $context
                     );
-                } elseif (! in_array($stateName,
-                    [
-                        OrderTransactionStates::STATE_PAID,
-                        OrderTransactionStates::STATE_PARTIALLY_PAID,
-                    ]
-                )) {
+                } elseif (
+                    !in_array(
+                        $stateName,
+                        [OrderTransactionStates::STATE_PAID, OrderTransactionStates::STATE_PARTIALLY_PAID,]
+                    )
+                ) {
                     $this->transactionStateHandler->payPartially(
                         $transaction->getId(),
                         $context
