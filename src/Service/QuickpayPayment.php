@@ -6,7 +6,6 @@ use Exception;
 use GuzzleHttp\Client;
 use Monolog\Logger;
 use Shopware\Core\Checkout\Cart\CartPersisterInterface;
-use Shopware\Core\Checkout\Order\Aggregate\OrderLineItem\OrderLineItemCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionDefinition;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
@@ -18,25 +17,17 @@ use Shopware\Core\Checkout\Payment\Exception\AsyncPaymentProcessException;
 use Shopware\Core\Checkout\Payment\Exception\CustomerCanceledAsyncPaymentException;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
-use Shopware\Core\Framework\DataAbstractionLayer\Exception\InconsistentCriteriaIdsException;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
-use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Struct\ArrayStruct;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
-use Shopware\Core\System\Locale\LocaleEntity;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineTransition\StateMachineTransitionActions;
-use Shopware\Core\System\StateMachine\Exception\IllegalTransitionException;
-use Shopware\Core\System\StateMachine\Exception\StateMachineInvalidEntityIdException;
-use Shopware\Core\System\StateMachine\Exception\StateMachineInvalidStateFieldException;
-use Shopware\Core\System\StateMachine\Exception\StateMachineNotFoundException;
 use Shopware\Core\System\StateMachine\StateMachineRegistry;
 use Shopware\Core\System\StateMachine\Transition;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Symfony\Component\HttpFoundation\ParameterBag;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 use TypeError;
 use Wexo\Quickpay\WexoQuickpay;
 
@@ -58,8 +49,8 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
     protected $orderService;
     /** @var EntityRepositoryInterface $logEntryRepository */
     protected $logEntryRepository;
-    /** @var Client $http */
-    public $http;
+    /** @var Client[] */
+    protected $apiClients = [];
     /** @var CartPersisterInterface */
     protected $cartPersister;
     /** @var StateMachineRegistry */
@@ -96,20 +87,16 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         $this->stateMachineRegistry = $stateMachineRegistry;
     }
 
-    /**
-     * @param SalesChannelContext|null $salesChannelContext
-     */
-    public function initClient(?SalesChannelContext $salesChannelContext = null)
+    public function getClient(?string $salesChannelId): Client
     {
-        if (! $this->http) {
-            if ($salesChannelContext) {
-                $salesChannelId = $salesChannelContext->getSalesChannel()->getId();
-                $apiKey = $this->systemConfigService->get('WexoQuickpay.config.quickpayApiKey', $salesChannelId);
-            } else {
-                $apiKey = $this->systemConfigService->get('WexoQuickpay.config.quickpayApiKey');
-            }
+        //If no string is supplied to system config service, it uses 'global' under the hood.
+        if (!$salesChannelId) {
+            $salesChannelId = 'global';
+        }
+        if (!isset($this->apiClients[$salesChannelId])) {
+            $apiKey = $this->systemConfigService->get('WexoQuickpay.config.quickpayApiKey', $salesChannelId);
 
-            $this->http = new Client([
+            $this->apiClients[$salesChannelId] = new Client([
                 'base_uri' => 'https://api.quickpay.net/',
                 'headers' => [
                     "Accept" => "*/*",
@@ -125,6 +112,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 ],
             ]);
         }
+        return $this->apiClients[$salesChannelId];
     }
 
     /**
@@ -139,80 +127,31 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         SalesChannelContext $salesChannelContext
     ): RedirectResponse {
         // Method that sends the return URL to the external gateway and gets a redirect URL back
+        $order = $transaction->getOrder();
         try {
-            $this->initClient($salesChannelContext);
-            $order = $transaction->getOrder();
-            $paymentHandler = $order->getTransactions()->first()->getPaymentMethod()->getHandlerIdentifier();
-            $orderNumber = $order->getOrderNumber();
-
-            $currency = $salesChannelContext->getCurrency()->getIsoCode()
-                ?? WexoQuickpay::FALLBACK_CURRENCY;
-
-            $language = $this->getLanguage(
-                $salesChannelContext->getSalesChannel()->getLanguageId(),
-                $salesChannelContext->getContext()
-            );
-
-            try {
-                $response = $this->createPayment(
-                    [
-                        'currency' => $currency,
-                        'order_id' => $orderNumber
-                    ],
-                    $order->getLineItems(),
-                    $order->getAmountTotal(),
-                    $language,
-                    $transaction->getReturnUrl(),
-                    $paymentHandler,
-                    $order->getShippingTotal(),
-                    $order->getShippingCosts()->getTaxRules()->first()->getTaxRate()
-                );
-            } catch (ServiceUnavailableHttpException $exception) {
-                return new RedirectResponse('/', 503);
+            // Only create a payment if one does not already exist.
+            if (!isset($transaction->getOrder()->getCustomFields()[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
+                $this->addPaymentToOrder($transaction, $salesChannelContext);
             }
-
-            $customFields = $order->getCustomFields();
-            $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = json_encode($response['response']);
-
-            $this->orderRepository->update(
-                [
-                    [
-                        'id' => $order->getId(),
-                        'customFields' => $customFields
-                    ]
-                ],
-                $salesChannelContext->getContext()
-            );
-        } catch (\Error | TypeError | Exception $e) {
+            $link = $this->getPaymentLink($transaction, $salesChannelContext);
+        } catch (Exception $exception) {
             $this->paymentLogger(
                 WexoQuickpay::ORDER_CREATE_ERROR,
                 [
-                    'orderId' => $order->getId() ?? null,
-                    'orderNumber' => $order->getOrderNumber() ?? null,
+                    'formParams' => $formParams,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'errorType' => get_class($e)
                 ]
             );
-
             throw new AsyncPaymentProcessException(
                 $transaction->getOrder()->getId(),
                 'An error occurred during the communication with external payment gateway' . PHP_EOL .
                 $e->getMessage()
             );
         }
-
-        // Check if gateway link got created, if not, mark order as canceled
-        if ($response['link'] == null) {
-            $this->transactionStateHandler->cancel(
-                $transaction->getOrderTransaction()->getId(),
-                $salesChannelContext->getContext()
-            );
-
-            return new RedirectResponse("/");
-        }
         // Redirect to external gateway
-        return new RedirectResponse($response['link']);
+        return new RedirectResponse($link);
     }
 
     /**
@@ -253,7 +192,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             if ($customFields && isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
                 $data = json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
                 if (property_exists($data, 'id')) {
-                    $this->updateResponse($transaction->getOrder()->getId(), $data->id);
+                    $this->updateResponse($transaction->getOrder()->getId(), $data->id, $salesChannelContext);
                 }
             }
         } elseif ($request->get('status') == "cancel") {
@@ -264,36 +203,19 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         }
     }
 
-    /**
-     * @param array $formParams
-     * @param OrderLineItemCollection|null $orderLineItems
-     * @param float $amount
-     * @param string $language
-     * @param string $callbackUrl
-     * @param string $paymentHandler
-     * @param float|int $shippingTotal
-     * @param float|int $shippingTaxes
-     * @return array
-     * @throws Exception
-     */
-    public function createPayment(
-        array $formParams,
-        $orderLineItems,
-        float $amount,
-        string $language,
-        string $callbackUrl,
-        string $paymentHandler,
-        float $shippingTotal = 0,
-        float $shippingTaxes = 0
-    ) {
-        $formParams['basket'] = [];
-        foreach ($orderLineItems as $orderLineItem) {
+    public function addPaymentToOrder(
+        AsyncPaymentTransactionStruct $transaction,
+        SalesChannelContext $salesChannelContext
+    ): void {
+        $order = $transaction->getOrder();
+        $basket = [];
+        foreach ($order->getLineItems() as $orderLineItem) {
             $payload = $orderLineItem->getPayload();
             $itemNo = ($payload && isset($payload['productNumber']))
                 ? $payload['productNumber']
                 : $orderLineItem->getLabel();
-            $formParams['basket'][] = [
-                'qty' => (int)$orderLineItem->getQuantity(),
+            $basket[] = [
+                'qty' => $orderLineItem->getQuantity(),
                 'item_no' => $itemNo,
                 'item_name' => $orderLineItem->getLabel(),
                 'item_price' => $orderLineItem->getUnitPrice() * 100,
@@ -301,36 +223,31 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             ];
         }
 
-        if ($shippingTotal and $shippingTaxes) {
-            $formParams['basket'][] = [
+        $shippingTotal = $order->getShippingTotal();
+        $shippingTaxRate = $order->getShippingCosts()->getTaxRules()->first()->getTaxRate();
+        if ($shippingTotal && $shippingTaxRate) {
+            $basket[] = [
                 'qty' => 1,
                 'item_no' => 'Shipping',
                 'item_name' => 'Shipping',
                 'item_price' => $shippingTotal * 100,
-                'vat_rate' => $shippingTaxes / 100,
+                'vat_rate' => $shippingTaxRate / 100,
             ];
         }
 
-        try {
-            $this->initClient();
-            $createResponse = $this->http->request('POST', 'payments', [
-                'json' => $formParams
-            ]);
-        } catch (\Exception $e) {
-            $this->paymentLogger(
-                WexoQuickpay::ORDER_CREATE_ERROR,
-                [
-                    'formParams' => $formParams,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                    'errorType' => get_class($e)
+        $currency = $salesChannelContext->getCurrency()->getIsoCode()
+            ?? WexoQuickpay::FALLBACK_CURRENCY;
+
+        $paymentResponse = $this->getClient($salesChannelContext->getSalesChannelId())
+            ->request('POST', 'payments', [
+                'json' => [
+                    'currency' => $currency,
+                    'order_id' => $order->getOrderNumber(),
+                    'basket' => $basket
                 ]
-            );
+            ]);
 
-            throw new ServiceUnavailableHttpException();
-        }
-
-        if ($createResponse->getStatusCode() !== 201) {
+        if ($paymentResponse->getStatusCode() !== 201) {
             throw new Exception(
                 $createResponse->getBody()->getContents()
                 ?? 'Failed to create payment for order '
@@ -338,76 +255,94 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             );
         }
 
-        $createContent = json_decode($createResponse->getBody()->getContents());
+        $customFields = $order->getCustomFields();
+        $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $paymentResponse->getBody()->getContents();
+        $order->setCustomFields($customFields);
 
-        try {
-            $updateFormParams = [
-                'amount' => $amount * 100,
-                'continue_url' => $callbackUrl . '&status=accepted',
-                'cancel_url' => $callbackUrl . '&status=cancel',
-                'language' => $language
-            ];
+        $this->orderRepository->update(
+            [
+                [
+                    'id' => $order->getId(),
+                    'customFields' => $customFields
+                ]
+            ],
+            $salesChannelContext->getContext()
+        );
+    }
 
-            if ($paymentHandler == MobilepayPayment::class) {
-                $updateFormParams['payment_methods'] = 'mobilepay';
-            } elseif ($paymentHandler == KlarnaPayment::class) {
-                $updateFormParams['payment_methods'] = 'klarna-payments';
-            } elseif ($paymentHandler == ViabillPayment::class) {
-                $updateFormParams['payment_methods'] = 'viabill';
-            }
+    public function getPaymentLink(
+        AsyncPaymentTransactionStruct $transaction,
+        SalesChannelContext $salesChannelContext
+    ): string {
+        $callbackUrl = $transaction->getReturnUrl();
+        $updateFormParams = [
+            'amount' => $transaction->getOrder()->getAmountTotal() * 100,
+            'continue_url' => $callbackUrl . '&status=accepted',
+            'cancel_url' => $callbackUrl . '&status=cancel',
+            'language' => $this->getLanguage(
+                $salesChannelContext->getSalesChannel()->getLanguageId(),
+                $salesChannelContext->getContext()
+            )
+        ];
 
-            $responseUpdateLink = $this->http->request('put', 'payments/' . $createContent->id . "/link", [
+        $order = $transaction->getOrder();
+        $paymentHandler = $transaction->getOrderTransaction()->getPaymentMethod()->getHandlerIdentifier();
+        if ($paymentHandler === MobilepayPayment::class) {
+            $updateFormParams['payment_methods'] = 'mobilepay';
+        } elseif ($paymentHandler === KlarnaPayment::class) {
+            $updateFormParams['payment_methods'] = 'klarna-payments';
+        }
+
+        $customFields = $order->getCustomFields();
+        $paymentResponse = \json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
+        $linkResponse = $this->getClient($salesChannelContext->getSalesChannelId())
+            ->request('put', 'payments/' . $paymentResponse['id'] . "/link", [
                 'form_params' => $updateFormParams
             ]);
 
-            if ($responseUpdateLink->getStatusCode() !== 200) {
-                throw new Exception(
-                    $responseUpdateLink->getBody()->getContents()
-                    ?? 'Failed to link payment for order '
-                    . $formParams['order_id'] ?? null
-                );
-            }
-
-            $responseUpdateLinkContent = json_decode($responseUpdateLink->getBody()->getContents());
-            if (property_exists($responseUpdateLinkContent, 'url')) {
-                $updateLink = $responseUpdateLinkContent->url;
-            }
-
-            $this->paymentLogger(
-                WexoQuickpay::ORDER_CREATE_SUCCESS,
-                [
-                    'orderId' => $formParams['order_id'],
-                    'formParams' => $formParams,
-                    'updateFormParams' => $updateFormParams
-                ],
-                Logger::INFO
-            );
-        } catch (\Error | TypeError | Exception $e) {
-            $this->paymentLogger(
-                WexoQuickpay::ORDER_CREATE_ERROR,
-                [
-                    'formParams' => $formParams,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                    'errorType' => get_class($e)
-                ]
+        if ($linkResponse->getStatusCode() !== 200) {
+            throw new Exception(
+                $linkResponse->getBody()->getContents()
+                ?? 'Failed to link payment for order '
+                . $order->getOrderNumber()
             );
         }
 
-        return [
-            'response' => $createContent,
-            'link' => $updateLink ?? null
-        ];
+        $linkResponseContent = json_decode($linkResponse->getBody()->getContents(), true);
+
+        if (!isset($linkResponseContent['url'])) {
+            throw new Exception(
+                $linkResponse->getBody()->getContents()
+                ?? 'Failed to link payment for order '
+                . $order->getOrderNumber()
+            );
+        }
+
+        $this->paymentLogger(
+            WexoQuickpay::ORDER_CREATE_SUCCESS,
+            [
+                'orderId' => $order->getOrderNumber(),
+                'updateFormParams' => $updateFormParams,
+                'paymentResponse' => $paymentResponse,
+                'linkResponse' => $linkResponseContent
+            ],
+            Logger::INFO
+        );
+
+        return $linkResponseContent['url'];
     }
 
     /**
      * @param string $orderId
      * @param $paymentId
      */
-    public function updateResponse(string $orderId, $paymentId = null): void
-    {
+    public function updateResponse(
+        string $orderId,
+        $paymentId = null,
+        ?SalesChannelContext $salesChannelContext = null
+    ): void {
         try {
-            $context = Context::createDefaultContext();
+            $context = $salesChannelContext ? $salesChannelContext->getContext() : Context::createDefaultContext();
             if (! $paymentId) {
                 $criteria = new Criteria([$orderId]);
                 $criteria->addAssociation('customFields');
@@ -427,8 +362,8 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 return;
             }
 
-            $this->initClient();
-            $response = $this->http->request('GET', 'payments/' . $paymentId);
+            $response = $this->getClient($salesChannelContext->getSalesChannelId())
+                ->request('GET', 'payments/' . $paymentId);
             if ($response->getStatusCode() === 200) {
                 $this->orderRepository->update(
                     [
@@ -489,8 +424,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
     public function isConfigValid(array $config): bool
     {
         try {
-            $this->initClient();
-            $response = $this->http->request('GET', 'payments', [
+            $response = $this->getClient(null)->request('GET', 'payments', [
                 'auth' => [
                     '',
                     $config['quickpayApiKey']
@@ -540,7 +474,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             return null;
         }
 
-        $transaction = $order->getTransactions()->first();
+        $transaction = $order->getTransactions()->last();
 
         $customFields = $order->getCustomFields();
         if (! $customFields || ! isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
@@ -603,8 +537,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         $orderComplete = true;
 
         try {
-            $this->initClient();
-            $response = $this->http->request(
+            $response = $this->getClient($order->getSalesChannelId())->request(
                 'POST',
                 'payments/' . $paymentResponse->id . '/capture',
                 [
