@@ -87,6 +87,10 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         $this->stateMachineRegistry = $stateMachineRegistry;
     }
 
+    /**
+     * @param string|null $salesChannelId
+     * @return Client
+     */
     public function getClient(?string $salesChannelId): Client
     {
         //If no string is supplied to system config service, it uses 'global' under the hood.
@@ -145,7 +149,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 ]
             );
             throw new AsyncPaymentProcessException(
-                $transaction->getOrder()->getId(),
+                $transaction->getOrderTransaction()->getId(),
                 'An error occurred during the communication with external payment gateway' . PHP_EOL .
                 $e->getMessage()
             );
@@ -203,6 +207,11 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         }
     }
 
+    /**
+     * @param AsyncPaymentTransactionStruct $transaction
+     * @param SalesChannelContext $salesChannelContext
+     * @throws Exception
+     */
     public function addPaymentToOrder(
         AsyncPaymentTransactionStruct $transaction,
         SalesChannelContext $salesChannelContext
@@ -270,6 +279,12 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         );
     }
 
+    /**
+     * @param AsyncPaymentTransactionStruct $transaction
+     * @param SalesChannelContext $salesChannelContext
+     * @return string
+     * @throws Exception
+     */
     public function getPaymentLink(
         AsyncPaymentTransactionStruct $transaction,
         SalesChannelContext $salesChannelContext
