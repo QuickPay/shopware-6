@@ -306,6 +306,8 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             $updateFormParams['payment_methods'] = 'mobilepay';
         } elseif ($paymentHandler === KlarnaPayment::class) {
             $updateFormParams['payment_methods'] = 'klarna-payments';
+        } elseif ($paymentHandler == ViabillPayment::class) {
+            $updateFormParams['payment_methods'] = 'viabill';
         }
 
         $customFields = $order->getCustomFields();
