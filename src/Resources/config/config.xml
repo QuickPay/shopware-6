@@ -10,6 +10,10 @@
             <label>QuickPay API key</label>
             <helpText>User API key</helpText>
         </input-field>
+        <input-field>
+            <name>quickpayPrivateKey</name>
+            <label>QuickPay Private key</label>
+        </input-field>
         <component name="quickpay-api-test-button">
             <name>quickpayApiTest</name>
             <btnLabel>Test API Connection</btnLabel>

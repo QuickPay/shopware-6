@@ -10,6 +10,7 @@ use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionDefi
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
 use Shopware\Core\Checkout\Order\OrderEntity;
+use Shopware\Core\Checkout\Order\OrderStates;
 use Shopware\Core\Checkout\Order\SalesChannel\OrderService;
 use Shopware\Core\Checkout\Payment\Cart\AsyncPaymentTransactionStruct;
 use Shopware\Core\Checkout\Payment\Cart\PaymentHandler\AsynchronousPaymentHandlerInterface;
@@ -172,38 +173,103 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
 
         $context = $salesChannelContext->getContext();
 
-        if ($request->get('status') == "accepted") {
-            // Payment completed
-            $this->cartPersister->delete($salesChannelContext->getToken(), $salesChannelContext);
-            $this->stateMachineRegistry->transition(
-                new Transition(
-                    OrderTransactionDefinition::ENTITY_NAME,
-                    $transactionId,
-                    StateMachineTransitionActions::ACTION_AUTHORIZE,
-                    'stateId'
-                ),
-                $context
-            );
+        $response = [];
+        $content = $request->getContent();
+        if ($content) {
+            $response = json_decode($content, true);
 
-            $this->orderService->orderStateTransition(
-                $transaction->getOrder()->getId(),
-                StateMachineTransitionActions::ACTION_PROCESS,
-                new ParameterBag(),
-                $context
-            );
+            $key = $this->systemConfigService->get('WexoQuickpay.config.quickpayPrivateKey');
+
+            $checksum = hash_hmac('sha256', $content, $key);
+            $submittedChecksum = $request->server->get('HTTP_QUICKPAY_CHECKSUM_SHA256');
+            if ($checksum !== $submittedChecksum) {
+                return;
+            }
+        }
+
+        $paymentState = $transaction->getOrderTransaction()->getStateMachineState()->getTechnicalName();
+        $orderState = $transaction->getOrder()->getStateMachineState()->getTechnicalName();
+
+        $status = $request->get('status');
+        if ($status == "accepted") {
+            $this->cartPersister->delete($salesChannelContext->getToken(), $salesChannelContext);
 
             $customFields = $transaction->getOrder()->getCustomFields();
             if ($customFields && isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
                 $data = json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
                 if (property_exists($data, 'id')) {
-                    $this->updateResponse($transaction->getOrder()->getId(), $data->id, $salesChannelContext);
+                    $response = $this->updateResponse($transaction->getOrder()->getId(), $data->id, $salesChannelContext);
                 }
             }
-        } elseif ($request->get('status') == "cancel") {
+        } elseif ($status == "cancel") {
+            if ($orderState !== OrderStates::STATE_CANCELLED) {
+                $this->orderService->orderStateTransition(
+                    $transaction->getOrder()->getId(),
+                    StateMachineTransitionActions::ACTION_CANCEL,
+                    new ParameterBag(),
+                    $context
+                );
+            }
+
             throw new CustomerCanceledAsyncPaymentException(
                 $transactionId,
                 'Customer canceled the payment on the payment page'
             );
+        }
+
+        $accepted = $response['accepted'] ?? false;
+        if ($accepted) {
+            // Payment success
+            if ($paymentState !== 'authorized') {
+                $this->stateMachineRegistry->transition(
+                    new Transition(
+                        OrderTransactionDefinition::ENTITY_NAME,
+                        $transactionId,
+                        StateMachineTransitionActions::ACTION_AUTHORIZE,
+                        'stateId'
+                    ),
+                    $context
+                );
+            }
+
+            if ($orderState !== OrderStates::STATE_IN_PROGRESS) {
+                if ($orderState === OrderStates::STATE_CANCELLED) {
+                    $this->orderService->orderStateTransition(
+                        $transaction->getOrder()->getId(),
+                        StateMachineTransitionActions::ACTION_REOPEN,
+                        new ParameterBag(),
+                        $context
+                    );
+                }
+
+                $this->orderService->orderStateTransition(
+                    $transaction->getOrder()->getId(),
+                    StateMachineTransitionActions::ACTION_PROCESS,
+                    new ParameterBag(),
+                    $context
+                );
+            }
+        } else {
+            if ($paymentState !== OrderTransactionStates::STATE_CANCELLED) {
+                $this->stateMachineRegistry->transition(
+                    new Transition(
+                        OrderTransactionDefinition::ENTITY_NAME,
+                        $transactionId,
+                        StateMachineTransitionActions::ACTION_CANCEL,
+                        'stateId'
+                    ),
+                    $context
+                );
+            }
+
+            if ($orderState !== OrderStates::STATE_CANCELLED) {
+                $this->orderService->orderStateTransition(
+                    $transaction->getOrder()->getId(),
+                    StateMachineTransitionActions::ACTION_CANCEL,
+                    new ParameterBag(),
+                    $context
+                );
+            }
         }
     }
 
@@ -294,6 +360,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             'amount' => $transaction->getOrder()->getAmountTotal() * 100,
             'continue_url' => $callbackUrl . '&status=accepted',
             'cancel_url' => $callbackUrl . '&status=cancel',
+            'callback_url' => $callbackUrl,
             'language' => $this->getLanguage(
                 $salesChannelContext->getSalesChannel()->getLanguageId(),
                 $salesChannelContext->getContext()
@@ -357,7 +424,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         string $orderId,
         $paymentId = null,
         ?SalesChannelContext $salesChannelContext = null
-    ): void {
+    ): array {
         try {
             $context = $salesChannelContext ? $salesChannelContext->getContext() : Context::createDefaultContext();
             if (! $paymentId) {
@@ -376,23 +443,26 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             }
 
             if (! $paymentId) {
-                return;
+                return [];
             }
 
             $response = $this->getClient($salesChannelContext->getSalesChannelId())
                 ->request('GET', 'payments/' . $paymentId);
+            $content = $response->getBody()->getContents();
             if ($response->getStatusCode() === 200) {
                 $this->orderRepository->update(
                     [
                         [
                             'id'           => $orderId,
                             'customFields' => [
-                                WexoQuickpay::QUICKPAY_RESPONSE_FIELD => $response->getBody()->getContents()
+                                WexoQuickpay::QUICKPAY_RESPONSE_FIELD => $content
                             ]
                         ]
                     ],
                     $context
                 );
+
+                return json_decode($content, true);
             }
         } catch (\Error | \TypeError | \Exception $e) {
             $this->paymentLogger(
@@ -405,6 +475,8 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 ]
             );
         }
+
+        return [];
     }
 
     /**
