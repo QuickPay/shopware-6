@@ -198,7 +198,11 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             if ($customFields && isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
                 $data = json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
                 if (property_exists($data, 'id')) {
-                    $response = $this->updateResponse($transaction->getOrder()->getId(), $data->id, $salesChannelContext);
+                    $response = $this->updateResponse(
+                        $transaction->getOrder()->getId(),
+                        $data->id,
+                        $salesChannelContext
+                    );
                 }
             }
         } elseif ($status == "cancel") {
