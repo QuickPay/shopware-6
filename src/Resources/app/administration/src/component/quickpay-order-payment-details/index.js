@@ -39,8 +39,8 @@ Component.register('quickpay-order-payment-details', {
             quickpayResponse: null,
             repository: null,
             amount: null,
-            authorized: null,
-            captured: null,
+            authorized: 0,
+            captured: 0,
             available: null
         };
     },
@@ -94,12 +94,16 @@ Component.register('quickpay-order-payment-details', {
                 acquirer = this.quickpayResponse.acquirer
             }
             let type = '-';
-            if (this.quickpayResponse.metadata && 'type' in this.quickpayResponse.metadata) {
-                type = this.quickpayResponse.metadata.type
+            if (this.quickpayResponse && 'type' in this.quickpayResponse) {
+                type = this.quickpayResponse.type
             }
             let currencyCode = '-';
             if (this.quickpayResponse && 'currency' in this.quickpayResponse) {
                 currencyCode = this.quickpayResponse.currency;
+            }
+            let amount = 0;
+            if (this.quickpayResponse && this.quickpayResponse.link) {
+                amount = this.quickpayResponse.link.amount ? this.quickpayResponse.link.amount : amount
             }
 
             this.quickpayResponse.operations.forEach((operation) => {
@@ -143,7 +147,7 @@ Component.register('quickpay-order-payment-details', {
             }, {
                 id: 'uuid7',
                 attribute: 'Amount to authorize',
-                value: (this.quickpayResponse.link.amount / 100).toFixed(2)
+                value: (amount / 100).toFixed(2)
             }, {
                 id: 'uuid8',
                 attribute: 'Authorized amount',
