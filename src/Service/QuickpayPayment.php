@@ -132,18 +132,17 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         SalesChannelContext $salesChannelContext
     ): RedirectResponse {
         // Method that sends the return URL to the external gateway and gets a redirect URL back
-        $order = $transaction->getOrder();
         try {
+            $customFields = $transaction->getOrder()->getCustomFields();
             // Only create a payment if one does not already exist.
-            if (!isset($transaction->getOrder()->getCustomFields()[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
+            if ($customFields && !isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
                 $this->addPaymentToOrder($transaction, $salesChannelContext);
             }
             $link = $this->getPaymentLink($transaction, $salesChannelContext);
-        } catch (Exception $exception) {
+        } catch (Exception $e) {
             $this->paymentLogger(
                 WexoQuickpay::ORDER_CREATE_ERROR,
                 [
-                    'formParams' => $formParams,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'errorType' => get_class($e)
@@ -183,7 +182,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             $checksum = hash_hmac('sha256', $content, $key);
             $submittedChecksum = $request->server->get('HTTP_QUICKPAY_CHECKSUM_SHA256');
             if ($checksum !== $submittedChecksum) {
-                return;
+                throw new \Exception('Checksum check failed');
             }
         }
 
@@ -317,32 +316,33 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         $currency = $salesChannelContext->getCurrency()->getIsoCode()
             ?? WexoQuickpay::FALLBACK_CURRENCY;
 
+        $formParams = [
+            'currency' => $currency,
+            'order_id' => $order->getOrderNumber(),
+            'basket' => $basket
+        ];
+
         $paymentResponse = $this->getClient($salesChannelContext->getSalesChannelId())
             ->request('POST', 'payments', [
-                'json' => [
-                    'currency' => $currency,
-                    'order_id' => $order->getOrderNumber(),
-                    'basket' => $basket
-                ]
+                'json' => $formParams
             ]);
 
         if ($paymentResponse->getStatusCode() !== 201) {
             throw new Exception(
-                $createResponse->getBody()->getContents()
+                $paymentResponse->getBody()->getContents()
                 ?? 'Failed to create payment for order '
                 . $formParams['order_id'] ?? null
             );
         }
 
-        $customFields = $order->getCustomFields();
-        $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $paymentResponse->getBody()->getContents();
-        $order->setCustomFields($customFields);
-
+        $content = $paymentResponse->getBody()->getContents();
         $this->orderRepository->update(
             [
                 [
                     'id' => $order->getId(),
-                    'customFields' => $customFields
+                    'customFields' => [
+                        WexoQuickpay::QUICKPAY_RESPONSE_FIELD => $content
+                    ]
                 ]
             ],
             $salesChannelContext->getContext()
@@ -425,7 +425,10 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
 
     /**
      * @param string $orderId
-     * @param $paymentId
+     * @param null $paymentId
+     * @param SalesChannelContext|null $salesChannelContext
+     * @return array
+     * @throws \Shopware\Core\Framework\DataAbstractionLayer\Exception\InconsistentCriteriaIdsException
      */
     public function updateResponse(
         string $orderId,
@@ -456,7 +459,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             $response = $this->getClient($salesChannelContext->getSalesChannelId())
                 ->request('GET', 'payments/' . $paymentId);
             $content = $response->getBody()->getContents();
-            if ($response->getStatusCode() === 200) {
+            if ($response->getStatusCode() === 200 && $content) {
                 $this->orderRepository->update(
                     [
                         [
@@ -570,7 +573,11 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             return null;
         }
 
-        $transaction = $order->getTransactions()->last();
+        $transaction = $order->getTransactions()->filterByState(OrderTransactionStates::STATE_PAID)->first();
+        if (! $transaction) {
+            $transaction = $order->getTransactions()
+                ->filterByState(OrderTransactionStates::STATE_PARTIALLY_PAID)->first();
+        }
 
         $customFields = $order->getCustomFields();
         if (! $customFields || ! isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
@@ -650,7 +657,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 'orderNumber'        => $order->getOrderNumber() ?? null,
                 'paymentId'          => $paymentResponse->id,
                 'responseStatusCode' => $statusCode,
-                'response'           => json_decode($responseBody)
+                'response'           => json_decode($response->getBody()->getContents())
             ];
 
             if ($statusCode === 202) {
@@ -672,10 +679,9 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                     Context::createDefaultContext()
                 );
 
-                $availableAmount = $this->getAvailableAmount(json_decode($responseBody));
-
+                $availableAmount = $this->getAvailableAmount(json_decode($responseBody)) - (float) $amount;
                 $stateName = $transaction->getStateMachineState()->getTechnicalName();
-                if ($availableAmount == 0 && $stateName !== OrderTransactionStates::STATE_PAID) {
+                if ($availableAmount == 0.0 && $stateName !== OrderTransactionStates::STATE_PAID) {
                     $this->stateMachineRegistry->transition(
                         new Transition(
                             OrderTransactionDefinition::ENTITY_NAME,
