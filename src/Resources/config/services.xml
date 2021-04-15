@@ -77,5 +77,10 @@
             <argument type="service" id="Wexo\Quickpay\Service\QuickpayPayment"/>
             <tag name="controller.service_arguments"/>
         </service>
+
+        <service id="Wexo\Quickpay\Controller\QuickpayStorefrontController">
+            <argument type="service" id="Shopware\Core\Checkout\Payment\PaymentService"/>
+            <tag name="controller.service_arguments"/>
+        </service>
     </services>
 </container>
