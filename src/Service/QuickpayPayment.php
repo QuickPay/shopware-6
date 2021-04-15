@@ -37,23 +37,41 @@ use Wexo\Quickpay\WexoQuickpay;
  */
 class QuickpayPayment implements AsynchronousPaymentHandlerInterface
 {
-    /** @var SystemConfigService $systemConfigService */
+    /**
+     * @var SystemConfigService $systemConfigService
+     */
     protected $systemConfigService;
-    /** @var EntityRepositoryInterface $orderRepository */
+    /**
+     * @var EntityRepositoryInterface $orderRepository
+     */
     protected $orderRepository;
-    /** @var EntityRepositoryInterface $languageRepository */
+    /**
+     * @var EntityRepositoryInterface $languageRepository
+     */
     protected $languageRepository;
-    /** @var OrderTransactionStateHandler $transactionStateHandler */
+    /**
+     * @var OrderTransactionStateHandler $transactionStateHandler
+     */
     protected $transactionStateHandler;
-    /** @var OrderService $orderService */
+    /**
+     * @var OrderService $orderService
+     */
     protected $orderService;
-    /** @var EntityRepositoryInterface $logEntryRepository */
+    /**
+     * @var EntityRepositoryInterface $logEntryRepository
+     */
     protected $logEntryRepository;
-    /** @var Client[] */
+    /**
+     * @var Client[]
+     */
     protected $apiClients = [];
-    /** @var CartPersisterInterface */
+    /**
+     * @var CartPersisterInterface
+     */
     protected $cartPersister;
-    /** @var StateMachineRegistry */
+    /**
+     * @var StateMachineRegistry
+     */
     protected $stateMachineRegistry;
 
     /**
@@ -161,48 +179,25 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
      * @param AsyncPaymentTransactionStruct $transaction
      * @param Request $request
      * @param SalesChannelContext $salesChannelContext
+     * @throws Exception
      */
     public function finalize(
         AsyncPaymentTransactionStruct $transaction,
         Request $request,
         SalesChannelContext $salesChannelContext
     ): void {
-        $transactionId = $transaction->getOrderTransaction()->getId();
-
         $context = $salesChannelContext->getContext();
 
-        $response = [];
-        $content = $request->getContent();
-        if ($content) {
-            $response = json_decode($content, true);
-
-            $key = $this->systemConfigService->get('WexoQuickpay.config.quickpayPrivateKey');
-
-            $checksum = hash_hmac('sha256', $content, $key);
-            $submittedChecksum = $request->server->get('HTTP_QUICKPAY_CHECKSUM_SHA256');
-            if ($checksum !== $submittedChecksum) {
-                throw new \Exception('Checksum check failed');
-            }
-        }
+        $transactionId = $transaction->getOrderTransaction()->getId();
 
         $paymentState = $transaction->getOrderTransaction()->getStateMachineState()->getTechnicalName();
         $orderState = $transaction->getOrder()->getStateMachineState()->getTechnicalName();
 
+        $content = $request->getContent();
+
         $status = $request->get('status');
         if ($status == "accepted") {
             $this->cartPersister->delete($salesChannelContext->getToken(), $salesChannelContext);
-
-            $customFields = $transaction->getOrder()->getCustomFields();
-            if ($customFields && isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
-                $data = json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
-                if (property_exists($data, 'id')) {
-                    $response = $this->updateResponse(
-                        $transaction->getOrder()->getId(),
-                        $data->id,
-                        $salesChannelContext
-                    );
-                }
-            }
         } elseif ($status == "cancel") {
             if ($orderState !== OrderStates::STATE_CANCELLED) {
                 $this->orderService->orderStateTransition(
@@ -217,64 +212,119 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 $transactionId,
                 'Customer canceled the payment on the payment page'
             );
-        }
+        } elseif ($content) {
+            $response = json_decode($content, true);
+            $this->paymentLogger(
+                'quickpay_callback_data_response',
+                [
+                    'orderId' => $transaction->getOrder()->getId(),
+                    'data' => $response
+                ]
+            );
 
-        $accepted = $response['accepted'] ?? false;
-        if ($accepted) {
-            // Payment success
-            if ($paymentState !== 'authorized') {
-                $this->stateMachineRegistry->transition(
-                    new Transition(
-                        OrderTransactionDefinition::ENTITY_NAME,
-                        $transactionId,
-                        StateMachineTransitionActions::ACTION_AUTHORIZE,
-                        'stateId'
-                    ),
-                    $context
-                );
+            $key = $this->systemConfigService->get('WexoQuickpay.config.quickpayPrivateKey');
+
+            $checksum = hash_hmac('sha256', $content, $key);
+            $submittedChecksum = $request->server->get('HTTP_QUICKPAY_CHECKSUM_SHA256') ?? null;
+            if ($submittedChecksum && $checksum !== $submittedChecksum) {
+                throw new \Exception('Checksum check failed');
             }
 
-            if ($orderState !== OrderStates::STATE_IN_PROGRESS) {
-                if ($orderState === OrderStates::STATE_CANCELLED) {
-                    $this->orderService->orderStateTransition(
-                        $transaction->getOrder()->getId(),
-                        StateMachineTransitionActions::ACTION_REOPEN,
-                        new ParameterBag(),
+
+
+            if (isset($response['accepted']) && $response['accepted']) {
+                $this->paymentSuccess($transaction, $context, $paymentState, $orderState);
+            } elseif (isset($response['accepted']) && ! $response['accepted']) {
+                if ($paymentState !== OrderTransactionStates::STATE_CANCELLED) {
+                    $this->stateMachineRegistry->transition(
+                        new Transition(
+                            OrderTransactionDefinition::ENTITY_NAME,
+                            $transactionId,
+                            StateMachineTransitionActions::ACTION_CANCEL,
+                            'stateId'
+                        ),
                         $context
                     );
                 }
 
-                $this->orderService->orderStateTransition(
-                    $transaction->getOrder()->getId(),
-                    StateMachineTransitionActions::ACTION_PROCESS,
-                    new ParameterBag(),
-                    $context
-                );
+                if ($orderState !== OrderStates::STATE_CANCELLED) {
+                    $this->orderService->orderStateTransition(
+                        $transaction->getOrder()->getId(),
+                        StateMachineTransitionActions::ACTION_CANCEL,
+                        new ParameterBag(),
+                        $context
+                    );
+                }
             }
-        } else {
-            if ($paymentState !== OrderTransactionStates::STATE_CANCELLED) {
+
+            $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $response;
+
+            $this->orderRepository->update(
+                [
+                    [
+                        'id'           => $transaction->getOrder()->getId(),
+                        'customFields' => $customFields
+                    ]
+                ],
+                Context::createDefaultContext()
+            );
+        }
+    }
+
+    /**
+     * @param AsyncPaymentTransactionStruct $transaction
+     * @param Context $context
+     * @param string $paymentState
+     * @param string $orderState
+     */
+    protected function paymentSuccess(
+        AsyncPaymentTransactionStruct $transaction,
+        Context $context,
+        string $paymentState,
+        string $orderState
+    ): void {
+        if ($paymentState !== 'authorized') {
+            if ($paymentState === OrderTransactionStates::STATE_CANCELLED) {
                 $this->stateMachineRegistry->transition(
                     new Transition(
                         OrderTransactionDefinition::ENTITY_NAME,
-                        $transactionId,
-                        StateMachineTransitionActions::ACTION_CANCEL,
+                        $transaction->getOrderTransaction()->getId(),
+                        StateMachineTransitionActions::ACTION_REOPEN,
                         'stateId'
                     ),
                     $context
                 );
             }
 
-            if ($orderState !== OrderStates::STATE_CANCELLED) {
+            $this->stateMachineRegistry->transition(
+                new Transition(
+                    OrderTransactionDefinition::ENTITY_NAME,
+                    $transaction->getOrderTransaction()->getId(),
+                    StateMachineTransitionActions::ACTION_AUTHORIZE,
+                    'stateId'
+                ),
+                $context
+            );
+        }
+
+        if ($orderState !== OrderStates::STATE_IN_PROGRESS) {
+            if ($orderState === OrderStates::STATE_CANCELLED) {
                 $this->orderService->orderStateTransition(
                     $transaction->getOrder()->getId(),
-                    StateMachineTransitionActions::ACTION_CANCEL,
+                    StateMachineTransitionActions::ACTION_REOPEN,
                     new ParameterBag(),
                     $context
                 );
             }
+
+            $this->orderService->orderStateTransition(
+                $transaction->getOrder()->getId(),
+                StateMachineTransitionActions::ACTION_PROCESS,
+                new ParameterBag(),
+                $context
+            );
         }
     }
-
     /**
      * @param AsyncPaymentTransactionStruct $transaction
      * @param SalesChannelContext $salesChannelContext
