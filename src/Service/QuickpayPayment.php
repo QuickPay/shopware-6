@@ -29,7 +29,6 @@ use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Symfony\Component\HttpFoundation\ParameterBag;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
-use TypeError;
 use Wexo\Quickpay\WexoQuickpay;
 
 /**
@@ -135,7 +134,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         try {
             $customFields = $transaction->getOrder()->getCustomFields();
             // Only create a payment if one does not already exist.
-            if ($customFields && !isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
+            if (! $customFields || ($customFields && ! isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]))) {
                 $this->addPaymentToOrder($transaction, $salesChannelContext);
             }
             $link = $this->getPaymentLink($transaction, $salesChannelContext);
@@ -282,7 +281,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
      * @throws Exception
      */
     public function addPaymentToOrder(
-        AsyncPaymentTransactionStruct $transaction,
+        AsyncPaymentTransactionStruct &$transaction,
         SalesChannelContext $salesChannelContext
     ): void {
         $order = $transaction->getOrder();
@@ -336,17 +335,22 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         }
 
         $content = $paymentResponse->getBody()->getContents();
+
+        $customFields = [
+            WexoQuickpay::QUICKPAY_RESPONSE_FIELD => $content
+        ];
+
         $this->orderRepository->update(
             [
                 [
                     'id' => $order->getId(),
-                    'customFields' => [
-                        WexoQuickpay::QUICKPAY_RESPONSE_FIELD => $content
-                    ]
+                    'customFields' => $customFields
                 ]
             ],
             $salesChannelContext->getContext()
         );
+
+        $transaction->getOrder()->setCustomFields($customFields);
     }
 
     /**
