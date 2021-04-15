@@ -359,11 +359,14 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         AsyncPaymentTransactionStruct $transaction,
         SalesChannelContext $salesChannelContext
     ): string {
-        $callbackUrl = $transaction->getReturnUrl();
+        $returnUrl = $transaction->getReturnUrl();
+
+        $callbackUrl = str_replace('finalize-transaction', 'quickpay-finalize-transaction', $returnUrl);
+
         $updateFormParams = [
             'amount' => $transaction->getOrder()->getAmountTotal() * 100,
-            'continue_url' => $callbackUrl . '&status=accepted',
-            'cancel_url' => $callbackUrl . '&status=cancel',
+            'continue_url' => $returnUrl . '&status=accepted',
+            'cancel_url' => $returnUrl . '&status=cancel',
             'callback_url' => $callbackUrl,
             'language' => $this->getLanguage(
                 $salesChannelContext->getSalesChannel()->getLanguageId(),
