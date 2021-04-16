@@ -480,17 +480,24 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
     /**
      * @param string $orderId
      * @param null $paymentId
-     * @param SalesChannelContext|null $salesChannelContext
+     * @param SalesChannelContext|null $context
      * @return array
      * @throws \Shopware\Core\Framework\DataAbstractionLayer\Exception\InconsistentCriteriaIdsException
      */
     public function updateResponse(
         string $orderId,
         $paymentId = null,
-        ?SalesChannelContext $salesChannelContext = null
+        ?SalesChannelContext $context = null
     ): array {
         try {
-            $context = $salesChannelContext ? $salesChannelContext->getContext() : Context::createDefaultContext();
+            $context = $context ? $context->getContext() : Context::createDefaultContext();
+
+            /** @var OrderEntity $order */
+            $order = $this->orderRepository->search(new Criteria([$orderId]), $context)->first();
+            if (! $order) {
+                return [];
+            }
+
             if (! $paymentId) {
                 $criteria = new Criteria([$orderId]);
                 $criteria->addAssociation('customFields');
@@ -510,7 +517,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 return [];
             }
 
-            $response = $this->getClient($salesChannelContext->getSalesChannelId())
+            $response = $this->getClient($order->getSalesChannelId())
                 ->request('GET', 'payments/' . $paymentId);
             $content = $response->getBody()->getContents();
             if ($response->getStatusCode() === 200 && $content) {
