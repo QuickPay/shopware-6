@@ -258,8 +258,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 }
             }
 
-            $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $response;
-
+            $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $content;
             $this->orderRepository->update(
                 [
                     [
