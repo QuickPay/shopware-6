@@ -3,8 +3,10 @@
 namespace Wexo\Quickpay\Controller;
 
 use GuzzleHttp\Client;
+use Monolog\Logger;
 use Shopware\Core\Checkout\Payment\PaymentService;
 use Shopware\Core\Framework\Context;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
@@ -13,12 +15,17 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Wexo\Quickpay\Service\QuickpayPayment;
+use Wexo\Quickpay\WexoQuickpay;
 
 /**
  * @RouteScope(scopes={"storefront"})
  */
 class QuickpayStorefrontController
 {
+    /**
+     * @var EntityRepositoryInterface
+     */
+    protected $logEntryRepository;
     /**
      * @var QuickpayPayment
      */
@@ -29,8 +36,10 @@ class QuickpayStorefrontController
      * @param PaymentService $paymentService
      */
     public function __construct(
+        EntityRepositoryInterface $logEntryRepository,
         PaymentService $paymentService
     ) {
+        $this->logEntryRepository = $logEntryRepository;
         $this->paymentService = $paymentService;
     }
 
@@ -69,11 +78,20 @@ class QuickpayStorefrontController
         }
 
         if ($data) {
-            $this->paymentService->paymentLogger(
-                'quickpay_finalize_transaction_error',
+            if ($request->getContent()) {
+                $data['content'] = json_decode($request->getContent(), true);
+            }
+
+            $this->logEntryRepository->create(
                 [
-                    $data
-                ]
+                    [
+                        'message' => 'quickpay_finalize_transaction_error',
+                        'context' => $data,
+                        'level' => Logger::ERROR,
+                        'channel' => WexoQuickpay::LOG_CHANNEL
+                    ]
+                ],
+                Context::createDefaultContext()
             );
         }
 

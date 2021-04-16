@@ -79,8 +79,22 @@
         </service>
 
         <service id="Wexo\Quickpay\Controller\QuickpayStorefrontController">
+            <argument type="service" id="log_entry.repository" />
             <argument type="service" id="Shopware\Core\Checkout\Payment\PaymentService"/>
             <tag name="controller.service_arguments"/>
+        </service>
+
+        <service id="Shopware\Core\Framework\Api\EventListener\Authentication\ApiAuthenticationListener"
+                 class="Wexo\Quickpay\Authentication\ApiAuthenticationListenerOverride">
+            <tag name="kernel.event_subscriber"/>
+            <tag name="container.hot_path"/>
+            <tag name="container.hot_path"/>
+            <argument type="service" id="shopware.api.resource_server"/>
+            <argument type="service" id="shopware.api.authorization_server"/>
+            <argument type="service" id="Shopware\Core\Framework\Api\OAuth\UserRepository"/>
+            <argument type="service" id="Shopware\Core\Framework\Api\OAuth\RefreshTokenRepository"/>
+            <argument type="service" id="Symfony\Bridge\PsrHttpMessage\Factory\PsrHttpFactory"/>
+            <argument type="service" id="Shopware\Core\Framework\Routing\RouteScopeRegistry"/>
         </service>
     </services>
 </container>
