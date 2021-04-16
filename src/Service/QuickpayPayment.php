@@ -222,15 +222,16 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 ]
             );
 
-            $key = $this->systemConfigService->get('WexoQuickpay.config.quickpayPrivateKey');
+            $key = $this->systemConfigService->get(
+                'WexoQuickpay.config.quickpayPrivateKey',
+                $transaction->getOrder()->getSalesChannelId()
+            );
 
             $checksum = hash_hmac('sha256', $content, $key);
             $submittedChecksum = $request->server->get('HTTP_QUICKPAY_CHECKSUM_SHA256') ?? null;
-            if ($submittedChecksum && $checksum !== $submittedChecksum) {
-                throw new \Exception('Checksum check failed');
+            if ($checksum !== $submittedChecksum) {
+                throw new \Exception('Checksum check failed for orderId: ' . $transaction->getOrder()->getId());
             }
-
-
 
             if (isset($response['accepted']) && $response['accepted']) {
                 $this->paymentSuccess($transaction, $context, $paymentState, $orderState);
