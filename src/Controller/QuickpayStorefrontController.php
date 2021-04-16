@@ -12,6 +12,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Wexo\Quickpay\Service\QuickpayPayment;
 
 /**
  * @RouteScope(scopes={"storefront"})
@@ -19,7 +20,7 @@ use Symfony\Component\Routing\Annotation\Route;
 class QuickpayStorefrontController
 {
     /**
-     * @var PaymentService
+     * @var QuickpayPayment
      */
     protected $paymentService;
 
@@ -56,8 +57,7 @@ class QuickpayStorefrontController
             );
 
             $exception = $result->getException();
-
-            if ($exception !== null) {
+            if ($exception) {
                 $data = [
                     'error' => $exception->getMessage()
                 ];
@@ -66,6 +66,15 @@ class QuickpayStorefrontController
             $data = [
                 'error' => $exception->getMessage()
             ];
+        }
+
+        if ($data) {
+            $this->paymentService->paymentLogger(
+                'quickpay_finalize_transaction_error',
+                [
+                    $data
+                ]
+            );
         }
 
         return new JsonResponse($data, !empty($data) ? Response::HTTP_BAD_REQUEST : Response::HTTP_OK);
