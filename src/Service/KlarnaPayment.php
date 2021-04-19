@@ -93,35 +93,4 @@ class KlarnaPayment extends QuickpayPayment
     ): RedirectResponse {
         return parent::pay($transaction, $dataBag, $salesChannelContext);
     }
-
-    /**
-     * @param \stdClass $quickpayResponse
-     * @return float
-     */
-    protected function getAvailableAmount(\stdClass $quickpayResponse): float
-    {
-        $capturedAmount = 0;
-        $authorizedAmount = 0;
-        if (property_exists($quickpayResponse, 'operations')) {
-            foreach ($quickpayResponse->operations as $operation) {
-                if (! property_exists($operation, 'type') ||
-                    ! property_exists($operation, 'amount') ||
-                    ! property_exists($operation, 'aq_status_msg') ||
-                    $operation->aq_status_msg != 'Approved'
-                ) {
-                    continue;
-                }
-
-                if ($operation->type === 'capture') {
-                    $capturedAmount += $operation->amount;
-                } elseif ($operation->type === 'authorize') {
-                    $authorizedAmount += $operation->amount;
-                }
-            }
-        }
-
-        $availableAmount = $authorizedAmount - $capturedAmount;
-
-        return (float) $availableAmount;
-    }
 }
