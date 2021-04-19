@@ -61,7 +61,6 @@ class QuickpayApiController
         $amount = $dataBag->get('amount');
         $orderId = $dataBag->get('orderId');
 
-
         $success = $this->quickpayPayment->capturePayment($orderId, $amount);
 
         return new JsonResponse([

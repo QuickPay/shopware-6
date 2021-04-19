@@ -634,10 +634,22 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             return null;
         }
 
-        $transaction = $order->getTransactions()->filterByState(OrderTransactionStates::STATE_PAID)->first();
+        $states = [
+            OrderTransactionStates::STATE_PAID,
+            OrderTransactionStates::STATE_PARTIALLY_PAID,
+            'authorized'
+        ];
+
+        $transaction = null;
+        foreach ($states as $state) {
+            $transaction = $order->getTransactions()->filterByState($state)->first();
+            if ($transaction) {
+                break;
+            }
+        }
+
         if (! $transaction) {
-            $transaction = $order->getTransactions()
-                ->filterByState(OrderTransactionStates::STATE_PARTIALLY_PAID)->first();
+            return false;
         }
 
         $customFields = $order->getCustomFields();
