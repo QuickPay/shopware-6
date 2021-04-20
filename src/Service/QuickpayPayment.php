@@ -481,21 +481,21 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
      * @param string $orderId
      * @param null $paymentId
      * @param SalesChannelContext|null $context
-     * @return array
+     * @return \stdClass|null
      * @throws \Shopware\Core\Framework\DataAbstractionLayer\Exception\InconsistentCriteriaIdsException
      */
     public function updateResponse(
         string $orderId,
         $paymentId = null,
         ?SalesChannelContext $context = null
-    ): array {
+    ) {
         try {
             $context = $context ? $context->getContext() : Context::createDefaultContext();
 
             /** @var OrderEntity $order */
             $order = $this->orderRepository->search(new Criteria([$orderId]), $context)->first();
             if (! $order) {
-                return [];
+                return null;
             }
 
             if (! $paymentId) {
@@ -514,7 +514,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             }
 
             if (! $paymentId) {
-                return [];
+                return null;
             }
 
             $response = $this->getClient($order->getSalesChannelId())
@@ -533,7 +533,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                     $context
                 );
 
-                return json_decode($content, true);
+                return $content;
             }
         } catch (\Error | \TypeError | \Exception $e) {
             $this->paymentLogger(
@@ -547,7 +547,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             );
         }
 
-        return [];
+        return null;
     }
 
     /**
@@ -740,17 +740,21 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                     Logger::INFO
                 );
 
-                $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $responseBody;
+                if (! $responseBody) {
+                    $responseBody = $this->updateResponse($orderId, $paymentResponse->id);
+                } else {
+                    $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $responseBody;
 
-                $this->orderRepository->update(
-                    [
+                    $this->orderRepository->update(
                         [
-                            'id'           => $orderId,
-                            'customFields' => $customFields
-                        ]
-                    ],
-                    Context::createDefaultContext()
-                );
+                            [
+                                'id'           => $orderId,
+                                'customFields' => $customFields
+                            ]
+                        ],
+                        Context::createDefaultContext()
+                    );
+                }
 
                 $availableAmount = $this->getAvailableAmount(json_decode($responseBody)) - (float) $amount;
                 $stateName = $transaction->getStateMachineState()->getTechnicalName();
@@ -776,6 +780,8 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                         $context
                     );
 
+                    $orderComplete = false;
+                } elseif ($stateName === OrderTransactionStates::STATE_PARTIALLY_PAID) {
                     $orderComplete = false;
                 }
 
