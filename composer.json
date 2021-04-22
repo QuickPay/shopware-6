@@ -15,12 +15,6 @@
             "Wexo\\Quickpay\\": "src/"
         }
     },
-    "repositories": [
-        {
-            "type": "composer",
-            "url": "https://shopware-repo.wexo.dk/"
-        }
-    ],
     "require": {
         "shopware/core": "*",
         "ext-json": "*"
