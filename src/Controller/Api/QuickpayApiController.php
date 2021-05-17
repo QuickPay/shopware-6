@@ -30,7 +30,7 @@ class QuickpayApiController
     }
 
     /**
-     * @Route(path="/api/v{version}/_action/quickpay-api/verify")
+     * @Route(path="/api/_action/quickpay-api/verify")
      * @param RequestDataBag $dataBag
      * @return JsonResponse
      */
@@ -49,7 +49,7 @@ class QuickpayApiController
 
     /**
      * @Route(
-     *     path="/api/v{version}/_action/quickpay-api/capture",
+     *     path="/api/_action/quickpay-api/capture",
      *     methods={"POST"},
      *     defaults={"auth_required"=false}
      * )
@@ -70,7 +70,7 @@ class QuickpayApiController
 
     /**
      * @Route(
-     *     path="/api/v{version}/_action/quickpay-api/update",
+     *     path="/api/_action/quickpay-api/update",
      *     methods={"POST"},
      *     defaults={"auth_required"=false}
      * )
