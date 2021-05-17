@@ -4,7 +4,7 @@
         xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/shopware/platform/master/src/Core/System/SystemConfig/Schema/config.xsd">
 
     <card>
-        <title>QuickPay API key</title>
+        <title>QuickPay</title>
         <input-field>
             <name>quickpayApiKey</name>
             <label>QuickPay API key</label>
@@ -13,6 +13,10 @@
         <input-field>
             <name>quickpayPrivateKey</name>
             <label>QuickPay Private key</label>
+        </input-field>
+        <input-field type="bool">
+            <name>quickpayUpdateShipping</name>
+            <label>Update shipping to shipped when payment is paid</label>
         </input-field>
         <component name="quickpay-api-test-button">
             <name>quickpayApiTest</name>

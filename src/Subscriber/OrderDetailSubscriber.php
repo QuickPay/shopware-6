@@ -83,6 +83,10 @@ class OrderDetailSubscriber implements EventSubscriberInterface
 
         $capture = $event->getContext()->getExtension('capture');
         if ($order) {
+            if ($eventName === OrderTransactionStates::STATE_CANCELLED) {
+                $this->quickpayPaymentService->cancelPayment($order);
+            }
+
             if ($capture && ! $capture->get('amount')) {
                 return;
             }

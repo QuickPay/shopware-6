@@ -6,6 +6,7 @@ use Exception;
 use GuzzleHttp\Client;
 use Monolog\Logger;
 use Shopware\Core\Checkout\Cart\CartPersisterInterface;
+use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryStates;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionDefinition;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
@@ -115,6 +116,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         if (!$salesChannelId) {
             $salesChannelId = 'global';
         }
+
         if (!isset($this->apiClients[$salesChannelId])) {
             $apiKey = $this->systemConfigService->get('WexoQuickpay.config.quickpayApiKey', $salesChannelId);
 
@@ -469,6 +471,19 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
     }
 
     /**
+     * @param OrderEntity $order
+     */
+    public function cancelPayment(OrderEntity $order): void
+    {
+        $customFields = $order->getCustomFields();
+        $paymentResponse = \json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
+        $id = $paymentResponse['id'] ?? null;
+        if ($id) {
+            $this->getClient(null)->request('put', 'payments/' . $id . "/cancel");
+        }
+    }
+
+    /**
      * @param string $orderId
      * @param null $paymentId
      * @param SalesChannelContext|null $context
@@ -606,6 +621,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
 
         $criteria = new Criteria([$orderId]);
         $criteria->addAssociation('transactions');
+        $criteria->addAssociation('deliveries');
 
         /** @var OrderEntity $order */
         $order = $this->orderRepository->search(
@@ -750,16 +766,6 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 $availableAmount = $this->getAvailableAmount(json_decode($responseBody)) - (float) $amount;
                 $stateName = $transaction->getStateMachineState()->getTechnicalName();
                 if ($availableAmount == 0.0 && $stateName !== OrderTransactionStates::STATE_PAID) {
-                    $this->stateMachineRegistry->transition(
-                        new Transition(
-                            OrderTransactionDefinition::ENTITY_NAME,
-                            $transaction->getId(),
-                            StateMachineTransitionActions::ACTION_DO_PAY,
-                            'stateId'
-                        ),
-                        $context
-                    );
-
                     $this->transactionStateHandler->paid(
                         $transaction->getId(),
                         $context
@@ -812,6 +818,20 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 new ParameterBag(),
                 $context
             );
+
+            $updateShipping = $this->systemConfigService->get('WexoQuickpay.config.quickpayUpdateShipping');
+            $delivery = $order->getDeliveries()->first();
+            if ($updateShipping &&
+                $delivery &&
+                $delivery->getStateMachineState()->getTechnicalName() !== OrderDeliveryStates::STATE_SHIPPED
+            ) {
+                $this->orderService->orderDeliveryStateTransition(
+                    $delivery->getId(),
+                    StateMachineTransitionActions::ACTION_SHIP,
+                    new ParameterBag(),
+                    $context
+                );
+            }
         }
 
         return $payment;
