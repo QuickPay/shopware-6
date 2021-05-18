@@ -766,6 +766,11 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 $availableAmount = $this->getAvailableAmount(json_decode($responseBody)) - (float) $amount;
                 $stateName = $transaction->getStateMachineState()->getTechnicalName();
                 if ($availableAmount == 0.0 && $stateName !== OrderTransactionStates::STATE_PAID) {
+                    $this->transactionStateHandler->process(
+                        $transaction->getId(),
+                        $context
+                    );
+
                     $this->transactionStateHandler->paid(
                         $transaction->getId(),
                         $context
