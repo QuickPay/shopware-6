@@ -479,7 +479,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         $paymentResponse = \json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
         $id = $paymentResponse['id'] ?? null;
         if ($id) {
-            $this->getClient(null)->request('put', 'payments/' . $id . "/cancel");
+            $this->getClient(null)->request('POST', 'payments/' . $id . "/cancel");
         }
     }
 
