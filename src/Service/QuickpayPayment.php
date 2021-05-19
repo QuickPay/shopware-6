@@ -228,26 +228,37 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
 
             if (isset($response['accepted']) && $response['accepted']) {
                 $this->paymentSuccess($transaction, $context, $paymentState, $orderState);
-            } elseif (isset($response['accepted']) && ! $response['accepted']) {
-                if ($paymentState !== OrderTransactionStates::STATE_CANCELLED) {
-                    $this->stateMachineRegistry->transition(
-                        new Transition(
-                            OrderTransactionDefinition::ENTITY_NAME,
-                            $transactionId,
-                            StateMachineTransitionActions::ACTION_CANCEL,
-                            'stateId'
-                        ),
-                        $context
-                    );
+            } elseif (isset($response['accepted'], $response['operations']) && ! $response['accepted']) {
+                $cancel = false;
+                foreach ($response['operations'] as $operation) {
+                    if ($operation['type'] === 'authorize' &&
+                        in_array($operation['qp_status_code'], ['40000', '40001', '40002', '40003', '50000', '50300'])
+                    ) {
+                        $cancel = true;
+                    }
                 }
 
-                if ($orderState !== OrderStates::STATE_CANCELLED) {
-                    $this->orderService->orderStateTransition(
-                        $transaction->getOrder()->getId(),
-                        StateMachineTransitionActions::ACTION_CANCEL,
-                        new ParameterBag(),
-                        $context
-                    );
+                if ($cancel) {
+                    if ($paymentState !== OrderTransactionStates::STATE_CANCELLED) {
+                        $this->stateMachineRegistry->transition(
+                            new Transition(
+                                OrderTransactionDefinition::ENTITY_NAME,
+                                $transactionId,
+                                StateMachineTransitionActions::ACTION_CANCEL,
+                                'stateId'
+                            ),
+                            $context
+                        );
+                    }
+
+                    if ($orderState !== OrderStates::STATE_CANCELLED) {
+                        $this->orderService->orderStateTransition(
+                            $transaction->getOrder()->getId(),
+                            StateMachineTransitionActions::ACTION_CANCEL,
+                            new ParameterBag(),
+                            $context
+                        );
+                    }
                 }
             }
 
