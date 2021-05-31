@@ -345,24 +345,40 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             $itemNo = ($payload && isset($payload['productNumber']))
                 ? $payload['productNumber']
                 : $orderLineItem->getLabel();
+
+            $taxRate = 0;
+            try {
+                $taxRate = $orderLineItem->getPrice()->getTaxRules()->first()->getTaxRate() / 100;
+            } catch (\Error | \TypeError | \Exception $e) {
+                /*
+                 * Do nothing. Some plugins, fx free products, adds line items without a tax rate.
+                 * Unless we default to 0 we will call ->first() on null and payment will crash.
+                 */
+            }
+
             $basket[] = [
                 'qty' => $orderLineItem->getQuantity(),
                 'item_no' => $itemNo,
                 'item_name' => $orderLineItem->getLabel(),
                 'item_price' => $orderLineItem->getUnitPrice() * 100,
-                'vat_rate' => $orderLineItem->getPrice()->getTaxRules()->first()->getTaxRate() / 100,
+                'vat_rate' => $taxRate,
             ];
         }
 
         $shippingTotal = $order->getShippingTotal();
-        $shippingTaxRate = $order->getShippingCosts()->getTaxRules()->first()->getTaxRate();
-        if ($shippingTotal && $shippingTaxRate) {
+        $shippingTaxRate = 0;
+        try {
+            $shippingTaxRate = $order->getShippingCosts()->getTaxRules()->first()->getTaxRate() / 100;
+        } catch (\Error | \TypeError | \Exception $e) {
+            // Do nothing
+        }
+        if ($shippingTotal) {
             $basket[] = [
                 'qty' => 1,
                 'item_no' => 'Shipping',
                 'item_name' => 'Shipping',
                 'item_price' => $shippingTotal * 100,
-                'vat_rate' => $shippingTaxRate / 100,
+                'vat_rate' => $shippingTaxRate,
             ];
         }
 
