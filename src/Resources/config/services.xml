@@ -81,7 +81,6 @@
         <service id="Wexo\Quickpay\Controller\QuickpayStorefrontController">
             <argument type="service" id="log_entry.repository" />
             <argument type="service" id="Shopware\Core\Checkout\Payment\PaymentService"/>
-            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
             <tag name="controller.service_arguments"/>
         </service>
 

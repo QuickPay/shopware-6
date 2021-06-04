@@ -33,25 +33,17 @@ class QuickpayStorefrontController
     protected $paymentService;
 
     /**
-     * @var SystemConfigService
-     */
-    protected $systemConfigService;
-
-    /**
      * QuickpayApiController constructor.
      *
      * @param EntityRepositoryInterface $logEntryRepository
      * @param PaymentService $paymentService
-     * @param SystemConfigService $systemConfig
      */
     public function __construct(
         EntityRepositoryInterface $logEntryRepository,
-        PaymentService $paymentService,
-        SystemConfigService $systemConfig
+        PaymentService $paymentService
     ) {
         $this->logEntryRepository = $logEntryRepository;
         $this->paymentService = $paymentService;
-        $this->systemConfigService = $systemConfig;
     }
 
     /**
@@ -69,36 +61,6 @@ class QuickpayStorefrontController
     {
         $data = [];
         $paymentToken = $request->get('_sw_payment_token');
-
-        $privateKey = $this->systemConfigService->get('WexoQuickpay.config.quickpayPrivateKey');
-        $quickPayCheksum = $request->headers->get('QuickPay-Checksum-Sha256');
-        $checksum = hash_hmac('sha256', $request->getContent(), $privateKey);
-
-        if ($checksum != $quickPayCheksum) {
-            $data = [
-                'error' => 'Quickpay Checksum validation failed!',
-                'checksum_quickpay' => $quickPayCheksum,
-                'checksum' => $checksum,
-            ];
-
-            $this->logEntryRepository->create([
-                [
-                    'message' => 'quickpay_finalize_transaction_checksum_invalid',
-                    'context' => $data,
-                    'level' => Logger::ERROR,
-                    'channel' => WexoQuickpay::LOG_CHANNEL
-                ]
-            ]);
-        } else {
-            $this->logEntryRepository->create([
-                [
-                    'message' => 'quickpay_finalize_transaction_checksum_valid',
-                    'context' => $quickPayCheksum,
-                    'level' => Logger::DEBUG,
-                    'channel' => WexoQuickpay::LOG_CHANNEL
-                ]
-            ]);
-        }
 
         try {
             $result = $this->paymentService->finalizeTransaction(
