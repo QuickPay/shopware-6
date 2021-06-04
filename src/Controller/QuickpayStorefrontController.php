@@ -2,15 +2,12 @@
 
 namespace Wexo\Quickpay\Controller;
 
-use GuzzleHttp\Client;
 use Monolog\Logger;
 use Shopware\Core\Checkout\Payment\PaymentService;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
-use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
-use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
