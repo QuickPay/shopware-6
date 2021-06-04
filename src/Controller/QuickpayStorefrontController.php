@@ -10,6 +10,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
+use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -25,22 +26,32 @@ class QuickpayStorefrontController
     /**
      * @var EntityRepositoryInterface
      */
-    protected $logEntryRepository;
+    protected EntityRepositoryInterface $logEntryRepository;
     /**
      * @var QuickpayPayment
      */
     protected $paymentService;
 
     /**
+     * @var SystemConfigService
+     */
+    protected $systemConfigService;
+
+    /**
      * QuickpayApiController constructor.
+     *
+     * @param EntityRepositoryInterface $logEntryRepository
      * @param PaymentService $paymentService
+     * @param SystemConfigService $systemConfig
      */
     public function __construct(
         EntityRepositoryInterface $logEntryRepository,
-        PaymentService $paymentService
+        PaymentService $paymentService,
+        SystemConfigService $systemConfig
     ) {
         $this->logEntryRepository = $logEntryRepository;
         $this->paymentService = $paymentService;
+        $this->systemConfigService = $systemConfig;
     }
 
     /**
@@ -49,14 +60,45 @@ class QuickpayStorefrontController
      *     methods={"POST", "GET"},
      *     defaults={"auth_required"=false, "csrf_protected"=false}
      * )
-     * @param Request $dataBag
+     * @param Request $request
      * @param SalesChannelContext $context
+     *
      * @return JsonResponse
      */
     public function quickpayFinalizeTransaction(Request $request, SalesChannelContext $context): JsonResponse
     {
         $data = [];
         $paymentToken = $request->get('_sw_payment_token');
+
+        $privateKey = $this->systemConfigService->get('WexoQuickpay.config.quickpayPrivateKey');
+        $quickPayCheksum = $request->headers->get('QuickPay-Checksum-Sha256');
+        $checksum = hash_hmac('sha256', $request->getContent(), $privateKey);
+
+        if ($checksum != $quickPayCheksum) {
+            $data = [
+                'error' => 'Quickpay Checksum validation failed!',
+                'checksum_quickpay' => $quickPayCheksum,
+                'checksum' => $checksum,
+            ];
+
+            $this->logEntryRepository->create([
+                [
+                    'message' => 'quickpay_finalize_transaction_checksum_invalid',
+                    'context' => $data,
+                    'level' => Logger::ERROR,
+                    'channel' => WexoQuickpay::LOG_CHANNEL
+                ]
+            ]);
+        } else {
+            $this->logEntryRepository->create([
+                [
+                    'message' => 'quickpay_finalize_transaction_checksum_valid',
+                    'context' => $quickPayCheksum,
+                    'level' => Logger::DEBUG,
+                    'channel' => WexoQuickpay::LOG_CHANNEL
+                ]
+            ]);
+        }
 
         try {
             $result = $this->paymentService->finalizeTransaction(
