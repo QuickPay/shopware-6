@@ -212,7 +212,8 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 [
                     'orderId' => $transaction->getOrder()->getId(),
                     'data' => $response
-                ]
+                ],
+                Logger::INFO
             );
 
             $key = $this->systemConfigService->get(

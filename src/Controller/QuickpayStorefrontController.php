@@ -2,13 +2,11 @@
 
 namespace Wexo\Quickpay\Controller;
 
-use GuzzleHttp\Client;
 use Monolog\Logger;
 use Shopware\Core\Checkout\Payment\PaymentService;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
-use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -25,7 +23,7 @@ class QuickpayStorefrontController
     /**
      * @var EntityRepositoryInterface
      */
-    protected $logEntryRepository;
+    protected EntityRepositoryInterface $logEntryRepository;
     /**
      * @var QuickpayPayment
      */
@@ -33,6 +31,8 @@ class QuickpayStorefrontController
 
     /**
      * QuickpayApiController constructor.
+     *
+     * @param EntityRepositoryInterface $logEntryRepository
      * @param PaymentService $paymentService
      */
     public function __construct(
@@ -49,8 +49,9 @@ class QuickpayStorefrontController
      *     methods={"POST", "GET"},
      *     defaults={"auth_required"=false, "csrf_protected"=false}
      * )
-     * @param Request $dataBag
+     * @param Request $request
      * @param SalesChannelContext $context
+     *
      * @return JsonResponse
      */
     public function quickpayFinalizeTransaction(Request $request, SalesChannelContext $context): JsonResponse
