@@ -618,14 +618,18 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
     public function isConfigValid(array $config): bool
     {
         try {
-            $response = $this->getClient(null)->request('GET', 'payments', [
+            $response = $this->getClient(null)->request('GET', 'account/private-key', [
                 'auth' => [
                     '',
                     $config['quickpayApiKey']
                 ]
             ]);
 
-            return $response->getStatusCode() === 200;
+            $pKey = json_decode($response->getBody()->getContents());
+            if ($pKey->private_key == $config['quickpayPrivateKey']) {
+                return $response->getStatusCode() === 200;
+            }
+            return false;
         } catch (\Exception $exception) {
             $this->paymentLogger($exception->getMessage(), $exception->getTrace());
 
