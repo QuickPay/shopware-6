@@ -506,7 +506,8 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         $customFields = $order->getCustomFields();
         $paymentResponse = \json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
         $id = $paymentResponse['id'] ?? null;
-        if ($id) {
+        $accepted = $paymentResponse['accepted'] ?? false;
+        if ($id && $accepted) {
             $this->getClient(null)->request('POST', 'payments/' . $id . "/cancel");
         }
     }
