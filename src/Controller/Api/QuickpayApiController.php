@@ -2,7 +2,7 @@
 
 namespace Wexo\Quickpay\Controller\Api;
 
-use GuzzleHttp\Client;
+use GuzzleHttp\Exception\GuzzleException;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -14,10 +14,7 @@ use Wexo\Quickpay\Service\QuickpayPayment;
  */
 class QuickpayApiController
 {
-    /**
-     * @var QuickpayPayment
-     */
-    protected $quickpayPayment;
+    protected QuickpayPayment $quickpayPayment;
 
     /**
      * QuickpayApiController constructor.
@@ -33,6 +30,7 @@ class QuickpayApiController
      * @Route(path="/api/_action/quickpay-api/verify")
      * @param RequestDataBag $dataBag
      * @return JsonResponse
+     * @throws GuzzleException
      */
     public function check(RequestDataBag $dataBag): JsonResponse
     {
@@ -56,6 +54,7 @@ class QuickpayApiController
      * )
      * @param RequestDataBag $dataBag
      * @return JsonResponse
+     * @throws GuzzleException
      */
     public function capture(RequestDataBag $dataBag): JsonResponse
     {
@@ -77,6 +76,7 @@ class QuickpayApiController
      * )
      * @param RequestDataBag $dataBag
      * @return JsonResponse
+     * @throws GuzzleException
      */
     public function update(RequestDataBag $dataBag): JsonResponse
     {

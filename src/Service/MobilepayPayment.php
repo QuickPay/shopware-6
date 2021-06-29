@@ -2,7 +2,7 @@
 
 namespace Wexo\Quickpay\Service;
 
-use GuzzleHttp\Client;
+use GuzzleHttp\Exception\GuzzleException;
 use Shopware\Core\Checkout\Cart\CartPersisterInterface;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
 use Shopware\Core\Checkout\Order\SalesChannel\OrderService;
@@ -12,7 +12,6 @@ use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Symfony\Component\HttpFoundation\RedirectResponse;
-use Wexo\Quickpay\Service\QuickpayPayment;
 use Shopware\Core\System\StateMachine\StateMachineRegistry;
 
 /**
@@ -21,25 +20,6 @@ use Shopware\Core\System\StateMachine\StateMachineRegistry;
  */
 class MobilepayPayment extends QuickpayPayment
 {
-    /** @var SystemConfigService $systemConfigService */
-    protected $systemConfigService;
-    /** @var EntityRepositoryInterface $orderRepository */
-    protected $orderRepository;
-    /** @var EntityRepositoryInterface $languageRepository */
-    protected $languageRepository;
-    /** @var OrderTransactionStateHandler $transactionStateHandler */
-    protected $transactionStateHandler;
-    /** @var OrderService $orderService */
-    protected $orderService;
-    /** @var EntityRepositoryInterface $logEntryRepository */
-    protected $logEntryRepository;
-    /** @var Client $http */
-    public $http;
-    /** @var CartPersisterInterface */
-    protected $cartPersister;
-    /** @var StateMachineRegistry */
-    protected $stateMachineRegistry;
-
     /**
      * MobilepayPayment constructor.
      * @param SystemConfigService $systemConfigService
@@ -61,14 +41,6 @@ class MobilepayPayment extends QuickpayPayment
         CartPersisterInterface $cartPersister,
         StateMachineRegistry $stateMachineRegistry
     ) {
-        $this->systemConfigService = $systemConfigService;
-        $this->logEntryRepository = $logEntryRepository;
-        $this->orderRepository = $orderRepository;
-        $this->languageRepository = $languageRepository;
-        $this->transactionStateHandler = $transactionStateHandler;
-        $this->orderService = $orderService;
-        $this->cartPersister = $cartPersister;
-        $this->stateMachineRegistry = $stateMachineRegistry;
         parent::__construct(
             $systemConfigService,
             $logEntryRepository,
@@ -86,6 +58,7 @@ class MobilepayPayment extends QuickpayPayment
      * @param RequestDataBag $dataBag
      * @param SalesChannelContext $salesChannelContext
      * @return RedirectResponse
+     * @throws GuzzleException
      */
     public function pay(
         AsyncPaymentTransactionStruct $transaction,

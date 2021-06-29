@@ -2,22 +2,16 @@
 
 namespace Wexo\Quickpay\Subscriber;
 
-use Error;
-use Monolog\Logger;
-use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
+use GuzzleHttp\Exception\GuzzleException;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
 use Shopware\Core\Checkout\Order\OrderEntity;
-use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
-use Shopware\Core\Framework\Struct\ArrayStruct;
 use Shopware\Core\System\StateMachine\Event\StateMachineTransitionEvent;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
-use stdClass;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Wexo\Quickpay\Service\QuickpayPayment;
-use Wexo\Quickpay\WexoQuickpay;
 
 /**
  * Class OrderDetailSubscriber
@@ -25,18 +19,9 @@ use Wexo\Quickpay\WexoQuickpay;
  */
 class OrderDetailSubscriber implements EventSubscriberInterface
 {
-    /**
-     * @var EntityRepositoryInterface $orderRepository
-     */
-    protected $orderRepository;
-    /**
-     * @var SystemConfigService $systemConfigService
-     */
-    protected $systemConfigService;
-    /**
-     * @var QuickpayPayment $quickpayPaymentService
-     */
-    protected $quickpayPaymentService;
+    protected EntityRepositoryInterface $orderRepository;
+    protected SystemConfigService $systemConfigService;
+    protected QuickpayPayment $quickpayPaymentService;
 
     /**
      * OrderDetailSubscriber constructor.
@@ -66,6 +51,7 @@ class OrderDetailSubscriber implements EventSubscriberInterface
 
     /**
      * @param StateMachineTransitionEvent $event
+     * @throws GuzzleException
      */
     public function onStateMachineTransitionEvent(StateMachineTransitionEvent $event)
     {

@@ -4,6 +4,7 @@ namespace Wexo\Quickpay\Service;
 
 use Exception;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\GuzzleException;
 use Monolog\Logger;
 use Shopware\Core\Checkout\Cart\CartPersisterInterface;
 use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryStates;
@@ -38,42 +39,16 @@ use Wexo\Quickpay\WexoQuickpay;
  */
 class QuickpayPayment implements AsynchronousPaymentHandlerInterface
 {
-    /**
-     * @var SystemConfigService $systemConfigService
-     */
-    protected $systemConfigService;
-    /**
-     * @var EntityRepositoryInterface $orderRepository
-     */
-    protected $orderRepository;
-    /**
-     * @var EntityRepositoryInterface $languageRepository
-     */
-    protected $languageRepository;
-    /**
-     * @var OrderTransactionStateHandler $transactionStateHandler
-     */
-    protected $transactionStateHandler;
-    /**
-     * @var OrderService $orderService
-     */
-    protected $orderService;
-    /**
-     * @var EntityRepositoryInterface $logEntryRepository
-     */
-    protected $logEntryRepository;
-    /**
-     * @var Client[]
-     */
-    protected $apiClients = [];
-    /**
-     * @var CartPersisterInterface
-     */
-    protected $cartPersister;
-    /**
-     * @var StateMachineRegistry
-     */
-    protected $stateMachineRegistry;
+    /** @var Client[] $apiClients */
+    protected array $apiClients = [];
+    protected SystemConfigService $systemConfigService;
+    protected EntityRepositoryInterface $orderRepository;
+    protected EntityRepositoryInterface $languageRepository;
+    protected OrderTransactionStateHandler $transactionStateHandler;
+    protected OrderService $orderService;
+    protected EntityRepositoryInterface $logEntryRepository;
+    protected CartPersisterInterface $cartPersister;
+    protected StateMachineRegistry $stateMachineRegistry;
 
     /**
      * QuickpayPayment constructor.
@@ -144,6 +119,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
      * @param RequestDataBag $dataBag
      * @param SalesChannelContext $salesChannelContext
      * @return RedirectResponse
+     * @throws GuzzleException
      */
     public function pay(
         AsyncPaymentTransactionStruct $transaction,
@@ -330,10 +306,11 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             );
         }
     }
+
     /**
      * @param AsyncPaymentTransactionStruct $transaction
      * @param SalesChannelContext $salesChannelContext
-     * @throws Exception
+     * @throws GuzzleException
      */
     public function addPaymentToOrder(
         AsyncPaymentTransactionStruct &$transaction,
@@ -428,7 +405,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
      * @param AsyncPaymentTransactionStruct $transaction
      * @param SalesChannelContext $salesChannelContext
      * @return string
-     * @throws Exception
+     * @throws GuzzleException
      */
     public function getPaymentLink(
         AsyncPaymentTransactionStruct $transaction,
@@ -500,6 +477,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
 
     /**
      * @param OrderEntity $order
+     * @throws GuzzleException
      */
     public function cancelPayment(OrderEntity $order): void
     {
@@ -516,14 +494,14 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
      * @param string $orderId
      * @param null $paymentId
      * @param SalesChannelContext|null $context
-     * @return \stdClass|null
-     * @throws \Shopware\Core\Framework\DataAbstractionLayer\Exception\InconsistentCriteriaIdsException
+     * @return string|null
+     * @throws GuzzleException
      */
     public function updateResponse(
         string $orderId,
         $paymentId = null,
         ?SalesChannelContext $context = null
-    ) {
+    ): ?string {
         try {
             $context = $context ? $context->getContext() : Context::createDefaultContext();
 
@@ -609,12 +587,9 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
     }
 
     /**
-     *
-     * @param array $options [description]
-     *
-     * @param array $config [Quickpay config]
-     * @option string "quickpayApiKey" [Quickpay Api Key]
+     * @param array $config
      * @return bool
+     * @throws GuzzleException
      */
     public function isConfigValid(array $config): bool
     {
@@ -642,6 +617,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
      * @param string $orderId
      * @param float|null $amount
      * @return bool|null
+     * @throws GuzzleException
      */
     public function capturePayment(
         string $orderId,
@@ -677,7 +653,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         $states = [
             OrderTransactionStates::STATE_PAID,
             OrderTransactionStates::STATE_PARTIALLY_PAID,
-            'authorized'
+            OrderTransactionStates::STATE_AUTHORIZED
         ];
 
         $transaction = null;
@@ -731,7 +707,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             return null;
         }
 
-        // TODO: The customer could go into quickpay and withdraw manually.
+        // TODO: The customer could go into QuickPay and withdraw manually.
         $availableAmount = $this->getAvailableAmount($paymentResponse);
         if (! $amount) {
             $amount = $availableAmount;

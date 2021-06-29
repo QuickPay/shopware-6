@@ -12,7 +12,6 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
-use Wexo\Quickpay\Service\QuickpayPayment;
 use Wexo\Quickpay\WexoQuickpay;
 
 /**
@@ -20,14 +19,8 @@ use Wexo\Quickpay\WexoQuickpay;
  */
 class QuickpayStorefrontController
 {
-    /**
-     * @var EntityRepositoryInterface
-     */
     protected EntityRepositoryInterface $logEntryRepository;
-    /**
-     * @var QuickpayPayment
-     */
-    protected $paymentService;
+    protected PaymentService $paymentService;
 
     /**
      * QuickpayApiController constructor.

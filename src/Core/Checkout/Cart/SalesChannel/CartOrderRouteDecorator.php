@@ -1,20 +1,16 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace Wexo\Quickpay\Core\Checkout\Cart\SalesChannel;
 
 use Shopware\Core\Checkout\Cart\Cart;
 use Shopware\Core\Checkout\Cart\CartCalculator;
 use Shopware\Core\Checkout\Cart\CartPersisterInterface;
-use Shopware\Core\Checkout\Cart\Event\CheckoutOrderPlacedEvent;
 use Shopware\Core\Checkout\Cart\Order\OrderPersisterInterface;
 use Shopware\Core\Checkout\Cart\SalesChannel\AbstractCartOrderRoute;
 use Shopware\Core\Checkout\Cart\SalesChannel\CartOrderRouteResponse;
-use Shopware\Core\Checkout\Order\Aggregate\OrderCustomer\OrderCustomerEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\OrderEntity;
-use Shopware\Core\Checkout\Payment\Exception\InvalidOrderException;
 use Shopware\Core\Checkout\Payment\PaymentMethodEntity;
-use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
@@ -24,51 +20,21 @@ use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Wexo\Quickpay\WexoQuickpay;
 
+/**
+ * Class CartOrderRouteDecorator
+ * @package Wexo\Quickpay\Core\Checkout\Cart\SalesChannel
+ */
 class CartOrderRouteDecorator extends AbstractCartOrderRoute
 {
-    /**
-     * @var AbstractCartOrderRoute
-     */
-    protected $decoratedService;
-    /**
-     * @var CartCalculator
-     */
-    protected $cartCalculator;
-
-    /**
-     * @var EntityRepositoryInterface
-     */
-    protected $orderRepository;
-
-    /**
-     * @var OrderPersisterInterface
-     */
-    protected $orderPersister;
-
-    /**
-     * @var CartPersisterInterface
-     */
-    protected $cartPersister;
-
-    /**
-     * @var EventDispatcherInterface
-     */
-    protected $eventDispatcher;
-
-    /**
-     * @var EntityRepositoryInterface
-     */
-    protected $orderCustomerRepository;
-
-    /**
-     * @var EntityRepositoryInterface
-     */
-    protected $orderTransactionRepository;
-
-    /**
-     * @var PluginIdProvider
-     */
-    protected $pluginIdProvider;
+    protected AbstractCartOrderRoute $decoratedService;
+    protected CartCalculator $cartCalculator;
+    protected EntityRepositoryInterface $orderRepository;
+    protected OrderPersisterInterface $orderPersister;
+    protected CartPersisterInterface $cartPersister;
+    protected EventDispatcherInterface $eventDispatcher;
+    protected EntityRepositoryInterface $orderCustomerRepository;
+    protected EntityRepositoryInterface $orderTransactionRepository;
+    protected PluginIdProvider $pluginIdProvider;
 
     /**
      * CartOrderRouteDecorator constructor.
@@ -127,7 +93,7 @@ class CartOrderRouteDecorator extends AbstractCartOrderRoute
 
         $response = $this->decoratedService->order($cart, $context, $data);
 
-        // Restore cart if quickpay payment method was used
+        // Restore cart if QuickPay payment method was used
         $this->restoreCartIfQuickpay($originalCart, $response->getOrder(), $context);
 
         return $response;
@@ -156,8 +122,8 @@ class CartOrderRouteDecorator extends AbstractCartOrderRoute
                 $context->getContext()
             );
 
-            // If a quickpay payment method was used we restore the cart
-            // If a quickpay method is used the cart will be cleared in QuickPayPayment::finalize()
+            // If a QuickPay payment method was used we restore the cart
+            // If a QuickPay method is used the cart will be cleared in QuickPayPayment::finalize()
             if ($paymentMethod->getPluginId() === $pluginId) {
                 $this->cartPersister->save($cart, $context);
             }

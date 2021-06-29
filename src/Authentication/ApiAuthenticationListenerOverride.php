@@ -10,49 +10,35 @@ use League\OAuth2\Server\Repositories\RefreshTokenRepositoryInterface;
 use League\OAuth2\Server\Repositories\UserRepositoryInterface;
 use League\OAuth2\Server\ResourceServer;
 use Shopware\Core\Framework\Api\EventListener\Authentication\ApiAuthenticationListener;
-use Shopware\Core\Framework\Routing\ApiContextRouteScopeDependant;
-use Shopware\Core\Framework\Routing\KernelListenerPriorities;
 use Shopware\Core\Framework\Routing\RouteScopeCheckTrait;
 use Shopware\Core\Framework\Routing\RouteScopeRegistry;
 use Symfony\Bridge\PsrHttpMessage\Factory\PsrHttpFactory;
-use Symfony\Component\HttpKernel\Event\ControllerEvent;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
-use Symfony\Component\HttpKernel\KernelEvents;
 
+/**
+ * Class ApiAuthenticationListenerOverride
+ * @package Wexo\Quickpay\Authentication
+ */
 class ApiAuthenticationListenerOverride extends ApiAuthenticationListener
 {
     use RouteScopeCheckTrait;
 
-    /**
-     * @var ResourceServer
-     */
-    private $resourceServer;
+    private ResourceServer $resourceServer;
+    private AuthorizationServer $authorizationServer;
+    private UserRepositoryInterface $userRepository;
+    private RefreshTokenRepositoryInterface $refreshTokenRepository;
+    private PsrHttpFactory $psrHttpFactory;
+    private RouteScopeRegistry $routeScopeRegistry;
 
     /**
-     * @var AuthorizationServer
+     * ApiAuthenticationListenerOverride constructor.
+     * @param ResourceServer $resourceServer
+     * @param AuthorizationServer $authorizationServer
+     * @param UserRepositoryInterface $userRepository
+     * @param RefreshTokenRepositoryInterface $refreshTokenRepository
+     * @param PsrHttpFactory $psrHttpFactory
+     * @param RouteScopeRegistry $routeScopeRegistry
      */
-    private $authorizationServer;
-
-    /**
-     * @var UserRepositoryInterface
-     */
-    private $userRepository;
-
-    /**
-     * @var RefreshTokenRepositoryInterface
-     */
-    private $refreshTokenRepository;
-
-    /**
-     * @var PsrHttpFactory
-     */
-    private $psrHttpFactory;
-
-    /**
-     * @var RouteScopeRegistry
-     */
-    private $routeScopeRegistry;
-
     public function __construct(
         ResourceServer $resourceServer,
         AuthorizationServer $authorizationServer,
@@ -78,6 +64,9 @@ class ApiAuthenticationListenerOverride extends ApiAuthenticationListener
         $this->routeScopeRegistry = $routeScopeRegistry;
     }
 
+    /**
+     * @param RequestEvent $event
+     */
     public function setupOAuth(RequestEvent $event): void
     {
         if (!$event->isMasterRequest()) {
