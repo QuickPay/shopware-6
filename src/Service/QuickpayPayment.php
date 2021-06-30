@@ -481,12 +481,24 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
      */
     public function cancelPayment(OrderEntity $order): void
     {
-        $customFields = $order->getCustomFields();
-        $paymentResponse = \json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
-        $id = $paymentResponse['id'] ?? null;
-        $accepted = $paymentResponse['accepted'] ?? false;
-        if ($id && $accepted) {
-            $this->getClient(null)->request('POST', 'payments/' . $id . "/cancel");
+        try {
+            $customFields = $order->getCustomFields();
+            $paymentResponse = \json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
+            $id = $paymentResponse['id'] ?? null;
+            $accepted = $paymentResponse['accepted'] ?? false;
+            if ($id && $accepted) {
+                $this->getClient($order->getSalesChannelId())->request('POST', 'payments/' . $id . "/cancel");
+            }
+        } catch (\Exception | \Error | \TypeError $e) {
+            $this->paymentLogger(
+                WexoQuickpay::ORDER_CANCEL_ERROR,
+                [
+                    'orderNumber' => $order->getOrderNumber(),
+                    'message'     => $e->getMessage(),
+                    'trace'       => $e->getTraceAsString()
+                ],
+                Logger::INFO
+            );
         }
     }
 

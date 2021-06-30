@@ -41,6 +41,7 @@ class WexoQuickpay extends Plugin
     public const ORDER_CREATE_ERROR = 'quickpay.order.create.error';
     public const ORDER_COMPLETE_SUCCESS = 'quickpay.order.finalize.success';
     public const ORDER_COMPLETE_ERROR = 'quickpay.order.finalize.error';
+    public const ORDER_CANCEL_ERROR = 'quickpay.order.cancel.error';
 
     /**
      * @param InstallContext $installContext
