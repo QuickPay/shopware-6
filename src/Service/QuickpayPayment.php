@@ -205,7 +205,9 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
 
             if (isset($response['accepted']) && $response['accepted']) {
                 $this->paymentSuccess($transaction, $context, $paymentState, $orderState);
-            } elseif (isset($response['accepted'], $response['operations']) && ! $response['accepted']) {
+            } elseif (isset($response['accepted'], $response['operations']) && ! $response['accepted'] &&
+                $paymentState !== OrderTransactionStates::STATE_AUTHORIZED
+            ) {
                 $cancel = false;
                 foreach ($response['operations'] as $operation) {
                     if ($operation['type'] === 'authorize' &&
@@ -264,7 +266,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         string $paymentState,
         string $orderState
     ): void {
-        if ($paymentState !== 'authorized') {
+        if ($paymentState !== OrderTransactionStates::STATE_AUTHORIZED) {
             if ($paymentState === OrderTransactionStates::STATE_CANCELLED) {
                 $this->stateMachineRegistry->transition(
                     new Transition(
