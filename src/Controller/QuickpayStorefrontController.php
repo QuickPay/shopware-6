@@ -3,12 +3,14 @@
 namespace Wexo\Quickpay\Controller;
 
 use Monolog\Logger;
+use Shopware\Core\Checkout\Payment\Cart\Token\TokenFactoryInterfaceV2;
 use Shopware\Core\Checkout\Payment\PaymentService;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
@@ -21,7 +23,7 @@ class QuickpayStorefrontController
 {
     protected EntityRepositoryInterface $logEntryRepository;
     protected PaymentService $paymentService;
-
+    protected TokenFactoryInterfaceV2 $tokenFactory;
     /**
      * QuickpayApiController constructor.
      *
@@ -30,10 +32,12 @@ class QuickpayStorefrontController
      */
     public function __construct(
         EntityRepositoryInterface $logEntryRepository,
-        PaymentService $paymentService
+        PaymentService $paymentService,
+        TokenFactoryInterfaceV2 $tokenFactory
     ) {
         $this->logEntryRepository = $logEntryRepository;
         $this->paymentService = $paymentService;
+        $this->tokenFactory = $tokenFactory;
     }
 
     /**
@@ -45,11 +49,21 @@ class QuickpayStorefrontController
      * @param Request $request
      * @param SalesChannelContext $context
      *
-     * @return JsonResponse
+     * @return JsonResponse|RedirectResponse
      */
-    public function quickpayFinalizeTransaction(Request $request, SalesChannelContext $context): JsonResponse
+    public function quickpayFinalizeTransaction(Request $request, SalesChannelContext $context)
     {
         $data = [];
+        $paymentToken = $request->get('_sw_payment_token');
+        $status = $request->query->get('status');
+        if (in_array($status, ['accepted', 'cancel'])) {
+            $token = $this->tokenFactory->parseToken($paymentToken);
+            $url = ($status == 'accepted' ? $token->getFinishUrl() : $token->getErrorUrl());
+
+            return new RedirectResponse($url);
+        } else {
+            sleep(10);
+        }
         $paymentToken = $request->get('_sw_payment_token');
 
         try {

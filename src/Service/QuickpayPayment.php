@@ -419,8 +419,8 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
 
         $updateFormParams = [
             'amount' => $transaction->getOrder()->getAmountTotal() * 100,
-            'continue_url' => $returnUrl . '&status=accepted',
-            'cancel_url' => $returnUrl . '&status=cancel',
+            'continue_url' => $callbackUrl . '&status=accepted',
+            'cancel_url' => $callbackUrl . '&status=cancel',
             'callback_url' => $callbackUrl,
             'language' => $this->getLanguage(
                 $salesChannelContext->getSalesChannel()->getLanguageId(),
