@@ -53,36 +53,47 @@ class QuickpayStorefrontController
      */
     public function quickpayFinalizeTransaction(Request $request, SalesChannelContext $context)
     {
+        $finalizeAllowed = true;
         $data = [];
         $paymentToken = $request->get('_sw_payment_token');
         $status = $request->query->get('status');
+
+        $operations = $request->get('operations');
+        if (!empty($operations)) {
+            $operation = end($operations);
+            if (!isset($operation->qp_status_code) || in_array($operation->qp_status_code, [30100, 30101])) {
+                $finalizeAllowed = false;
+            }
+        }
+
         if (in_array($status, ['accepted', 'cancel'])) {
             $token = $this->tokenFactory->parseToken($paymentToken);
             $url = ($status == 'accepted' ? $token->getFinishUrl() : $token->getErrorUrl());
-
             return new RedirectResponse($url);
         } else {
             sleep(10);
         }
         $paymentToken = $request->get('_sw_payment_token');
 
-        try {
-            $result = $this->paymentService->finalizeTransaction(
-                $paymentToken,
-                $request,
-                $context
-            );
+        if ($finalizeAllowed) {
+            try {
+                $result = $this->paymentService->finalizeTransaction(
+                    $paymentToken,
+                    $request,
+                    $context
+                );
 
-            $exception = $result->getException();
-            if ($exception) {
+                $exception = $result->getException();
+                if ($exception) {
+                    $data = [
+                        'error' => $exception->getMessage()
+                    ];
+                }
+            } catch (\Exception $exception) {
                 $data = [
                     'error' => $exception->getMessage()
                 ];
             }
-        } catch (\Exception $exception) {
-            $data = [
-                'error' => $exception->getMessage()
-            ];
         }
 
         if ($data) {
