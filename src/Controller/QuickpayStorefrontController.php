@@ -65,7 +65,7 @@ class QuickpayStorefrontController
              * 30100 and 30101 indicate errors based on rejected 3D Secure
              * https://learn.quickpay.net/tech-talk/appendixes/errors/
              */
-            if (!isset($operation->qp_status_code) || in_array($operation->qp_status_code, [30100, 30101])) {
+            if (!isset($operation->qp_status_code) || in_array($operation->qp_status_code, [30100, 30101,40000, 40001, 50000, 50300])) {
                 $finalizeAllowed = false;
             }
         }
