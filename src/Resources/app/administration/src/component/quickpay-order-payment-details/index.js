@@ -1,6 +1,6 @@
 import template from './quickpay-order-payment-details.html.twig';
 
-import {Component, Mixin} from "src/core/shopware";
+const {Component, Mixin} = Shopware;
 
 Component.register('quickpay-order-payment-details', {
     template,
