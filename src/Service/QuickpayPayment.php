@@ -174,9 +174,8 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         $content = $request->getContent();
 
         $status = $request->get('status');
-        if ($status == "accepted") {
-            $this->cartPersister->delete($salesChannelContext->getToken(), $salesChannelContext);
-        } elseif ($status == "cancel") {
+
+        if ($status === "cancel") {
             throw new CustomerCanceledAsyncPaymentException(
                 $transactionId,
                 'Customer canceled the payment on the payment page'

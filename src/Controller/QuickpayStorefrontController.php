@@ -3,6 +3,7 @@
 namespace Wexo\Quickpay\Controller;
 
 use Monolog\Logger;
+use Shopware\Core\Checkout\Cart\CartPersisterInterface;
 use Shopware\Core\Checkout\Payment\Cart\Token\TokenFactoryInterfaceV2;
 use Shopware\Core\Checkout\Payment\PaymentService;
 use Shopware\Core\Framework\Context;
@@ -24,6 +25,8 @@ class QuickpayStorefrontController
     protected EntityRepositoryInterface $logEntryRepository;
     protected PaymentService $paymentService;
     protected TokenFactoryInterfaceV2 $tokenFactory;
+    protected CartPersisterInterface $cartPersister;
+
     /**
      * QuickpayApiController constructor.
      *
@@ -33,11 +36,13 @@ class QuickpayStorefrontController
     public function __construct(
         EntityRepositoryInterface $logEntryRepository,
         PaymentService $paymentService,
-        TokenFactoryInterfaceV2 $tokenFactory
+        TokenFactoryInterfaceV2 $tokenFactory,
+        CartPersisterInterface $cartPersister
     ) {
         $this->logEntryRepository = $logEntryRepository;
         $this->paymentService = $paymentService;
         $this->tokenFactory = $tokenFactory;
+        $this->cartPersister = $cartPersister;
     }
 
     /**
@@ -68,6 +73,14 @@ class QuickpayStorefrontController
             if (!isset($operation->qp_status_code) || in_array($operation->qp_status_code, [30100, 30101,40000, 40001, 50000, 50300])) {
                 $finalizeAllowed = false;
             }
+        }
+
+
+        /* Delete cart when either customer or quickpay reaches this page.
+         * This just runs executeStatement, which just returns number of rows affected,
+         * so multiple runs on runs non existing cart does not throw an error */
+        if ($status === "accepted") {
+            $this->cartPersister->delete($context->getToken(), $context);
         }
 
         if (in_array($status, ['accepted', 'cancel'])) {
