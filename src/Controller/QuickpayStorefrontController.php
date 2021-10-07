@@ -58,9 +58,24 @@ class QuickpayStorefrontController
      */
     public function quickpayFinalizeTransaction(Request $request, SalesChannelContext $context)
     {
+        $finalizeAllowed = true;
         $data = [];
         $paymentToken = $request->get('_sw_payment_token');
         $status = $request->query->get('status');
+        $allowedStatuses = [30100, 30101,40000, 40001, 50000, 50300];
+
+        $operations = $request->get('operations');
+        if (!empty($operations)) {
+            $operation = end($operations);
+            /*
+             * 30100 and 30101 indicate errors based on rejected 3D Secure
+             * https://learn.quickpay.net/tech-talk/appendixes/errors/
+             */
+            if (!isset($operation->qp_status_code) || in_array($operation->qp_status_code, $allowedStatuses)) {
+                $finalizeAllowed = false;
+            }
+        }
+
 
         /* Delete cart when either customer or quickpay reaches this page.
          * This just runs executeStatement, which just returns number of rows affected,
@@ -72,30 +87,31 @@ class QuickpayStorefrontController
         if (in_array($status, ['accepted', 'cancel'])) {
             $token = $this->tokenFactory->parseToken($paymentToken);
             $url = ($status == 'accepted' ? $token->getFinishUrl() : $token->getErrorUrl());
-
             return new RedirectResponse($url);
         } else {
             sleep(10);
         }
         $paymentToken = $request->get('_sw_payment_token');
 
-        try {
-            $result = $this->paymentService->finalizeTransaction(
-                $paymentToken,
-                $request,
-                $context
-            );
+        if ($finalizeAllowed) {
+            try {
+                $result = $this->paymentService->finalizeTransaction(
+                    $paymentToken,
+                    $request,
+                    $context
+                );
 
-            $exception = $result->getException();
-            if ($exception) {
+                $exception = $result->getException();
+                if ($exception) {
+                    $data = [
+                        'error' => $exception->getMessage()
+                    ];
+                }
+            } catch (\Exception $exception) {
                 $data = [
                     'error' => $exception->getMessage()
                 ];
             }
-        } catch (\Exception $exception) {
-            $data = [
-                'error' => $exception->getMessage()
-            ];
         }
 
         if ($data) {
