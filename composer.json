@@ -16,7 +16,7 @@
         }
     },
     "require": {
-        "shopware/core": "*",
+        "shopware/core": "^6.4",
         "ext-json": "*"
     },
     "extra": {
@@ -30,8 +30,8 @@
         },
         "description": {
             "da-DK": "QuickPay betalingsintegration",
-            "en-GB": "QuickPay Payment Integration",
-            "de-DE": "QuickPay Zahlungsintegration"
+            "en-GB": "Online payment services for e-commerce. With this plugin you can accept all common payment methods - credit cards, mobile payments, invoices, and more.",
+            "de-DE": "Online-Zahlungsdienste für den E-Commerce. Mit diesem Plugin können Sie alle gängigen Zahlungsmethoden akzeptieren - Kreditkarten, mobile Zahlungen, Rechnungen und mehr."
         },
         "manufacturerLink": {
             "dk-DK": "https://www.wexo.dk",

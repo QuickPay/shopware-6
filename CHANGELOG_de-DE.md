@@ -1,0 +1,55 @@
+# 5.0.11
+
+* Ein Problem wurde behoben, bei dem die manuelle Zahlungserfassung fehlschlug, wenn der Bestellstatus "Autorisiert" war.
+
+# 5.0.10
+
+* Fixed an issue where payment did not finalize when receiving callback from Quickpay
+
+# 5.0.9
+
+* Fix für doppelte Token-Ungültigkeitserklärung bei Verwendung von MobilePay und Mastercard
+* Shopware 6.4.5.x-Kompatibilität
+
+# 5.0.7
+
+* Stellen Sie sicher, dass der Warenkorb nach erfolgreicher Zahlung auf Shopware 6.4.4.1 gelöscht wird
+
+# 5.0.6
+
+* Problem mit doppelter Token-Ungültigkeitserklärung in Shopware 6.4.3.0 behoben
+
+# 5.0.5
+
+* Verwenden Sie verkaufskanalspezifische Einstellungen, um die Zahlung zu stornieren
+* Versuchen Sie nicht, autorisierte Zahlungen zu stornieren
+
+# 5.0.3
+
+* Kleinere Anpassungen und Aufräumarbeiten. PHP 7.2 wird nicht mehr unterstützt
+
+# 5.0.2
+
+* API-Test von API & privatem Schlüssel
+* Fehler beim Abbrechen der Bestellung behoben
+
+# 5.0.0
+
+* Shopware 6.4 Kompatibilität
+* Rückruf-Check
+* Zahlungs- und Versandautomatisierungen
+
+# 3.2.0
+
+* Viabill fügte hinzu
+* Klarna fügte hinzu
+* Legen Sie die Sprache des Zahlungsfensters basierend auf der Sprache des Vertriebskanals fest
+* Bessere Rückrufbearbeitung
+
+# 3.0.4
+
+* API-Testschaltfläche korrigieren
+
+# 3.0.3
+
+* Die Notwendigkeit für die MobilePay-ID in der Administratorkonfiguration wurde entfernt
