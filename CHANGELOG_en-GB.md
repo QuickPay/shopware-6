@@ -1,3 +1,7 @@
+# 5.0.11
+
+* Fixed an issue where manual payment capture failed if order state was "Authorized"
+
 # 5.0.10
 
 * Fixed an issue where payment did not finalize when receiving callback from Quickpay
