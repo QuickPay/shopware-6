@@ -16,7 +16,7 @@ variables:
 
 codesniffer:
   stage: syntax
-  image: registry.services.wexo.dk:4567/wexo-services/docker-magento:shopware-plugins-codesniffer-7.4
+  image: registry.services.wexo.dk:4567/wexo-services/docker-magento/shopware-plugins-quality-php:7.4-fpm
   script:
     - ~/phpcs.sh
   allow_failure: false
