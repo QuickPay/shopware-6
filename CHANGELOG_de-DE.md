@@ -1,3 +1,7 @@
+# 5.1.0
+
+* Swish als Zahlungsmethode hinzugefügt  
+
 # 5.0.11
 
 * Ein Problem wurde behoben, bei dem die manuelle Zahlungserfassung fehlschlug, wenn der Bestellstatus "Autorisiert" war.

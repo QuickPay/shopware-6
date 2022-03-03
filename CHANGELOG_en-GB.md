@@ -1,3 +1,7 @@
+# 5.1.0
+
+* Added Swish as a payment method
+
 # 5.0.11
 
 * Fixed an issue where manual payment capture failed if order state was "Authorized"
