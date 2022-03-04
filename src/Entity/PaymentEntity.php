@@ -1,5 +1,6 @@
 <?php
 
+
 namespace QuickPay\Entity;
 
 use DateTime;
@@ -10,22 +11,18 @@ use Shopware\Core\Framework\DataAbstractionLayer\EntityIdTrait;
 class PaymentEntity extends Entity
 {
     use EntityIdTrait;
-    
     /**
      * @var string QuickPay Id of the payment
      */
     protected $quickpayId;
-    
     /**
      * @var string QuickPay Id of the payment
      */
     protected $quickpayOrderId;
-
     /**
      * @var integer Status of the payment
      */
     protected $status;
-    
     const PAYMENT_CREATED = 0;
     const PAYMENT_FULLY_AUTHORIZED = 5;
     const PAYMENT_CAPTURE_REQUESTED = 10;
@@ -37,59 +34,48 @@ class PaymentEntity extends Entity
     const PAYMENT_PARTLY_REFUNDED = 32;
     const PAYMENT_FULLY_REFUNDED = 35;
     const PAYMENT_INVALIDATED = 100;
-    
     /**
      * @var string The Id of the transaction
      */
     protected $transactionId;
-    
     /**
      * @var OrderTransactionEntity The transaction object
      */
     protected $transaction;
-    
     /**
      * @var string link for the payment
      */
     protected $link;
-    
     /**
      * @var string currency for the payment
      */
     protected $currency;
-    
     /**
      * @var integer Amount to pay
      */
     protected $amount;
-    
     /**
      * @var integer Amount authorized through QuickPay
      */
     protected $amountAuthorized;
-
     /**
      *
      * @var integer Amount captured through QuickPay
      */
     protected $amountCaptured;
-    
     /**
      *
      * @var integer Amount refunded through QuickPay
      */
     protected $amountRefunded;
-    
     /**
      * @var DateTime timestamp of the payment authorization
      */
     protected $authorizedAt;
-    
     /**
      * @var PaymentOperationCollection List of operations
      */
     protected $operations;
-    
     /**
      * Get the QuickPay payment id
      * @return string
@@ -179,7 +165,7 @@ class PaymentEntity extends Entity
     {
         return $this->amountRefunded;
     }
-
+    
     /**
      * get the time the Payment was authorized at
      * @return DateTime
@@ -188,7 +174,7 @@ class PaymentEntity extends Entity
     {
         return $this->authorizedAt;
     }
-
+    
     /**
      * Get the List of linked operations
      * @return PaymentOperationCollection operations for the payment

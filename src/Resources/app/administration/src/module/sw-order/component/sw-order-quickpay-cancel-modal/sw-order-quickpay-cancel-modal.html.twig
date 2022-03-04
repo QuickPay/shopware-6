@@ -1,26 +1,19 @@
-<sw-modal class="sw-confirm-modal"
-    :title="$tc('sw-order.quickpay.modal.cancelTitle')"
-    @modal-close="$emit('close')">
+<sw-modal class="sw-confirm-modal" :title="$tc('sw-order.quickpay.modal.cancelTitle')" @modal-close="$emit('close')">
 
-    <p class="sw-confirm-modal__text">
-        {{ $tc('sw-order.quickpay.modal.cancelText') }}
-    </p>
+	<p class="sw-confirm-modal__text">
+		{{ $tc('sw-order.quickpay.modal.cancelText') }}
+	</p>
 
-    <template #modal-footer>
+	<template #modal-footer>
 
-        <sw-button class="sw-confirm-modal__button-cancel"
-                size="small"
-                @click="$emit('close')">
-            {{ $tc('global.default.cancel') }}
-        </sw-button>
+		<sw-button class="sw-confirm-modal__button-cancel" size="small" @click="$emit('close')">
+			{{ $tc('global.default.cancel') }}
+		</sw-button>
 
-        <sw-button class="sw-confirm-modal__button-confirm"
-                variant="primary"
-                size="small"
-                @click="onConfirm()">
-            {{ $tc('global.default.confirm') }}
-        </sw-button>
+		<sw-button class="sw-confirm-modal__button-confirm" variant="primary" size="small" @click="onConfirm()">
+			{{ $tc('global.default.confirm') }}
+		</sw-button>
 
-    </template>
+	</template>
 
 </sw-modal>

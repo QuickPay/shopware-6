@@ -1,4 +1,7 @@
-<?php declare(strict_types=1);
+<?php
+
+
+declare(strict_types=1);
 
 namespace QuickPay;
 
@@ -20,7 +23,7 @@ abstract class PaymentPlugin extends Plugin
     {
         $this->addPaymentMethods($context->getContext());
     }
-    
+
     public function update(Plugin\Context\UpdateContext $context): void
     {
         $this->addPaymentMethods($context->getContext());
@@ -37,26 +40,9 @@ abstract class PaymentPlugin extends Plugin
         parent::activate($context);
     }
 
-    public function deactivate(DeactivateContext $context): void
-    {
-        $this->setPaymentMethodsIsActive(false, $context->getContext());
-        parent::deactivate($context);
-    }
-
-    protected abstract function getPaymentMethodClasses(): array;
-    
-    private function addPaymentMethods(Context $context)
-    {
-        foreach($this->getPaymentMethodClasses() as $paymentMethodClass)
-        {
-            $this->addPaymentMethod($paymentMethodClass, $context);
-        }
-    }
-    
     private function addPaymentMethod($paymentMethodClass, Context $context): void
     {
         $paymentMethodExists = $this->getPaymentMethodId($paymentMethodClass);
-
         // Payment method exists already, no need to continue here
         if ($paymentMethodExists) {
             return;
@@ -65,7 +51,6 @@ abstract class PaymentPlugin extends Plugin
         /** @var PluginIdProvider $pluginIdProvider */
         $pluginIdProvider = $this->container->get(PluginIdProvider::class);
         $pluginId = $pluginIdProvider->getPluginIdByBaseClass(get_class($this), $context);
-
         $paymentData = [
             // payment handler will be selected by the identifier
             'handlerIdentifier' => $paymentMethodClass,
@@ -73,7 +58,6 @@ abstract class PaymentPlugin extends Plugin
             'description' => $paymentMethodClass::$description,
             'pluginId' => $pluginId,
         ];
-
         /** @var EntityRepositoryInterface $paymentRepository */
         $paymentRepository = $this->container->get('payment_method.repository');
         $paymentRepository->create([$paymentData], $context);
@@ -82,7 +66,6 @@ abstract class PaymentPlugin extends Plugin
     private function removePaymentMethod($paymentMethodClass, Context $context): void
     {
         $paymentMethodId = $this->getPaymentMethodId($paymentMethodClass);
-
         // Payment method doesn't exists, no need to continue here
         if (!$paymentMethodId) {
             return;
@@ -92,22 +75,31 @@ abstract class PaymentPlugin extends Plugin
         $paymentRepository = $this->container->get('payment_method.repository');
         $paymentRepository->delete([$paymentMethodId], $context);
     }
-    
+
     private function setPaymentMethodsIsActive(bool $active, Context $context): void
     {
-        foreach($this->getPaymentMethodClasses() as $paymentMethodClass)
-        {
+        foreach ($this->getPaymentMethodClasses() as $paymentMethodClass) {
             $this->setPaymentMethodIsActive($paymentMethodClass, $active, $context);
         }
     }
-    
+    public function deactivate(DeactivateContext $context): void
+    {
+        $this->setPaymentMethodsIsActive(false, $context->getContext());
+        parent::deactivate($context);
+    }
+
+    protected abstract function getPaymentMethodClasses(): array;
+    private function addPaymentMethods(Context $context)
+    {
+        foreach ($this->getPaymentMethodClasses() as $paymentMethodClass) {
+            $this->addPaymentMethod($paymentMethodClass, $context);
+        }
+    }
     private function setPaymentMethodIsActive($paymentMethodClass, bool $active, Context $context): void
     {
         /** @var EntityRepositoryInterface $paymentRepository */
         $paymentRepository = $this->container->get('payment_method.repository');
-
         $paymentMethodId = $this->getPaymentMethodId($paymentMethodClass);
-
         // Payment does not even exist, so nothing to (de-)activate here
         if (!$paymentMethodId) {
             return;
@@ -117,7 +109,6 @@ abstract class PaymentPlugin extends Plugin
             'id' => $paymentMethodId,
             'active' => $active,
         ];
-
         $paymentRepository->update([$paymentMethod], $context);
     }
 
@@ -125,7 +116,6 @@ abstract class PaymentPlugin extends Plugin
     {
         /** @var EntityRepositoryInterface $paymentRepository */
         $paymentRepository = $this->container->get('payment_method.repository');
-
         // Fetch ID for update
         $paymentCriteria = (new Criteria())->addFilter(new EqualsFilter('handlerIdentifier', $paymentMethodClass));
         return $paymentRepository->searchIds($paymentCriteria, Context::createDefaultContext())->firstId();

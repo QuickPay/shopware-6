@@ -1,4 +1,7 @@
-<?php declare(strict_types=1);
+<?php
+
+
+declare(strict_types=1);
 
 namespace QuickPay\Migration;
 
@@ -11,11 +14,11 @@ class Migration1612870836CreatePaymentOperationTable extends MigrationStep
     {
         return 1612870836;
     }
-
+    
     public function update(Connection $connection): void
     {
-        $sql = 
-<<<SQL
+        $sql =
+            <<<SQL
     CREATE TABLE IF NOT EXISTS `quickpay_payment_operation` (
         `id` BINARY(16) NOT NULL,
         `version_id` BINARY(16) NOT NULL,
@@ -36,10 +39,9 @@ class Migration1612870836CreatePaymentOperationTable extends MigrationStep
     DEFAULT CHARSET = utf8mb4
     COLLATE = utf8mb4_unicode_ci;
 SQL;
-        
         $connection->executeUpdate($sql);
     }
-
+    
     public function updateDestructive(Connection $connection): void
     {
         // implement update destructive

@@ -10,7 +10,7 @@ export default class QuickpayApiService extends ApiService {
         return await this.httpClient.post('_action/quickpay/capture', {
             id: id,
             amount: amount
-        },{
+        }, {
             headers: this.getBasicHeaders()
         });
     }
@@ -18,7 +18,7 @@ export default class QuickpayApiService extends ApiService {
     async cancel(id) {
         return await this.httpClient.post('_action/quickpay/cancel', {
             id: id,
-        },{
+        }, {
             headers: this.getBasicHeaders()
         });
     }
@@ -27,7 +27,7 @@ export default class QuickpayApiService extends ApiService {
         return await this.httpClient.post('_action/quickpay/refund', {
             id: id,
             amount: amount
-        },{
+        }, {
             headers: this.getBasicHeaders()
         });
     }
@@ -35,7 +35,7 @@ export default class QuickpayApiService extends ApiService {
     async refresh(id) {
         return await this.httpClient.post('_action/quickpay/refresh', {
             id: id,
-        },{
+        }, {
             headers: this.getBasicHeaders()
         });
     }

@@ -1,5 +1,6 @@
 <?php
 
+
 namespace QuickPay\Entity;
 
 use DateTime;
@@ -13,22 +14,18 @@ class PaymentOperationEntity extends Entity
      * @var PaymentEntity linked QuickPay payment
      */
     protected $payment;
-    
     /**
      * @var string Payment id from Quickpay
      */
     protected $quickpayPaymentId;
-    
     /**
      * @var string Operation id from Quickpay
      */
     protected $quickpayOperationId;
-
     /**
      * @var string type of the operations
      */
     protected $type;
-
     /**
      * @var string status of the operation
      */
@@ -58,6 +55,7 @@ class PaymentOperationEntity extends Entity
     {
         return $this->id;
     }
+    
     /**
      * Get the linked payment
      * @return PaymentEntity
@@ -66,6 +64,7 @@ class PaymentOperationEntity extends Entity
     {
         return $this->payment;
     }
+    
     /**
      * Get the QuickPay payment operation id
      * @return integer
@@ -74,6 +73,7 @@ class PaymentOperationEntity extends Entity
     {
         return $this->quickpayOperationId;
     }
+    
     /**
      * Get the QuickPay payment id
      * @return integer
@@ -82,6 +82,7 @@ class PaymentOperationEntity extends Entity
     {
         return $this->quickpayPaymentId;
     }
+    
     /**
      * Get the type of the operation
      * @return string
@@ -90,6 +91,7 @@ class PaymentOperationEntity extends Entity
     {
         return $this->type;
     }
+    
     /**
      * Get the status of the operation
      * @return string
@@ -98,6 +100,7 @@ class PaymentOperationEntity extends Entity
     {
         return $this->status;
     }
+    
     /**
      * Checks wether the operation was successfully
      * @return boolean
@@ -106,6 +109,7 @@ class PaymentOperationEntity extends Entity
     {
         return $this->status == self::PAYMENT_OPERATION_APPROVED;
     }
+    
     /**
      * Checks wether the operation was finished
      * @return boolean
@@ -117,6 +121,7 @@ class PaymentOperationEntity extends Entity
             self::PAYMENT_OPERATION_3D_SECURE_REQUIRED,
         ]) === false;
     }
+    
     /**
      * Get the amount fo the operation
      * @return integer
@@ -125,6 +130,7 @@ class PaymentOperationEntity extends Entity
     {
         return $this->amount;
     }
+    
     /**
      * get the raw JSON of the message
      * @return string
@@ -133,5 +139,4 @@ class PaymentOperationEntity extends Entity
     {
         return $this->rawJson;
     }
-
 }

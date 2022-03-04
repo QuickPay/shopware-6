@@ -1,5 +1,6 @@
 <?php
 
+
 namespace QuickPay\Extension;
 
 use QuickPay\Entity\PaymentDefinition;
