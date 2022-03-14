@@ -851,7 +851,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             $this->stateMachineRegistry->transition(
                 new Transition(
                     OrderDefinition::ENTITY_NAME,
-                    $transaction->getOrder()->getId(),
+                    $order->getId(),
                     StateMachineTransitionActions::ACTION_COMPLETE,
                     'stateId'
                 ),
