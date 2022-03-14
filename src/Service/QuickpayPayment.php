@@ -7,13 +7,14 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use Monolog\Logger;
 use Shopware\Core\Checkout\Cart\CartPersisterInterface;
+use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryStates;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionDefinition;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
+use Shopware\Core\Checkout\Order\OrderDefinition;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Order\OrderStates;
-use Shopware\Core\Checkout\Order\SalesChannel\OrderService;
 use Shopware\Core\Checkout\Payment\Cart\AsyncPaymentTransactionStruct;
 use Shopware\Core\Checkout\Payment\Cart\PaymentHandler\AsynchronousPaymentHandlerInterface;
 use Shopware\Core\Checkout\Payment\Exception\AsyncPaymentProcessException;
@@ -45,7 +46,6 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
     protected EntityRepositoryInterface $orderRepository;
     protected EntityRepositoryInterface $languageRepository;
     protected OrderTransactionStateHandler $transactionStateHandler;
-    protected OrderService $orderService;
     protected EntityRepositoryInterface $logEntryRepository;
     protected CartPersisterInterface $cartPersister;
     protected StateMachineRegistry $stateMachineRegistry;
@@ -57,7 +57,6 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
      * @param EntityRepositoryInterface $orderRepository
      * @param EntityRepositoryInterface $languageRepository
      * @param OrderTransactionStateHandler $transactionStateHandler
-     * @param OrderService $orderService
      * @param CartPersisterInterface $cartPersister
      * @param StateMachineRegistry $stateMachineRegistry
      */
@@ -67,7 +66,6 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         EntityRepositoryInterface $orderRepository,
         EntityRepositoryInterface $languageRepository,
         OrderTransactionStateHandler $transactionStateHandler,
-        OrderService $orderService,
         CartPersisterInterface $cartPersister,
         StateMachineRegistry $stateMachineRegistry
     ) {
@@ -76,7 +74,6 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         $this->orderRepository = $orderRepository;
         $this->languageRepository = $languageRepository;
         $this->transactionStateHandler = $transactionStateHandler;
-        $this->orderService = $orderService;
         $this->cartPersister = $cartPersister;
         $this->stateMachineRegistry = $stateMachineRegistry;
     }
@@ -230,10 +227,13 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                     }
 
                     if ($orderState !== OrderStates::STATE_CANCELLED) {
-                        $this->orderService->orderStateTransition(
-                            $transaction->getOrder()->getId(),
-                            StateMachineTransitionActions::ACTION_CANCEL,
-                            new ParameterBag(),
+                        $this->stateMachineRegistry->transition(
+                            new Transition(
+                                OrderDefinition::ENTITY_NAME,
+                                $transaction->getOrder()->getId(),
+                                StateMachineTransitionActions::ACTION_CANCEL,
+                                'stateId'
+                            ),
                             $context
                         );
                     }
@@ -291,18 +291,23 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
 
         if ($orderState !== OrderStates::STATE_IN_PROGRESS) {
             if ($orderState === OrderStates::STATE_CANCELLED) {
-                $this->orderService->orderStateTransition(
-                    $transaction->getOrder()->getId(),
-                    StateMachineTransitionActions::ACTION_REOPEN,
-                    new ParameterBag(),
+                $this->stateMachineRegistry->transition(
+                    new Transition(
+                        OrderDefinition::ENTITY_NAME,
+                        $transaction->getOrder()->getId(),
+                        StateMachineTransitionActions::ACTION_REOPEN,
+                        'stateId'
+                    ),
                     $context
                 );
             }
-
-            $this->orderService->orderStateTransition(
-                $transaction->getOrder()->getId(),
-                StateMachineTransitionActions::ACTION_PROCESS,
-                new ParameterBag(),
+            $this->stateMachineRegistry->transition(
+                new Transition(
+                    OrderDefinition::ENTITY_NAME,
+                    $transaction->getOrder()->getId(),
+                    StateMachineTransitionActions::ACTION_PROCESS,
+                    'stateId'
+                ),
                 $context
             );
         }
@@ -843,10 +848,13 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         }
 
         if ($orderComplete) {
-            $this->orderService->orderStateTransition(
-                $order->getId(),
-                StateMachineTransitionActions::ACTION_COMPLETE,
-                new ParameterBag(),
+            $this->stateMachineRegistry->transition(
+                new Transition(
+                    OrderDefinition::ENTITY_NAME,
+                    $transaction->getOrder()->getId(),
+                    StateMachineTransitionActions::ACTION_COMPLETE,
+                    'stateId'
+                ),
                 $context
             );
 
@@ -856,10 +864,13 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 $delivery &&
                 $delivery->getStateMachineState()->getTechnicalName() !== OrderDeliveryStates::STATE_SHIPPED
             ) {
-                $this->orderService->orderDeliveryStateTransition(
-                    $delivery->getId(),
-                    StateMachineTransitionActions::ACTION_SHIP,
-                    new ParameterBag(),
+                $this->stateMachineRegistry->transition(
+                    new Transition(
+                        OrderDeliveryEntity::ENTITY_NAME,
+                        $delivery->getId(),
+                        StateMachineTransitionActions::ACTION_SHIP,
+                        'stateId'
+                    ),
                     $context
                 );
             }

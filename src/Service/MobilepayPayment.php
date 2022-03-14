@@ -5,7 +5,6 @@ namespace Wexo\Quickpay\Service;
 use GuzzleHttp\Exception\GuzzleException;
 use Shopware\Core\Checkout\Cart\CartPersisterInterface;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
-use Shopware\Core\Checkout\Order\SalesChannel\OrderService;
 use Shopware\Core\Checkout\Payment\Cart\AsyncPaymentTransactionStruct;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
@@ -27,7 +26,6 @@ class MobilepayPayment extends QuickpayPayment
      * @param EntityRepositoryInterface $orderRepository
      * @param EntityRepositoryInterface $languageRepository
      * @param OrderTransactionStateHandler $transactionStateHandler
-     * @param OrderService $orderService
      * @param CartPersisterInterface $cartPersister
      * @param StateMachineRegistry $stateMachineRegistry
      */
@@ -37,7 +35,6 @@ class MobilepayPayment extends QuickpayPayment
         EntityRepositoryInterface $orderRepository,
         EntityRepositoryInterface $languageRepository,
         OrderTransactionStateHandler $transactionStateHandler,
-        OrderService $orderService,
         CartPersisterInterface $cartPersister,
         StateMachineRegistry $stateMachineRegistry
     ) {
@@ -47,7 +44,6 @@ class MobilepayPayment extends QuickpayPayment
             $orderRepository,
             $languageRepository,
             $transactionStateHandler,
-            $orderService,
             $cartPersister,
             $stateMachineRegistry
         );
