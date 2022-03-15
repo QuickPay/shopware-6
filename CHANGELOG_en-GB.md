@@ -1,3 +1,7 @@
+# 5.1.1
+
+* Shopware 6.4.9.0 compatibility
+
 # 5.1.0
 
 * Added Swish as a payment method

@@ -24,7 +24,6 @@
             <argument type="service" id="order.repository"/>
             <argument type="service" id="language.repository"/>
             <argument type="service" id="Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler"/>
-            <argument type="service" id="Shopware\Core\Checkout\Order\SalesChannel\OrderService" />
             <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
             <argument type="service" id="Shopware\Core\System\StateMachine\StateMachineRegistry"/>
             <tag name="shopware.payment.method.async" />
@@ -36,7 +35,6 @@
             <argument type="service" id="order.repository"/>
             <argument type="service" id="language.repository"/>
             <argument type="service" id="Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler"/>
-            <argument type="service" id="Shopware\Core\Checkout\Order\SalesChannel\OrderService" />
             <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
             <argument type="service" id="Shopware\Core\System\StateMachine\StateMachineRegistry"/>
             <tag name="shopware.payment.method.async" />
@@ -48,7 +46,6 @@
             <argument type="service" id="order.repository"/>
             <argument type="service" id="language.repository"/>
             <argument type="service" id="Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler"/>
-            <argument type="service" id="Shopware\Core\Checkout\Order\SalesChannel\OrderService" />
             <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
             <argument type="service" id="Shopware\Core\System\StateMachine\StateMachineRegistry"/>
             <tag name="shopware.payment.method.async" />
@@ -60,7 +57,6 @@
             <argument type="service" id="order.repository"/>
             <argument type="service" id="language.repository"/>
             <argument type="service" id="Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler"/>
-            <argument type="service" id="Shopware\Core\Checkout\Order\SalesChannel\OrderService" />
             <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
             <argument type="service" id="Shopware\Core\System\StateMachine\StateMachineRegistry"/>
             <tag name="shopware.payment.method.async" />
@@ -72,7 +68,6 @@
             <argument type="service" id="order.repository"/>
             <argument type="service" id="language.repository"/>
             <argument type="service" id="Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler"/>
-            <argument type="service" id="Shopware\Core\Checkout\Order\SalesChannel\OrderService" />
             <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
             <argument type="service" id="Shopware\Core\System\StateMachine\StateMachineRegistry"/>
             <tag name="shopware.payment.method.async" />
