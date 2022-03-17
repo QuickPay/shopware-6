@@ -1,3 +1,8 @@
+# 5.2.0
+
+* Paypal als Zahlungsmethode hinzugefügt
+* Das Quickpay-Zahlungsfenster zeigt jetzt nur alternative Zahlungsmethoden an, die im aktuellen Verkaufskanal aktiviert sind
+
 # 5.1.1
 
 * Kompatibilität mit Shopware 6.4.9.0

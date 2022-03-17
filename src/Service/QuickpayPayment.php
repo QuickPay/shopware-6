@@ -19,9 +19,15 @@ use Shopware\Core\Checkout\Payment\Cart\AsyncPaymentTransactionStruct;
 use Shopware\Core\Checkout\Payment\Cart\PaymentHandler\AsynchronousPaymentHandlerInterface;
 use Shopware\Core\Checkout\Payment\Exception\AsyncPaymentProcessException;
 use Shopware\Core\Checkout\Payment\Exception\CustomerCanceledAsyncPaymentException;
+use Shopware\Core\Checkout\Payment\PaymentMethodCollection;
+use Shopware\Core\Checkout\Payment\PaymentMethodEntity;
 use Shopware\Core\Framework\Context;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityCollection;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\AndFilter;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsAnyFilter;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Struct\ArrayStruct;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
@@ -40,11 +46,14 @@ use Wexo\Quickpay\WexoQuickpay;
  */
 class QuickpayPayment implements AsynchronousPaymentHandlerInterface
 {
+    protected static string $quickpayName = 'creditcard';
+
     /** @var Client[] $apiClients */
     protected array $apiClients = [];
     protected SystemConfigService $systemConfigService;
     protected EntityRepositoryInterface $orderRepository;
     protected EntityRepositoryInterface $languageRepository;
+    protected EntityRepositoryInterface $paymentMethodRepository;
     protected OrderTransactionStateHandler $transactionStateHandler;
     protected EntityRepositoryInterface $logEntryRepository;
     protected CartPersisterInterface $cartPersister;
@@ -56,6 +65,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
      * @param EntityRepositoryInterface $logEntryRepository
      * @param EntityRepositoryInterface $orderRepository
      * @param EntityRepositoryInterface $languageRepository
+     * @param EntityRepositoryInterface $paymentMethodRepository
      * @param OrderTransactionStateHandler $transactionStateHandler
      * @param CartPersisterInterface $cartPersister
      * @param StateMachineRegistry $stateMachineRegistry
@@ -65,6 +75,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         EntityRepositoryInterface $logEntryRepository,
         EntityRepositoryInterface $orderRepository,
         EntityRepositoryInterface $languageRepository,
+        EntityRepositoryInterface $paymentMethodRepository,
         OrderTransactionStateHandler $transactionStateHandler,
         CartPersisterInterface $cartPersister,
         StateMachineRegistry $stateMachineRegistry
@@ -73,6 +84,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         $this->logEntryRepository = $logEntryRepository;
         $this->orderRepository = $orderRepository;
         $this->languageRepository = $languageRepository;
+        $this->paymentMethodRepository = $paymentMethodRepository;
         $this->transactionStateHandler = $transactionStateHandler;
         $this->cartPersister = $cartPersister;
         $this->stateMachineRegistry = $stateMachineRegistry;
@@ -433,16 +445,14 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         ];
 
         $order = $transaction->getOrder();
-        $paymentHandler = $transaction->getOrderTransaction()->getPaymentMethod()->getHandlerIdentifier();
-        if ($paymentHandler === MobilepayPayment::class) {
-            $updateFormParams['payment_methods'] = 'mobilepay';
-        } elseif ($paymentHandler === KlarnaPayment::class) {
-            $updateFormParams['payment_methods'] = 'klarna-payments';
-        } elseif ($paymentHandler == ViabillPayment::class) {
-            $updateFormParams['payment_methods'] = 'viabill';
-        } elseif ($paymentHandler == SwishPayment::class) {
-            $updateFormParams['payment_methods'] = 'swish';
-        }
+
+        /** @var PaymentMethodCollection $paymentMethods */
+        $paymentMethods = $this->getActiveQuickpayPaymentMethods($salesChannelContext);
+
+        $quickpayNames = $paymentMethods->map(function ($paymentMethod) {
+            return $paymentMethod->getHandlerIdentifier()::$quickpayName;
+        });
+        $updateFormParams['payment_methods'] = implode(", ", $quickpayNames);
 
         $customFields = $order->getCustomFields();
         $paymentResponse = \json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
@@ -981,5 +991,32 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         }
 
         return $language;
+    }
+
+    private function getActiveQuickpayPaymentMethods(SalesChannelContext $salesChannelContext): EntityCollection
+    {
+        $handlers = [];
+        foreach (WexoQuickpay::DEFAULT_PAYMENT_METHODS as $name => $props) {
+            $handlers[] = $props['handler'];
+        }
+
+        $criteria = (new Criteria())
+            ->addFilter(new AndFilter([
+                new EqualsAnyFilter('handlerIdentifier', $handlers),
+                new EqualsFilter('active', true)
+            ]));
+
+        $context = $salesChannelContext->getContext();
+        $paymentMethods = $this->paymentMethodRepository->search($criteria, $context)->getEntities();
+
+        $salesChannelPaymentMethods = $paymentMethods->filter(
+            function(PaymentMethodEntity $method) use ($salesChannelContext) {
+                return in_array($method->getId(), $salesChannelContext->getSalesChannel()->getPaymentMethodIds());
+            }
+        );
+
+        $salesChannelPaymentMethods->sortPaymentMethodsByPreference($salesChannelContext);
+
+        return $salesChannelPaymentMethods;
     }
 }

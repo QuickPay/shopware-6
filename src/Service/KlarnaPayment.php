@@ -19,12 +19,15 @@ use Shopware\Core\System\StateMachine\StateMachineRegistry;
  */
 class KlarnaPayment extends QuickpayPayment
 {
+    protected static string $quickpayName = 'klarna-payments';
+
     /**
      * KlarnaPayment constructor.
      * @param SystemConfigService $systemConfigService
      * @param EntityRepositoryInterface $logEntryRepository
      * @param EntityRepositoryInterface $orderRepository
      * @param EntityRepositoryInterface $languageRepository
+     * @param EntityRepositoryInterface $paymentMethodRepository
      * @param OrderTransactionStateHandler $transactionStateHandler
      * @param CartPersisterInterface $cartPersister
      * @param StateMachineRegistry $stateMachineRegistry
@@ -34,6 +37,7 @@ class KlarnaPayment extends QuickpayPayment
         EntityRepositoryInterface $logEntryRepository,
         EntityRepositoryInterface $orderRepository,
         EntityRepositoryInterface $languageRepository,
+        EntityRepositoryInterface $paymentMethodRepository,
         OrderTransactionStateHandler $transactionStateHandler,
         CartPersisterInterface $cartPersister,
         StateMachineRegistry $stateMachineRegistry
@@ -43,6 +47,7 @@ class KlarnaPayment extends QuickpayPayment
             $logEntryRepository,
             $orderRepository,
             $languageRepository,
+            $paymentMethodRepository,
             $transactionStateHandler,
             $cartPersister,
             $stateMachineRegistry
