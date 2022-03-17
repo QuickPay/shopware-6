@@ -1010,7 +1010,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         $paymentMethods = $this->paymentMethodRepository->search($criteria, $context)->getEntities();
 
         $salesChannelPaymentMethods = $paymentMethods->filter(
-            function(PaymentMethodEntity $method) use ($salesChannelContext) {
+            function (PaymentMethodEntity $method) use ($salesChannelContext) {
                 return in_array($method->getId(), $salesChannelContext->getSalesChannel()->getPaymentMethodIds());
             }
         );
