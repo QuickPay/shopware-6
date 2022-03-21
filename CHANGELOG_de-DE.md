@@ -1,3 +1,12 @@
+# 5.1.2
+
+* Änderungen bei der Swish-Zahlung
+  * Da es sich bei Swish um eine Banküberweisung handelt, erfolgt die Erfassung beim Abschluss der Transaktion.
+  * Der Zahlungsstatus in Shopware wird direkt auf Bezahlt aktualisiert (Autorisiert wird übersprungen), da die Erfassung bereits erfolgt ist.
+  * Wenn wir versuchen, eine Swish-Zahlung zu erfassen, überspringen wir die Erfassung und aktualisieren Shopware-Status für den Versand- und Bestellstatus.
+    * Versandstatus: Versendet
+    * Bestellstatus: Fertig
+
 # 5.1.1
 
 * Kompatibilität mit Shopware 6.4.9.0
