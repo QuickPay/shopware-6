@@ -278,15 +278,21 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 );
             }
 
-            $this->stateMachineRegistry->transition(
-                new Transition(
-                    OrderTransactionDefinition::ENTITY_NAME,
+            $paymentHandler = $transaction->getOrderTransaction()->getPaymentMethod()->getHandlerIdentifier();
+
+            // Since Swish is a banktransfer, capture happens at the same time as Authorized.
+            // So we set payment status to Paid instead of Authorized.
+            if ($paymentHandler === SwishPayment::class) {
+                $this->transactionStateHandler->paid(
                     $transaction->getOrderTransaction()->getId(),
-                    StateMachineTransitionActions::ACTION_AUTHORIZE,
-                    'stateId'
-                ),
-                $context
-            );
+                    $context
+                );
+            } else {
+                $this->transactionStateHandler->authorize(
+                    $transaction->getOrderTransaction()->getId(),
+                    $context
+                );
+            }
         }
 
         if ($orderState !== OrderStates::STATE_IN_PROGRESS) {
@@ -727,6 +733,13 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             return null;
         }
 
+        // On swish payment, skip trying to capture and update Shopware states for Shipping and Order
+        if ($paymentResponse->acquirer === 'swish') {
+            $this->swishPaymentUpdateStates($order, $context);
+
+            return true;
+        }
+
         // TODO: The customer could go into QuickPay and withdraw manually.
         $availableAmount = $this->getAvailableAmount($paymentResponse);
         if (! $amount) {
@@ -981,5 +994,26 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         }
 
         return $language;
+    }
+
+    /**
+     * @param OrderEntity $order
+     * @return void
+     */
+    private function swishPaymentUpdateStates(OrderEntity $order, Context $context): void
+    {
+        $this->orderService->orderStateTransition(
+            $order->getId(),
+            StateMachineTransitionActions::ACTION_COMPLETE,
+            new ParameterBag(),
+            $context
+        );
+
+        $this->orderService->orderDeliveryStateTransition(
+            $order->getDeliveries()->first()->getId(),
+            StateMachineTransitionActions::ACTION_SHIP,
+            new ParameterBag(),
+            $context
+        );
     }
 }
