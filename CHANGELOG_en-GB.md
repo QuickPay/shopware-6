@@ -1,3 +1,6 @@
+# 5.1.3
+* Bugfixes for Swish payment
+
 # 5.1.2
 
 * Changes to Swish payment:

@@ -7,7 +7,7 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use Monolog\Logger;
 use Shopware\Core\Checkout\Cart\CartPersisterInterface;
-use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryEntity;
+use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryDefinition;
 use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryStates;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionDefinition;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
@@ -879,7 +879,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             ) {
                 $this->stateMachineRegistry->transition(
                     new Transition(
-                        OrderDeliveryEntity::ENTITY_NAME,
+                        OrderDeliveryDefinition::ENTITY_NAME,
                         $delivery->getId(),
                         StateMachineTransitionActions::ACTION_SHIP,
                         'stateId'
@@ -1002,17 +1002,23 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
      */
     private function swishPaymentUpdateStates(OrderEntity $order, Context $context): void
     {
-        $this->orderService->orderStateTransition(
-            $order->getId(),
-            StateMachineTransitionActions::ACTION_COMPLETE,
-            new ParameterBag(),
+        $this->stateMachineRegistry->transition(
+            new Transition(
+                OrderDefinition::ENTITY_NAME,
+                $order->getId(),
+                StateMachineTransitionActions::ACTION_COMPLETE,
+                'stateId'
+            ),
             $context
         );
 
-        $this->orderService->orderDeliveryStateTransition(
-            $order->getDeliveries()->first()->getId(),
-            StateMachineTransitionActions::ACTION_SHIP,
-            new ParameterBag(),
+        $this->stateMachineRegistry->transition(
+            new Transition(
+                OrderDeliveryDefinition::ENTITY_NAME,
+                $order->getDeliveries()->first()->getId(),
+                StateMachineTransitionActions::ACTION_SHIP,
+                'stateId'
+            ),
             $context
         );
     }
