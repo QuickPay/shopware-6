@@ -1,3 +1,6 @@
+# 5.1.3
+* Fehlerbehebungen für die Swish-Zahlung
+
 # 5.1.2
 
 * Änderungen bei der Swish-Zahlung
