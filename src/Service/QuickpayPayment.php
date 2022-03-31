@@ -445,14 +445,8 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         ];
 
         $order = $transaction->getOrder();
-
-        /** @var PaymentMethodCollection $paymentMethods */
-        $paymentMethods = $this->getActiveQuickpayPaymentMethods($salesChannelContext);
-
-        $quickpayNames = $paymentMethods->map(function ($paymentMethod) {
-            return $paymentMethod->getHandlerIdentifier()::$quickpayName;
-        });
-        $updateFormParams['payment_methods'] = implode(", ", $quickpayNames);
+        $identifier = $transaction->getOrderTransaction()->getPaymentMethod()->getHandlerIdentifier();
+        $updateFormParams['payment_methods'] = $identifier::$quickpayName;
 
         $customFields = $order->getCustomFields();
         $paymentResponse = \json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
@@ -991,32 +985,5 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         }
 
         return $language;
-    }
-
-    private function getActiveQuickpayPaymentMethods(SalesChannelContext $salesChannelContext): EntityCollection
-    {
-        $handlers = [];
-        foreach (WexoQuickpay::DEFAULT_PAYMENT_METHODS as $name => $props) {
-            $handlers[] = $props['handler'];
-        }
-
-        $criteria = (new Criteria())
-            ->addFilter(new AndFilter([
-                new EqualsAnyFilter('handlerIdentifier', $handlers),
-                new EqualsFilter('active', true)
-            ]));
-
-        $context = $salesChannelContext->getContext();
-        $paymentMethods = $this->paymentMethodRepository->search($criteria, $context)->getEntities();
-
-        $salesChannelPaymentMethods = $paymentMethods->filter(
-            function (PaymentMethodEntity $method) use ($salesChannelContext) {
-                return in_array($method->getId(), $salesChannelContext->getSalesChannel()->getPaymentMethodIds());
-            }
-        );
-
-        $salesChannelPaymentMethods->sortPaymentMethodsByPreference($salesChannelContext);
-
-        return $salesChannelPaymentMethods;
     }
 }
