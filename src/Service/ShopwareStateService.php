@@ -116,4 +116,57 @@ class ShopwareStateService
             );
         }
     }
+
+    /**
+     * @param string $transactionId
+     * @param string $orderId
+     * @param string $paymentState
+     * @param string $orderState
+     * @return void
+     */
+    public function paid(
+        string $transactionId,
+        string $orderId,
+        string $paymentState,
+        string $orderState
+    ): void {
+        $context = Context::createDefaultContext();
+        if ($paymentState !== OrderTransactionStates::STATE_PAID) {
+            if ($paymentState === OrderTransactionStates::STATE_CANCELLED) {
+                $this->transactionStateHandler->reopen(
+                    $transactionId,
+                    $context
+                );
+            }
+
+            $this->transactionStateHandler->paid(
+                $transactionId,
+                $context
+            );
+        }
+
+        if ($orderState !== OrderStates::STATE_IN_PROGRESS) {
+            if ($orderState === OrderStates::STATE_CANCELLED) {
+                $this->stateMachineRegistry->transition(
+                    new Transition(
+                        OrderDefinition::ENTITY_NAME,
+                        $orderId,
+                        StateMachineTransitionActions::ACTION_REOPEN,
+                        'stateId'
+                    ),
+                    $context
+                );
+            }
+
+            $this->stateMachineRegistry->transition(
+                new Transition(
+                    OrderDefinition::ENTITY_NAME,
+                    $orderId,
+                    StateMachineTransitionActions::ACTION_PROCESS,
+                    'stateId'
+                ),
+                $context
+            );
+        }
+    }
 }

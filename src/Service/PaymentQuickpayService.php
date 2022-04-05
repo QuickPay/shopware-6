@@ -14,6 +14,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\Struct\ArrayStruct;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineTransition\StateMachineTransitionActions;
+use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryDefinition;
 use Symfony\Component\HttpFoundation\ParameterBag;
 use Wexo\Quickpay\ServiceInterface\QuickpayInterface;
 use Wexo\Quickpay\WexoQuickpay;
@@ -275,6 +276,13 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             return null;
         }
 
+        // On swish payment, skip trying to capture and update Shopware states for Shipping and Order
+        if ($paymentResponse->acquirer === 'swish') {
+            $this->swishPaymentUpdateStates($order, $context);
+
+            return true;
+        }
+
         // TODO: The customer could go into QuickPay and withdraw manually.
         $availableAmount = $this->getAvailableAmount($paymentResponse);
         if (! $amount) {
@@ -413,7 +421,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             ) {
                 $this->stateMachineRegistry->transition(
                     new Transition(
-                        OrderDeliveryEntity::ENTITY_NAME,
+                        OrderDeliveryDefinition::ENTITY_NAME,
                         $delivery->getId(),
                         StateMachineTransitionActions::ACTION_SHIP,
                         'stateId'
@@ -492,5 +500,32 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         $availableAmount = $authorizedAmount - $capturedAmount;
 
         return (float) $availableAmount;
+    }
+
+    /**
+     * @param OrderEntity $order
+     * @return void
+     */
+    private function swishPaymentUpdateStates(OrderEntity $order, Context $context): void
+    {
+        $this->stateMachineRegistry->transition(
+            new Transition(
+                OrderDefinition::ENTITY_NAME,
+                $order->getId(),
+                StateMachineTransitionActions::ACTION_COMPLETE,
+                'stateId'
+            ),
+            $context
+        );
+
+        $this->stateMachineRegistry->transition(
+            new Transition(
+                OrderDeliveryDefinition::ENTITY_NAME,
+                $order->getDeliveries()->first()->getId(),
+                StateMachineTransitionActions::ACTION_SHIP,
+                'stateId'
+            ),
+            $context
+        );
     }
 }
