@@ -81,7 +81,7 @@ class QuickpayRecurringController extends AbstractController
 
         $response = json_decode($request->getContent(), true);
         if (! isset($response['order_id'])) {
-            return new JsonResponse([],Response::HTTP_BAD_REQUEST);
+            return new JsonResponse([], Response::HTTP_BAD_REQUEST);
         }
 
         $criteria = new Criteria();
@@ -92,7 +92,7 @@ class QuickpayRecurringController extends AbstractController
         /** @var OrderEntity $order */
         $order = $this->orderRepository->search($criteria, Context::createDefaultContext())->first();
         if (! $order) {
-            return new JsonResponse([],Response::HTTP_BAD_REQUEST);
+            return new JsonResponse([], Response::HTTP_BAD_REQUEST);
         }
 
         $states = [
@@ -118,7 +118,7 @@ class QuickpayRecurringController extends AbstractController
         );
 
         if (! $valid) {
-            return new JsonResponse([],Response::HTTP_BAD_REQUEST);
+            return new JsonResponse([], Response::HTTP_BAD_REQUEST);
         }
 
         try {

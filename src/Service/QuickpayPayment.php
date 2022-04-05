@@ -139,7 +139,6 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
 
             $accepted = $response['accepted'] ?? false;
             if ($accepted) {
-
                 $paymentHandler = $transaction->getOrderTransaction()->getPaymentMethod()->getHandlerIdentifier();
                 if ($paymentHandler === SwishPayment::class) {
                     // Since Swish is a banktransfer, capture happens at the same time as Authorized.
