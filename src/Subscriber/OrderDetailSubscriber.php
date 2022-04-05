@@ -3,6 +3,7 @@
 namespace Wexo\Quickpay\Subscriber;
 
 use GuzzleHttp\Exception\GuzzleException;
+use Shopware\Core\Checkout\Cart\Order\OrderConvertedEvent;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
@@ -11,7 +12,8 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\System\StateMachine\Event\StateMachineTransitionEvent;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
-use Wexo\Quickpay\Service\QuickpayPayment;
+use Wexo\Quickpay\Service\SubscriptionQuickpayService;
+use Wexo\Quickpay\ServiceInterface\QuickpayInterface;
 
 /**
  * Class OrderDetailSubscriber
@@ -21,22 +23,24 @@ class OrderDetailSubscriber implements EventSubscriberInterface
 {
     protected EntityRepositoryInterface $orderRepository;
     protected SystemConfigService $systemConfigService;
-    protected QuickpayPayment $quickpayPaymentService;
+    protected QuickpayInterface $paymentService;
+    protected SubscriptionQuickpayService $subscriptionQuickpayService;
 
     /**
-     * OrderDetailSubscriber constructor.
      * @param EntityRepositoryInterface $orderRepository
      * @param SystemConfigService $systemConfigService
-     * @param QuickpayPayment $quickpayPaymentService
+     * @param QuickpayInterface $paymentService
      */
     public function __construct(
         EntityRepositoryInterface $orderRepository,
         SystemConfigService $systemConfigService,
-        QuickpayPayment $quickpayPaymentService
+        QuickpayInterface $paymentService,
+        SubscriptionQuickpayService $subscriptionQuickpayService
     ) {
         $this->orderRepository = $orderRepository;
         $this->systemConfigService = $systemConfigService;
-        $this->quickpayPaymentService = $quickpayPaymentService;
+        $this->paymentService = $paymentService;
+        $this->subscriptionQuickpayService = $subscriptionQuickpayService;
     }
 
     /**
@@ -45,7 +49,8 @@ class OrderDetailSubscriber implements EventSubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
-            StateMachineTransitionEvent::class => 'onStateMachineTransitionEvent'
+            StateMachineTransitionEvent::class => 'onStateMachineTransitionEvent',
+            OrderConvertedEvent::class => 'orderConvertedEvent'
         ];
     }
 
@@ -70,7 +75,7 @@ class OrderDetailSubscriber implements EventSubscriberInterface
         $capture = $event->getContext()->getExtension('capture');
         if ($order) {
             if ($eventName === OrderTransactionStates::STATE_CANCELLED) {
-                $this->quickpayPaymentService->cancelPayment($order);
+                $this->paymentService->cancel($order);
             }
 
             if ($capture && ! $capture->get('amount')) {
@@ -78,17 +83,30 @@ class OrderDetailSubscriber implements EventSubscriberInterface
             }
 
             if ($eventName === OrderTransactionStates::STATE_PAID) {
-                $this->quickpayPaymentService->capturePayment($order->getId());
+                $this->paymentService->capture($order->getId());
             }
 
             if ($eventName === OrderTransactionStates::STATE_PARTIALLY_PAID &&
                 $capture && $capture->get('amount')
             ) {
-                $this->quickpayPaymentService->capturePayment(
+                $this->paymentService->capture(
                     $order->getId(),
                     (float) $capture->get('amount')
                 );
             }
+        }
+    }
+
+    /**
+     * @param OrderConvertedEvent $event
+     * @return void
+     * @throws GuzzleException
+     */
+    public function orderConvertedEvent(OrderConvertedEvent $event)
+    {
+        $subscription = $event->getContext()->getExtension('subscriptionOrder');
+        if ($subscription) {
+            $this->subscriptionQuickpayService->recurring($event->getOrder()->getId());
         }
     }
 }

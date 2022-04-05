@@ -19,69 +19,57 @@
         </service>
 
         <service id="Wexo\Quickpay\Service\QuickpayPayment">
-            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
-            <argument type="service" id="log_entry.repository" />
-            <argument type="service" id="order.repository"/>
-            <argument type="service" id="language.repository"/>
-            <argument type="service" id="Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler"/>
-            <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
-            <argument type="service" id="Shopware\Core\System\StateMachine\StateMachineRegistry"/>
+            <argument type="service" id="Wexo\Quickpay\Service\PaymentQuickpayService" />
+            <argument type="service" id="Wexo\Quickpay\Service\SubscriptionQuickpayService" />
+            <argument type="service" id="Wexo\Quickpay\Service\ShopwareStateService"/>
             <tag name="shopware.payment.method.async" />
         </service>
 
-        <service id="Wexo\Quickpay\Service\KlarnaPayment">
-            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
-            <argument type="service" id="log_entry.repository" />
-            <argument type="service" id="order.repository"/>
-            <argument type="service" id="language.repository"/>
+        <service id="Wexo\Quickpay\Service\ShopwareStateService">
             <argument type="service" id="Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler"/>
-            <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
-            <argument type="service" id="Shopware\Core\System\StateMachine\StateMachineRegistry"/>
-            <tag name="shopware.payment.method.async" />
+            <argument type="service" id="Shopware\Core\Checkout\Order\SalesChannel\OrderService" />
         </service>
 
-        <service id="Wexo\Quickpay\Service\ViabillPayment">
+        <service id="Wexo\Quickpay\Service\QuickpayService">
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
             <argument type="service" id="log_entry.repository" />
-            <argument type="service" id="order.repository"/>
             <argument type="service" id="language.repository"/>
+            <argument type="service" id="order.repository"/>
             <argument type="service" id="Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler"/>
-            <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
+            <argument type="service" id="Shopware\Core\Checkout\Order\SalesChannel\OrderService" />
             <argument type="service" id="Shopware\Core\System\StateMachine\StateMachineRegistry"/>
-            <tag name="shopware.payment.method.async" />
         </service>
 
-        <service id="Wexo\Quickpay\Service\MobilepayPayment">
-            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
-            <argument type="service" id="log_entry.repository" />
-            <argument type="service" id="order.repository"/>
-            <argument type="service" id="language.repository"/>
-            <argument type="service" id="Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler"/>
-            <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
-            <argument type="service" id="Shopware\Core\System\StateMachine\StateMachineRegistry"/>
-            <tag name="shopware.payment.method.async" />
+        <service id="Wexo\Quickpay\Service\PaymentQuickpayService"
+                 parent="Wexo\Quickpay\Service\QuickpayService">
         </service>
 
-        <service id="Wexo\Quickpay\Service\SwishPayment">
-            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
-            <argument type="service" id="log_entry.repository" />
-            <argument type="service" id="order.repository"/>
-            <argument type="service" id="language.repository"/>
-            <argument type="service" id="Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler"/>
-            <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
-            <argument type="service" id="Shopware\Core\System\StateMachine\StateMachineRegistry"/>
-            <tag name="shopware.payment.method.async" />
+        <service id="Wexo\Quickpay\Service\SubscriptionQuickpayService"
+                 parent="Wexo\Quickpay\Service\QuickpayService">
+        </service>
+
+        <service id="Wexo\Quickpay\Service\KlarnaPayment"
+                 parent="Wexo\Quickpay\Service\QuickpayPayment">
+        </service>
+
+        <service id="Wexo\Quickpay\Service\ViabillPayment"
+                 parent="Wexo\Quickpay\Service\QuickpayPayment">
+        </service>
+
+        <service id="Wexo\Quickpay\Service\MobilepayPayment"
+                 parent="Wexo\Quickpay\Service\QuickpayPayment">
         </service>
 
         <service id="Wexo\Quickpay\Subscriber\OrderDetailSubscriber" public="true">
             <argument type="service" id="order.repository"/>
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
-            <argument type="service" id="Wexo\Quickpay\Service\QuickpayPayment" />
+            <argument type="service" id="Wexo\Quickpay\Service\PaymentQuickpayService" />
+            <argument type="service" id="Wexo\Quickpay\Service\SubscriptionQuickpayService" />
             <tag name="kernel.event_subscriber"/>
         </service>
 
         <service id="Wexo\Quickpay\Controller\Api\QuickpayApiController">
-            <argument type="service" id="Wexo\Quickpay\Service\QuickpayPayment"/>
+            <argument type="service" id="Wexo\Quickpay\Service\PaymentQuickpayService"/>
             <tag name="controller.service_arguments"/>
         </service>
 
@@ -90,6 +78,17 @@
             <argument type="service" id="Shopware\Core\Checkout\Payment\PaymentService"/>
             <argument type="service" id="Shopware\Core\Checkout\Payment\Cart\Token\JWTFactoryV2" />
             <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
+            <tag name="controller.service_arguments"/>
+        </service>
+
+        <service id="Wexo\Quickpay\Controller\QuickpayRecurringController">
+            <argument type="service" id="log_entry.repository" />
+            <argument type="service" id="order.repository" />
+            <argument type="service" id="Wexo\Quickpay\Service\QuickpayService" />
+            <argument type="service" id="Wexo\Quickpay\Service\ShopwareStateService" />
+            <call method="setContainer">
+                <argument type="service" id="service_container"/>
+            </call>
             <tag name="controller.service_arguments"/>
         </service>
 

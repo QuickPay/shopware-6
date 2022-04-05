@@ -7,6 +7,7 @@ use Shopware\Core\Framework\Routing\Annotation\RouteScope;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
+use Wexo\Quickpay\Service\PaymentQuickpayService;
 use Wexo\Quickpay\Service\QuickpayPayment;
 
 /**
@@ -14,16 +15,15 @@ use Wexo\Quickpay\Service\QuickpayPayment;
  */
 class QuickpayApiController
 {
-    protected QuickpayPayment $quickpayPayment;
+    protected PaymentQuickpayService $paymentQuickpayService;
 
     /**
-     * QuickpayApiController constructor.
-     * @param QuickpayPayment $quickpayPayment
+     * @param PaymentQuickpayService $paymentQuickpayService
      */
     public function __construct(
-        QuickpayPayment $quickpayPayment
+        PaymentQuickpayService $paymentQuickpayService
     ) {
-        $this->quickpayPayment = $quickpayPayment;
+        $this->paymentQuickpayService = $paymentQuickpayService;
     }
 
     /**
@@ -39,7 +39,7 @@ class QuickpayApiController
             'quickpayPrivateKey' => $dataBag->get('WexoQuickpay.config.quickpayPrivateKey')
         ];
 
-        if ($this->quickpayPayment->isConfigValid($config)) {
+        if ($this->paymentQuickpayService->isConfigValid($config)) {
             return new JsonResponse(['isValid' => true]);
         }
 
@@ -61,7 +61,7 @@ class QuickpayApiController
         $amount = $dataBag->get('amount');
         $orderId = $dataBag->get('orderId');
 
-        $success = $this->quickpayPayment->capturePayment($orderId, $amount);
+        $success = $this->paymentQuickpayService->capture($orderId, $amount);
 
         return new JsonResponse([
             'success' => $success
@@ -82,7 +82,7 @@ class QuickpayApiController
     {
         $orderId = $dataBag->get('orderId');
 
-        $this->quickpayPayment->updateResponse($orderId);
+        $this->paymentQuickpayService->updateResponse($orderId);
 
         return new JsonResponse();
     }

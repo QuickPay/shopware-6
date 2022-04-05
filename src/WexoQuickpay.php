@@ -15,7 +15,6 @@ use Shopware\Core\Framework\Plugin\Context\UninstallContext;
 use Wexo\Quickpay\Service\QuickpayPayment;
 use Wexo\Quickpay\Service\MobilepayPayment;
 use Wexo\Quickpay\Service\KlarnaPayment;
-use Wexo\Quickpay\Service\SwishPayment;
 use Wexo\Quickpay\Service\ViabillPayment;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
@@ -32,12 +31,12 @@ class WexoQuickpay extends Plugin
         'MobilePay' => 'MobilePay from QuickPay',
         'Credit Card' => 'Credit cards from QuickPay',
         'Klarna' => 'Klarna from QuickPay',
-        'Viabill' => 'Viabill from QuickPay',
-        'Swish' => 'Swish from QuickPay'
+        'Viabill' => 'Viabill from QuickPay'
     ];
     public const FALLBACK_CURRENCY = 'EUR';
     public const QUICKPAY_FIELD_SET = 'quickpay';
     public const QUICKPAY_RESPONSE_FIELD = 'quickpay_response';
+    public const QUICKPAY_SUBSCRIPTION_ID = 'quickpay_subscription_id';
     public const LOG_CHANNEL = 'quickpay';
     public const ORDER_CREATE_SUCCESS = 'quickpay.order.create.success';
     public const ORDER_CREATE_ERROR = 'quickpay.order.create.error';
@@ -118,9 +117,6 @@ class WexoQuickpay extends Plugin
                 case "Viabill":
                     $handlerIdentifier = ViabillPayment::class;
                     break;
-                case "Swish":
-                    $handlerIdentifier = SwishPayment::class;
-                    break;
             };
             $paymentMethodId = $this->getPaymentMethodId($handlerIdentifier);
             $this->setPaymentMethodIsActive(false, $context->getContext(), $paymentMethodId);
@@ -140,6 +136,40 @@ class WexoQuickpay extends Plugin
                 $paymentRepository->update([$paymentMethod], Context::createDefaultContext());
             }
         }
+
+        if (version_compare($context->getCurrentPluginVersion(), '6.0.0', '>')) {
+            $customFieldSetRepository = $this->container->get('custom_field_set.repository');
+
+            $criteria = new Criteria();
+            $criteria->addFilter(new EqualsFilter('name', self::QUICKPAY_FIELD_SET));
+
+            /** @var CustomFieldSetEntity $customFieldSet */
+            $customFieldSet = $customFieldSetRepository->search(
+                $criteria,
+                $context->getContext()
+            )->first();
+
+            if ($customFieldSet) {
+                $customFieldSetRepository->upsert([
+                    [
+                        'id'           => $customFieldSet->getId(),
+                        'customFields' => [
+                            [
+                                'name'   => self::QUICKPAY_SUBSCRIPTION_ID,
+                                'type'   => CustomFieldTypes::TEXT,
+                                'config' => [
+                                    'label'               => 'Subscription ID',
+                                    'componentName'       => 'sw-field',
+                                    'customFieldType'     => CustomFieldTypes::TEXT,
+                                    'customFieldPosition' => 2,
+                                ],
+                            ]
+                        ]
+                    ]
+                ], $context->getContext());
+            }
+        }
+
         $this->addPaymentMethods(Context::createDefaultContext());
     }
 
@@ -159,9 +189,6 @@ class WexoQuickpay extends Plugin
                     break;
                 case "Viabill":
                     $handlerIdentifier = ViabillPayment::class;
-                    break;
-                case "Swish":
-                    $handlerIdentifier = SwishPayment::class;
                     break;
             };
             $paymentMethodId = $this->getPaymentMethodId($handlerIdentifier);
@@ -186,9 +213,6 @@ class WexoQuickpay extends Plugin
                     break;
                 case "Viabill":
                     $handlerIdentifier = ViabillPayment::class;
-                    break;
-                case "Swish":
-                    $handlerIdentifier = SwishPayment::class;
                     break;
             };
             $paymentMethodId = $this->getPaymentMethodId($handlerIdentifier);
@@ -217,9 +241,6 @@ class WexoQuickpay extends Plugin
                     break;
                 case "Viabill":
                     $handlerIdentifier = ViabillPayment::class;
-                    break;
-                case "Swish":
-                    $handlerIdentifier = SwishPayment::class;
                     break;
             };
 
