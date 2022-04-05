@@ -1,3 +1,6 @@
+# 6.0.0
+* Subscriptions added for Quickpay
+
 # 5.1.3
 * Bugfixes for Swish payment
 

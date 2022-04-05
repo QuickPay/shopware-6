@@ -1,3 +1,6 @@
+# 6.0.0
+* Abonnements für Quickpay hinzugefügt
+
 # 5.1.3
 * Fehlerbehebungen für die Swish-Zahlung
 
