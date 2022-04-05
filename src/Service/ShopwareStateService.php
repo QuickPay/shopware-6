@@ -18,18 +18,18 @@ use Symfony\Component\HttpFoundation\ParameterBag;
 class ShopwareStateService
 {
     protected OrderTransactionStateHandler $transactionStateHandler;
-    protected OrderService $orderService;
+    protected StateMachineRegistry $stateMachineRegistry;
 
     /**
      * @param OrderTransactionStateHandler $transactionStateHandler
-     * @param OrderService $orderService
+     * @param StateMachineRegistry $stateMachineRegistry
      */
     public function __construct(
         OrderTransactionStateHandler $transactionStateHandler,
-        OrderService $orderService
+        StateMachineRegistry $stateMachineRegistry
     ) {
         $this->transactionStateHandler = $transactionStateHandler;
-        $this->orderService = $orderService;
+        $this->stateMachineRegistry = $stateMachineRegistry;
     }
 
     /**
@@ -42,8 +42,8 @@ class ShopwareStateService
         string $transactionId,
         string $orderId,
         string $paymentState,
-        string $orderState)
-    {
+        string $orderState
+    ) {
         $context = Context::createDefaultContext();
         if ($paymentState !== OrderTransactionStates::STATE_CANCELLED) {
             $this->transactionStateHandler->cancel(
@@ -53,10 +53,13 @@ class ShopwareStateService
         }
 
         if ($orderState !== OrderStates::STATE_CANCELLED) {
-            $this->orderService->orderStateTransition(
-                $orderId,
-                StateMachineTransitionActions::ACTION_CANCEL,
-                new ParameterBag(),
+            $this->stateMachineRegistry->transition(
+                new Transition(
+                    OrderDefinition::ENTITY_NAME,
+                    $orderId,
+                    StateMachineTransitionActions::ACTION_CANCEL,
+                    'stateId'
+                ),
                 $context
             );
         }
@@ -92,18 +95,24 @@ class ShopwareStateService
 
         if ($orderState !== OrderStates::STATE_IN_PROGRESS) {
             if ($orderState === OrderStates::STATE_CANCELLED) {
-                $this->orderService->orderStateTransition(
-                    $orderId,
-                    StateMachineTransitionActions::ACTION_REOPEN,
-                    new ParameterBag(),
+                $this->stateMachineRegistry->transition(
+                    new Transition(
+                        OrderDefinition::ENTITY_NAME,
+                        $orderId,
+                        StateMachineTransitionActions::ACTION_REOPEN,
+                        'stateId'
+                    ),
                     $context
                 );
             }
 
-            $this->orderService->orderStateTransition(
-                $orderId,
-                StateMachineTransitionActions::ACTION_PROCESS,
-                new ParameterBag(),
+            $this->stateMachineRegistry->transition(
+                new Transition(
+                    OrderDefinition::ENTITY_NAME,
+                    $orderId,
+                    StateMachineTransitionActions::ACTION_PROCESS,
+                    'stateId'
+                ),
                 $context
             );
         }

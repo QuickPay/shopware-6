@@ -139,6 +139,8 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             $updateFormParams['payment_methods'] = 'klarna-payments';
         } elseif ($paymentHandler == ViabillPayment::class) {
             $updateFormParams['payment_methods'] = 'viabill';
+        } elseif ($paymentHandler == SwishPayment::class) {
+            $updateFormParams['payment_methods'] = 'swish';
         }
 
         $customFields = $order->getCustomFields();

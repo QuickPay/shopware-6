@@ -30,7 +30,6 @@ class QuickpayService
     protected EntityRepositoryInterface $languageRepository;
     protected EntityRepositoryInterface $orderRepository;
     protected OrderTransactionStateHandler $transactionStateHandler;
-    protected OrderService $orderService;
     protected StateMachineRegistry $stateMachineRegistry;
 
     /**
@@ -39,7 +38,6 @@ class QuickpayService
      * @param EntityRepositoryInterface $languageRepository
      * @param EntityRepositoryInterface $orderRepository
      * @param OrderTransactionStateHandler $transactionStateHandler
-     * @param OrderService $orderService
      * @param StateMachineRegistry $stateMachineRegistry
      */
     public function __construct(
@@ -48,7 +46,6 @@ class QuickpayService
         EntityRepositoryInterface $languageRepository,
         EntityRepositoryInterface $orderRepository,
         OrderTransactionStateHandler $transactionStateHandler,
-        OrderService $orderService,
         StateMachineRegistry $stateMachineRegistry
     ) {
         $this->systemConfigService = $systemConfigService;
@@ -56,7 +53,6 @@ class QuickpayService
         $this->languageRepository = $languageRepository;
         $this->orderRepository = $orderRepository;
         $this->transactionStateHandler = $transactionStateHandler;
-        $this->orderService = $orderService;
         $this->stateMachineRegistry = $stateMachineRegistry;
     }
 
