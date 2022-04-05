@@ -395,10 +395,13 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         }
 
         if ($orderComplete) {
-            $this->orderService->orderStateTransition(
-                $order->getId(),
-                StateMachineTransitionActions::ACTION_COMPLETE,
-                new ParameterBag(),
+            $this->stateMachineRegistry->transition(
+                new Transition(
+                    OrderDefinition::ENTITY_NAME,
+                    $order->getId(),
+                    StateMachineTransitionActions::ACTION_COMPLETE,
+                    'stateId'
+                ),
                 $context
             );
 
@@ -408,10 +411,13 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
                 $delivery &&
                 $delivery->getStateMachineState()->getTechnicalName() !== OrderDeliveryStates::STATE_SHIPPED
             ) {
-                $this->orderService->orderDeliveryStateTransition(
-                    $delivery->getId(),
-                    StateMachineTransitionActions::ACTION_SHIP,
-                    new ParameterBag(),
+                $this->stateMachineRegistry->transition(
+                    new Transition(
+                        OrderDeliveryEntity::ENTITY_NAME,
+                        $delivery->getId(),
+                        StateMachineTransitionActions::ACTION_SHIP,
+                        'stateId'
+                    ),
                     $context
                 );
             }
