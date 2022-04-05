@@ -263,12 +263,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         $orderState = $order->getStateMachineState()->getTechnicalName();
         $responseBody = $response->getBody()->getContents();
         if ($statusCode === 202) {
-            if ($responseBody) {
-                // Response for recurring does not always have a body (depending on Paymentmethod)
-                // If no body in response, get it from quickpay manually.
-                $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $responseBody;
-                $this->setOrderCustomFields($order->getId(), $customFields);
-            } else {
+            if (!$responseBody) {
                 $location = explode("/", $response->getHeader('Location')[0]);
                 $quickpayPaymentId = $location[4];
 
@@ -277,22 +272,22 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                         'GET',
                         'payments/' . $quickpayPaymentId
                     );
-                } catch (\Error | \TypeError | \Exception $e) {
+                } catch (\Error|\TypeError|\Exception $e) {
                     $this->paymentLogger(
                         WexoQuickpay::ORDER_COMPLETE_ERROR,
                         [
-                            'orderId'   => $orderId ?? null,
-                            'error'     => $e->getMessage(),
-                            'trace'     => $e->getTraceAsString(),
+                            'orderId' => $orderId ?? null,
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString(),
                             'errorType' => get_class($e)
                         ]
                     );
                 }
 
                 $responseBody = $response->getBody()->getContents();
-                $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $responseBody;
-                $this->setOrderCustomFields($order->getId(), $customFields);
             }
+            $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $responseBody;
+            $this->setOrderCustomFields($order->getId(), $customFields);
 
             if ($paymentState === OrderTransactionStates::STATE_OPEN) {
                 $this->transactionStateHandler->authorize(

@@ -15,7 +15,7 @@ use Shopware\Core\Framework\Struct\ArrayStruct;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineTransition\StateMachineTransitionActions;
 use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryDefinition;
-use Symfony\Component\HttpFoundation\ParameterBag;
+use Shopware\Core\System\StateMachine\Transition;
 use Wexo\Quickpay\ServiceInterface\QuickpayInterface;
 use Wexo\Quickpay\WexoQuickpay;
 
