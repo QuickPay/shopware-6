@@ -7,7 +7,7 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use Monolog\Logger;
 use Shopware\Core\Checkout\Cart\CartPersisterInterface;
-use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryEntity;
+use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryDefinition;
 use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryStates;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionDefinition;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
@@ -280,15 +280,21 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 );
             }
 
-            $this->stateMachineRegistry->transition(
-                new Transition(
-                    OrderTransactionDefinition::ENTITY_NAME,
+            $paymentHandler = $transaction->getOrderTransaction()->getPaymentMethod()->getHandlerIdentifier();
+
+            // Since Swish is a banktransfer, capture happens at the same time as Authorized.
+            // So we set payment status to Paid instead of Authorized.
+            if ($paymentHandler === SwishPayment::class) {
+                $this->transactionStateHandler->paid(
                     $transaction->getOrderTransaction()->getId(),
-                    StateMachineTransitionActions::ACTION_AUTHORIZE,
-                    'stateId'
-                ),
-                $context
-            );
+                    $context
+                );
+            } else {
+                $this->transactionStateHandler->authorize(
+                    $transaction->getOrderTransaction()->getId(),
+                    $context
+                );
+            }
         }
 
         if ($orderState !== OrderStates::STATE_IN_PROGRESS) {
@@ -721,6 +727,13 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             return null;
         }
 
+        // On swish payment, skip trying to capture and update Shopware states for Shipping and Order
+        if ($paymentResponse->acquirer === 'swish') {
+            $this->swishPaymentUpdateStates($order, $context);
+
+            return true;
+        }
+
         // TODO: The customer could go into QuickPay and withdraw manually.
         $availableAmount = $this->getAvailableAmount($paymentResponse);
         if (! $amount) {
@@ -860,7 +873,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             ) {
                 $this->stateMachineRegistry->transition(
                     new Transition(
-                        OrderDeliveryEntity::ENTITY_NAME,
+                        OrderDeliveryDefinition::ENTITY_NAME,
                         $delivery->getId(),
                         StateMachineTransitionActions::ACTION_SHIP,
                         'stateId'
@@ -975,5 +988,32 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         }
 
         return $language;
+    }
+
+    /**
+     * @param OrderEntity $order
+     * @return void
+     */
+    private function swishPaymentUpdateStates(OrderEntity $order, Context $context): void
+    {
+        $this->stateMachineRegistry->transition(
+            new Transition(
+                OrderDefinition::ENTITY_NAME,
+                $order->getId(),
+                StateMachineTransitionActions::ACTION_COMPLETE,
+                'stateId'
+            ),
+            $context
+        );
+
+        $this->stateMachineRegistry->transition(
+            new Transition(
+                OrderDeliveryDefinition::ENTITY_NAME,
+                $order->getDeliveries()->first()->getId(),
+                StateMachineTransitionActions::ACTION_SHIP,
+                'stateId'
+            ),
+            $context
+        );
     }
 }

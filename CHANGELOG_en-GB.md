@@ -3,6 +3,19 @@
 * Added Paypal as a payment method
 * Quickpay payment window will now only show alternative payment methods that are enabled in the current sales channel 
 
+# 5.1.3
+
+* Bugfixes for Swish payment
+
+# 5.1.2
+
+* Changes to Swish payment:
+  * As Swish is a banktransfer, capture happens on finalize transaction.
+  * Payment Status in Shopware updates directly to Paid (skipping Authorized), as capture has already happened
+  * When trying to capture on a Swish payment, we skip capturing and update Shopware states for shipping and order status
+    * Shipping state: Shipped
+    * Order state: Done
+
 # 5.1.1
 
 * Shopware 6.4.9.0 compatibility
