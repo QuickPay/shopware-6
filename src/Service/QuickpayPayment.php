@@ -53,7 +53,6 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
     protected SystemConfigService $systemConfigService;
     protected EntityRepositoryInterface $orderRepository;
     protected EntityRepositoryInterface $languageRepository;
-    protected EntityRepositoryInterface $paymentMethodRepository;
     protected OrderTransactionStateHandler $transactionStateHandler;
     protected EntityRepositoryInterface $logEntryRepository;
     protected CartPersisterInterface $cartPersister;
@@ -65,7 +64,6 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
      * @param EntityRepositoryInterface $logEntryRepository
      * @param EntityRepositoryInterface $orderRepository
      * @param EntityRepositoryInterface $languageRepository
-     * @param EntityRepositoryInterface $paymentMethodRepository
      * @param OrderTransactionStateHandler $transactionStateHandler
      * @param CartPersisterInterface $cartPersister
      * @param StateMachineRegistry $stateMachineRegistry
@@ -75,7 +73,6 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         EntityRepositoryInterface $logEntryRepository,
         EntityRepositoryInterface $orderRepository,
         EntityRepositoryInterface $languageRepository,
-        EntityRepositoryInterface $paymentMethodRepository,
         OrderTransactionStateHandler $transactionStateHandler,
         CartPersisterInterface $cartPersister,
         StateMachineRegistry $stateMachineRegistry
@@ -84,7 +81,6 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         $this->logEntryRepository = $logEntryRepository;
         $this->orderRepository = $orderRepository;
         $this->languageRepository = $languageRepository;
-        $this->paymentMethodRepository = $paymentMethodRepository;
         $this->transactionStateHandler = $transactionStateHandler;
         $this->cartPersister = $cartPersister;
         $this->stateMachineRegistry = $stateMachineRegistry;

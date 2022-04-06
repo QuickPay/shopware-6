@@ -27,7 +27,6 @@ class SwishPayment extends QuickpayPayment
      * @param EntityRepositoryInterface $logEntryRepository
      * @param EntityRepositoryInterface $orderRepository
      * @param EntityRepositoryInterface $languageRepository
-     * @param EntityRepositoryInterface $paymentMethodRepository
      * @param OrderTransactionStateHandler $transactionStateHandler
      * @param CartPersisterInterface $cartPersister
      * @param StateMachineRegistry $stateMachineRegistry
@@ -37,7 +36,6 @@ class SwishPayment extends QuickpayPayment
         EntityRepositoryInterface $logEntryRepository,
         EntityRepositoryInterface $orderRepository,
         EntityRepositoryInterface $languageRepository,
-        EntityRepositoryInterface $paymentMethodRepository,
         OrderTransactionStateHandler $transactionStateHandler,
         CartPersisterInterface $cartPersister,
         StateMachineRegistry $stateMachineRegistry
@@ -47,7 +45,6 @@ class SwishPayment extends QuickpayPayment
             $logEntryRepository,
             $orderRepository,
             $languageRepository,
-            $paymentMethodRepository,
             $transactionStateHandler,
             $cartPersister,
             $stateMachineRegistry
