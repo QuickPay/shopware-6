@@ -40,6 +40,8 @@ use Wexo\Quickpay\WexoQuickpay;
  */
 class QuickpayPayment implements AsynchronousPaymentHandlerInterface
 {
+    protected static string $quickpayName = 'creditcard';
+
     /** @var Client[] $apiClients */
     protected array $apiClients = [];
     protected SystemConfigService $systemConfigService;
@@ -439,16 +441,8 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         ];
 
         $order = $transaction->getOrder();
-        $paymentHandler = $transaction->getOrderTransaction()->getPaymentMethod()->getHandlerIdentifier();
-        if ($paymentHandler === MobilepayPayment::class) {
-            $updateFormParams['payment_methods'] = 'mobilepay';
-        } elseif ($paymentHandler === KlarnaPayment::class) {
-            $updateFormParams['payment_methods'] = 'klarna-payments';
-        } elseif ($paymentHandler == ViabillPayment::class) {
-            $updateFormParams['payment_methods'] = 'viabill';
-        } elseif ($paymentHandler == SwishPayment::class) {
-            $updateFormParams['payment_methods'] = 'swish';
-        }
+        $identifier = $transaction->getOrderTransaction()->getPaymentMethod()->getHandlerIdentifier();
+        $updateFormParams['payment_methods'] = $identifier::$quickpayName;
 
         $customFields = $order->getCustomFields();
         $paymentResponse = \json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);

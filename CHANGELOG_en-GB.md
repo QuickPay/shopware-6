@@ -1,4 +1,10 @@
+# 5.2.0
+
+* Added Paypal as a payment method
+* Quickpay payment window will now only show alternative payment methods that are enabled in the current sales channel 
+
 # 5.1.3
+
 * Bugfixes for Swish payment
 
 # 5.1.2

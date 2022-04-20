@@ -14,15 +14,15 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Shopware\Core\System\StateMachine\StateMachineRegistry;
 
 /**
- * Class KlarnaPayment
+ * Class PaypalPayment
  * @package Wexo\Quickpay\Service
  */
-class KlarnaPayment extends QuickpayPayment
+class PaypalPayment extends QuickpayPayment
 {
-    protected static string $quickpayName = 'klarna-payments';
+    protected static string $quickpayName = 'paypal';
 
     /**
-     * KlarnaPayment constructor.
+     * PaypalPayment constructor.
      * @param SystemConfigService $systemConfigService
      * @param EntityRepositoryInterface $logEntryRepository
      * @param EntityRepositoryInterface $orderRepository

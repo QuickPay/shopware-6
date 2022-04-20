@@ -19,6 +19,8 @@ use Shopware\Core\System\StateMachine\StateMachineRegistry;
  */
 class ViabillPayment extends QuickpayPayment
 {
+    protected static string $quickpayName = 'viabill';
+
     /**
      * ViabillPayment constructor.
      * @param SystemConfigService $systemConfigService

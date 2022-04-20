@@ -19,6 +19,8 @@ use Shopware\Core\System\StateMachine\StateMachineRegistry;
  */
 class SwishPayment extends QuickpayPayment
 {
+    protected static string $quickpayName = 'swish';
+
     /**
      * SwishPayment constructor.
      * @param SystemConfigService $systemConfigService

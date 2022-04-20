@@ -19,6 +19,8 @@ use Shopware\Core\System\StateMachine\StateMachineRegistry;
  */
 class MobilepayPayment extends QuickpayPayment
 {
+    protected static string $quickpayName = 'mobilepay';
+
     /**
      * MobilepayPayment constructor.
      * @param SystemConfigService $systemConfigService
