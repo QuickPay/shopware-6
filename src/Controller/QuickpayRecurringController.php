@@ -121,61 +121,73 @@ class QuickpayRecurringController extends AbstractController
             return new JsonResponse([], Response::HTTP_BAD_REQUEST);
         }
 
-        try {
-            $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $request->getContent();
-            $this->quickpayService->setOrderCustomFields($order->getId(), $customFields);
+        $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $request->getContent();
+        $this->quickpayService->setOrderCustomFields($order->getId(), $customFields);
 
-            $paymentState = $transaction->getStateMachineState()->getTechnicalName();
-            $orderState = $order->getStateMachineState()->getTechnicalName();
+        $paymentState = $transaction->getStateMachineState()->getTechnicalName();
+        $orderState = $order->getStateMachineState()->getTechnicalName();
 
-            $accepted = $response['accepted'] ?? false;
-            if ($accepted) {
+        if ($response['accepted'] ?? false) {
+            try {
                 $this->shopwareStateService->success(
                     $transaction->getId(),
                     $order->getId(),
                     $paymentState,
                     $orderState
                 );
-            } else {
-                $cancel = false;
-                // status codes for rejected/aborted transactions, where we'll then cancel the order in Shopware.
-                foreach ($response['operations'] as $operation) {
-                    if ($operation['type'] === 'authorize' &&
-                        in_array($operation['qp_status_code'], ['40000', '40001', '40002', '40003', '50000', '50300'])
-                    ) {
-                        $cancel = true;
+            } catch (\Exception $e) {
+                $message = 'Could not update order state authorized ';
+                $this->logError($message, $order, $request, $e);
+            }
+        } else {
+            // status codes for rejected/aborted transactions, where we'll then cancel the order in Shopware.
+            foreach ($response['operations'] as $operation) {
+                if ($operation['type'] === 'authorize' &&
+                    in_array($operation['qp_status_code'], ['40000', '40001', '40002', '40003', '50000', '50300'])
+                ) {
+                    try {
+                        $this->shopwareStateService->cancel(
+                            $transaction->getId(),
+                            $order->getId(),
+                            $paymentState,
+                            $orderState
+                        );
+                    } catch (\Exception $e) {
+                        $message = 'Could not update order state to cancel';
+                        $this->logError($message, $order, $request, $e);
                     }
                 }
-
-                if ($cancel) {
-                    $this->shopwareStateService->cancel(
-                        $transaction->getId(),
-                        $order->getId(),
-                        $paymentState,
-                        $orderState
-                    );
-                }
             }
-        } catch (\Exception $e) {
-            $this->logEntryRepository->create(
-                [
-                    [
-                        'message' => 'quickpay.recurring.payment.error',
-                        'context' => [
-                            'error' => $e->getMessage(),
-                            'errorMessage'=> $e->getTraceAsString(),
-                            'orderId' => $order->getId(),
-                            'contentType' => $request->getContentType(),
-                            'content'     => $request->getContent()
-                        ],
-                        'level'   => Logger::CRITICAL,
-                        'channel' => 'quickpay'
-                    ]
-                ],
-                Context::createDefaultContext()
-            );
         }
 
         return new JsonResponse([], Response::HTTP_OK);
+    }
+
+    /**
+     * @param String $message
+     * @param OrderEntity $order
+     * @param Request $request
+     * @param \Exception $e
+     * @return void
+     */
+    public function logError(String $message, OrderEntity $order, Request $request, \Exception $e): void
+    {
+        $this->logEntryRepository->create(
+            [
+                [
+                    'message' => $message,
+                    'context' => [
+                        'error' => $e->getMessage(),
+                        'errorMessage'=> $e->getTraceAsString(),
+                        'orderId' => $order->getId(),
+                        'contentType' => $request->getContentType(),
+                        'content'     => $request->getContent()
+                    ],
+                    'level'   => Logger::CRITICAL,
+                    'channel' => 'quickpay'
+                ]
+            ],
+            Context::createDefaultContext()
+        );
     }
 }

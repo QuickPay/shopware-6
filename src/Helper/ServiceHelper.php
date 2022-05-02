@@ -11,7 +11,7 @@ class ServiceHelper
      * @param OrderEntity $order
      * @return bool
      */
-    public static function isOrderSubscription(OrderEntity $order)
+    public static function isOrderSubscription(OrderEntity $order): bool
     {
         $customFields = $order->getCustomFields() ?? [];
         if (isset($customFields[WexoQuickpay::QUICKPAY_SUBSCRIPTION_ID])) {

@@ -89,7 +89,7 @@ class QuickpayService
     }
 
     /**
-     * @param AsyncPaymentTransactionStruct $transaction
+     * @param string $salesChannelId
      * @param string $content
      * @param string $submittedChecksum
      * @return bool
@@ -102,11 +102,8 @@ class QuickpayService
         $key = $this->systemConfigService->get('WexoQuickpay.config.quickpayPrivateKey', $salesChannelId);
 
         $checksum = hash_hmac('sha256', $content, $key);
-        if ($checksum !== $submittedChecksum) {
-            return false;
-        }
 
-        return true;
+        return $checksum !== $submittedChecksum;
     }
 
     /**
@@ -145,7 +142,8 @@ class QuickpayService
         string $event,
         array $context,
         int $level = Logger::ERROR
-    ) {
+    ): void
+    {
         $this->logEntryRepository->create(
             [
                 [
@@ -197,34 +195,34 @@ class QuickpayService
         $paymentId = null,
         ?SalesChannelContext $context = null
     ): ?string {
-        try {
-            $context = $context ? $context->getContext() : Context::createDefaultContext();
+        $context = $context ? $context->getContext() : Context::createDefaultContext();
 
-            /** @var OrderEntity $order */
-            $order = $this->orderRepository->search(new Criteria([$orderId]), $context)->first();
-            if (! $order) {
-                return null;
-            }
+        /** @var OrderEntity $order */
+        $order = $this->orderRepository->search(new Criteria([$orderId]), $context)->first();
+        if (! $order) {
+            return null;
+        }
 
-            if (! $paymentId) {
-                $criteria = new Criteria([$orderId]);
-                $criteria->addAssociation('customFields');
-                $order = $this->orderRepository->search($criteria, $context)->first();
+        if (! $paymentId) {
+            $criteria = new Criteria([$orderId]);
+            $criteria->addAssociation('customFields');
+            $order = $this->orderRepository->search($criteria, $context)->first();
 
-                $customFields = $order->getCustomFields();
-                if ($customFields && isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
-                    $data = json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
+            $customFields = $order->getCustomFields();
+            if ($customFields && isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
+                $data = json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
 
-                    if (property_exists($data, 'id')) {
-                        $paymentId = $data->id;
-                    }
+                if (property_exists($data, 'id')) {
+                    $paymentId = $data->id;
                 }
             }
+        }
 
-            if (! $paymentId) {
-                return null;
-            }
+        if (! $paymentId) {
+            return null;
+        }
 
+        try {
             $response = $this->getClient($order->getSalesChannelId())
                 ->request('GET', 'payments/' . $paymentId);
             $content = $response->getBody()->getContents();
@@ -234,7 +232,7 @@ class QuickpayService
 
                 return $content;
             }
-        } catch (\Error | \TypeError | \Exception $e) {
+        } catch (\Exception $e) {
             $this->paymentLogger(
                 WexoQuickpay::ORDER_CREATE_ERROR,
                 [
@@ -254,8 +252,9 @@ class QuickpayService
      * @param array $customFields
      * @return void
      */
-    public function setOrderCustomFields(string $orderId, array $customFields)
+    public function setOrderCustomFields(string $orderId, array $customFields): void
     {
+        try {
         $this->orderRepository->update(
             [
                 [
@@ -265,5 +264,22 @@ class QuickpayService
             ],
             Context::createDefaultContext()
         );
+        } catch (\Exception $e) {
+            $this->logEntryRepository->create(
+                [
+                    [
+                        'message' => 'Could not update order customfields',
+                        'context' => [
+                            'error' => $e->getMessage(),
+                            'errorMessage'=> $e->getTraceAsString(),
+                            'orderId' => $orderId
+                        ],
+                        'level'   => Logger::CRITICAL,
+                        'channel' => 'quickpay'
+                    ]
+                ],
+                Context::createDefaultContext()
+            );
+        }
     }
 }

@@ -238,7 +238,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                     'form_params' => $data
                 ]
             );
-        } catch (\Error | \TypeError | \Exception $e) {
+        } catch (\Exception $e) {
             $this->paymentLogger(
                 WexoQuickpay::ORDER_COMPLETE_ERROR,
                 [
@@ -272,7 +272,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                         'GET',
                         'payments/' . $quickpayPaymentId
                     );
-                } catch (\Error|\TypeError|\Exception $e) {
+                } catch (\Exception $e) {
                     $this->paymentLogger(
                         WexoQuickpay::ORDER_COMPLETE_ERROR,
                         [

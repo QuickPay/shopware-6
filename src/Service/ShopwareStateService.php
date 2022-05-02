@@ -4,8 +4,8 @@ namespace Wexo\Quickpay\Service;
 
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
-use Shopware\Core\Checkout\Order\OrderStates;
 use Shopware\Core\Checkout\Order\OrderDefinition;
+use Shopware\Core\Checkout\Order\OrderStates;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineTransition\StateMachineTransitionActions;
 use Shopware\Core\System\StateMachine\StateMachineRegistry;
