@@ -12,6 +12,7 @@ use Shopware\Core\System\CustomField\Aggregate\CustomFieldSet\CustomFieldSetEnti
 use Shopware\Core\System\CustomField\CustomFieldTypes;
 use Shopware\Core\Framework\Plugin\Context\InstallContext;
 use Shopware\Core\Framework\Plugin\Context\UninstallContext;
+use Wexo\Quickpay\Service\PaypalPayment;
 use Wexo\Quickpay\Service\QuickpayPayment;
 use Wexo\Quickpay\Service\MobilepayPayment;
 use Wexo\Quickpay\Service\KlarnaPayment;
@@ -29,11 +30,30 @@ use Shopware\Core\Framework\Plugin\Context\DeactivateContext;
 class WexoQuickpay extends Plugin
 {
     public const DEFAULT_PAYMENT_METHODS = [
-        'MobilePay' => 'MobilePay from QuickPay',
-        'Credit Card' => 'Credit cards from QuickPay',
-        'Klarna' => 'Klarna from QuickPay',
-        'Viabill' => 'Viabill from QuickPay',
-        'Swish' => 'Swish from QuickPay'
+        'MobilePay' => [
+            'handler' => MobilepayPayment::class,
+            'description' => 'MobilePay from QuickPay'
+        ],
+        'Credit Card' => [
+            'handler' => QuickpayPayment::class,
+            'description' => 'Credit cards from QuickPay'
+        ],
+        'Klarna' => [
+            'handler' => KlarnaPayment::class,
+            'description' => 'Klarna from QuickPay'
+        ],
+        'Viabill' => [
+            'handler' => ViabillPayment::class,
+            'description' => 'Viabill from QuickPay'
+        ],
+        'Swish' => [
+            'handler' => SwishPayment::class,
+            'description' => 'Swish from QuickPay'
+        ],
+        'Paypal' => [
+            'handler' => PaypalPayment::class,
+            'description' => 'Paypal from Quickpay'
+        ]
     ];
     public const QUICKPAY_FIELD_SET = 'quickpay';
     public const QUICKPAY_RESPONSE_FIELD = 'quickpay_response';
@@ -106,23 +126,8 @@ class WexoQuickpay extends Plugin
     public function uninstall(UninstallContext $context): void
     {
         parent::uninstall($context);
-        foreach (self::DEFAULT_PAYMENT_METHODS as $name => $description) {
-            $handlerIdentifier = QuickpayPayment::class;
-            switch ($name) {
-                case "MobilePay":
-                    $handlerIdentifier = MobilepayPayment::class;
-                    break;
-                case "Klarna":
-                    $handlerIdentifier = KlarnaPayment::class;
-                    break;
-                case "Viabill":
-                    $handlerIdentifier = ViabillPayment::class;
-                    break;
-                case "Swish":
-                    $handlerIdentifier = SwishPayment::class;
-                    break;
-            };
-            $paymentMethodId = $this->getPaymentMethodId($handlerIdentifier);
+        foreach (self::DEFAULT_PAYMENT_METHODS as $name => $props) {
+            $paymentMethodId = $this->getPaymentMethodId($props['handler']);
             $this->setPaymentMethodIsActive(false, $context->getContext(), $paymentMethodId);
         }
     }
@@ -182,23 +187,8 @@ class WexoQuickpay extends Plugin
      */
     public function activate(ActivateContext $context): void
     {
-        foreach (self::DEFAULT_PAYMENT_METHODS as $name => $description) {
-            $handlerIdentifier = QuickpayPayment::class;
-            switch ($name) {
-                case "MobilePay":
-                    $handlerIdentifier = MobilepayPayment::class;
-                    break;
-                case "Klarna":
-                    $handlerIdentifier = KlarnaPayment::class;
-                    break;
-                case "Viabill":
-                    $handlerIdentifier = ViabillPayment::class;
-                    break;
-                case "Swish":
-                    $handlerIdentifier = SwishPayment::class;
-                    break;
-            };
-            $paymentMethodId = $this->getPaymentMethodId($handlerIdentifier);
+        foreach (self::DEFAULT_PAYMENT_METHODS as $name => $props) {
+            $paymentMethodId = $this->getPaymentMethodId($props['handler']);
             $this->setPaymentMethodIsActive(true, $context->getContext(), $paymentMethodId);
         }
         parent::activate($context);
@@ -209,23 +199,8 @@ class WexoQuickpay extends Plugin
      */
     public function deactivate(DeactivateContext $context): void
     {
-        foreach (self::DEFAULT_PAYMENT_METHODS as $name => $description) {
-            $handlerIdentifier = QuickpayPayment::class;
-            switch ($name) {
-                case "MobilePay":
-                    $handlerIdentifier = MobilepayPayment::class;
-                    break;
-                case "Klarna":
-                    $handlerIdentifier = KlarnaPayment::class;
-                    break;
-                case "Viabill":
-                    $handlerIdentifier = ViabillPayment::class;
-                    break;
-                case "Swish":
-                    $handlerIdentifier = SwishPayment::class;
-                    break;
-            };
-            $paymentMethodId = $this->getPaymentMethodId($handlerIdentifier);
+        foreach (self::DEFAULT_PAYMENT_METHODS as $name => $props) {
+            $paymentMethodId = $this->getPaymentMethodId($props['handler']);
             $this->setPaymentMethodIsActive(false, $context->getContext(), $paymentMethodId);
         }
         parent::deactivate($context);
@@ -240,33 +215,17 @@ class WexoQuickpay extends Plugin
         $pluginIdProvider = $this->container->get(PluginIdProvider::class);
         $pluginId = $pluginIdProvider->getPluginIdByBaseClass(WexoQuickpay::class, $context);
 
-        foreach (self::DEFAULT_PAYMENT_METHODS as $name => $description) {
-            $handlerIdentifier = QuickpayPayment::class;
-            switch ($name) {
-                case "MobilePay":
-                    $handlerIdentifier = MobilepayPayment::class;
-                    break;
-                case "Klarna":
-                    $handlerIdentifier = KlarnaPayment::class;
-                    break;
-                case "Viabill":
-                    $handlerIdentifier = ViabillPayment::class;
-                    break;
-                case "Swish":
-                    $handlerIdentifier = SwishPayment::class;
-                    break;
-            };
-
-            $paymentMethodExists = $this->getPaymentMethodId($handlerIdentifier);
+        foreach (self::DEFAULT_PAYMENT_METHODS as $name => $props) {
+            $paymentMethodExists = $this->getPaymentMethodId($props['handler']);
             // Payment method exists already, no need to continue here
             if ($paymentMethodExists) {
                 continue;
             }
 
             $paymentMethodData = [
-                'handlerIdentifier' => $handlerIdentifier,
+                'handlerIdentifier' => $props['handler'],
                 'name' => $name,
-                'description' => $description,
+                'description' => $props['description'],
                 'pluginId' => $pluginId,
             ];
             $paymentRepository->upsert([$paymentMethodData], $context);

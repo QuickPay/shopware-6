@@ -14,6 +14,8 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
  */
 class KlarnaPayment extends QuickpayPayment
 {
+    protected static string $quickpayName = 'klarna-payments';
+
     /**
      * @param AsyncPaymentTransactionStruct $transaction
      * @param RequestDataBag $dataBag

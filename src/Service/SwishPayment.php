@@ -14,6 +14,8 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
  */
 class SwishPayment extends QuickpayPayment
 {
+    protected static string $quickpayName = 'swish';
+
     /**
      * @param AsyncPaymentTransactionStruct $transaction
      * @param RequestDataBag $dataBag

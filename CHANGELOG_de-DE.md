@@ -1,7 +1,13 @@
 # 6.0.0
 * Abonnements für Quickpay hinzugefügt
 
+# 5.2.0
+
+* Paypal als Zahlungsmethode hinzugefügt
+* Das Quickpay-Zahlungsfenster zeigt jetzt nur alternative Zahlungsmethoden an, die im aktuellen Verkaufskanal aktiviert sind
+
 # 5.1.3
+
 * Fehlerbehebungen für die Swish-Zahlung
 
 # 5.1.2
