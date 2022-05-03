@@ -45,7 +45,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
 
             $taxRate = 0;
 
-            if ($orderLineItem->getPrice()->getTaxRules()) {
+            if ($orderLineItem->getPrice()->getTaxRules()->first()) {
                 $taxRate = $orderLineItem->getPrice()->getTaxRules()->first()->getTaxRate() / 100;
             }
 
