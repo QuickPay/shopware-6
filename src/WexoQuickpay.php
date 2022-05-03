@@ -35,7 +35,6 @@ class WexoQuickpay extends Plugin
         'Viabill' => 'Viabill from QuickPay',
         'Swish' => 'Swish from QuickPay'
     ];
-    public const FALLBACK_CURRENCY = 'EUR';
     public const QUICKPAY_FIELD_SET = 'quickpay';
     public const QUICKPAY_RESPONSE_FIELD = 'quickpay_response';
     public const QUICKPAY_SUBSCRIPTION_ID = 'quickpay_subscription_id';

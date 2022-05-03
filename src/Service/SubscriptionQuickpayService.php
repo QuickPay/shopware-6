@@ -36,8 +36,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
     ): void {
         $order = $transaction->getOrder();
 
-        $currency = $salesChannelContext->getCurrency()->getIsoCode()
-            ?? WexoQuickpay::FALLBACK_CURRENCY;
+        $currency = $salesChannelContext->getCurrency()->getIsoCode();
 
         // We're adding a -S to the orderId for the subscription, as the recurring payment will use the orderId.
         $formParams = [

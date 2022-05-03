@@ -44,13 +44,9 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
                 : $orderLineItem->getLabel();
 
             $taxRate = 0;
-            try {
+
+            if ($orderLineItem->getPrice()->getTaxRules()) {
                 $taxRate = $orderLineItem->getPrice()->getTaxRules()->first()->getTaxRate() / 100;
-            } catch (\Error | \TypeError | \Exception $e) {
-                /*
-                 * Do nothing. Some plugins, fx free products, adds line items without a tax rate.
-                 * Unless we default to 0 we will call ->first() on null and payment will crash.
-                 */
             }
 
             $basket[] = [
@@ -79,8 +75,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             ];
         }
 
-        $currency = $salesChannelContext->getCurrency()->getIsoCode()
-            ?? WexoQuickpay::FALLBACK_CURRENCY;
+        $currency = $salesChannelContext->getCurrency()->getIsoCode();
 
         $formParams = [
             'currency' => $currency,
