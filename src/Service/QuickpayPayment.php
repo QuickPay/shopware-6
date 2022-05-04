@@ -25,7 +25,7 @@ use Wexo\Quickpay\WexoQuickpay;
  */
 class QuickpayPayment implements AsynchronousPaymentHandlerInterface
 {
-
+    public static string $quickpayName = 'creditcard';
     protected QuickpayInterface $paymentService;
     protected QuickpayInterface $subscriptionService;
     protected QuickpayInterface $currentService;

@@ -63,15 +63,8 @@
                  parent="Wexo\Quickpay\Service\QuickpayPayment">
         </service>
 
-        <service id="Wexo\Quickpay\Service\PaypalPayment">
-            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
-            <argument type="service" id="log_entry.repository" />
-            <argument type="service" id="order.repository"/>
-            <argument type="service" id="language.repository"/>
-            <argument type="service" id="Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler"/>
-            <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
-            <argument type="service" id="Shopware\Core\System\StateMachine\StateMachineRegistry"/>
-            <tag name="shopware.payment.method.async" />
+        <service id="Wexo\Quickpay\Service\PaypalPayment"
+                 parent="Wexo\Quickpay\Service\QuickpayPayment">
         </service>
 
         <service id="Wexo\Quickpay\Subscriber\OrderDetailSubscriber" public="true">

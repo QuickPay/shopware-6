@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
  */
 class ViabillPayment extends QuickpayPayment
 {
-    protected static string $quickpayName = 'viabill';
+    public static string $quickpayName = 'viabill';
 
     /**
      * @param AsyncPaymentTransactionStruct $transaction

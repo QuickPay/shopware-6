@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
  */
 class MobilepayPayment extends QuickpayPayment
 {
-    protected static string $quickpayName = 'mobilepay';
+    public static string $quickpayName = 'mobilepay';
 
     /**
      * @param AsyncPaymentTransactionStruct $transaction
