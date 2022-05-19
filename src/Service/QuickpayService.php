@@ -103,7 +103,7 @@ class QuickpayService
 
         $checksum = hash_hmac('sha256', $content, $key);
 
-        return $checksum !== $submittedChecksum;
+        return $checksum === $submittedChecksum;
     }
 
     /**
