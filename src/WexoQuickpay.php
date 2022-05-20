@@ -12,6 +12,8 @@ use Shopware\Core\System\CustomField\Aggregate\CustomFieldSet\CustomFieldSetEnti
 use Shopware\Core\System\CustomField\CustomFieldTypes;
 use Shopware\Core\Framework\Plugin\Context\InstallContext;
 use Shopware\Core\Framework\Plugin\Context\UninstallContext;
+use Wexo\Quickpay\Service\ApplepayPayment;
+use Wexo\Quickpay\Service\GooglepayPayment;
 use Wexo\Quickpay\Service\PaypalPayment;
 use Wexo\Quickpay\Service\QuickpayPayment;
 use Wexo\Quickpay\Service\MobilepayPayment;
@@ -53,6 +55,14 @@ class WexoQuickpay extends Plugin
         'Paypal' => [
             'handler' => PaypalPayment::class,
             'description' => 'Paypal from Quickpay'
+        ],
+        'GooglePay' => [
+            'handler' => GooglepayPayment::class,
+            'description' => 'GooglePay from Quickpay'
+        ],
+        'ApplePay' => [
+            'handler' => ApplepayPayment::class,
+            'description' => 'ApplePay from Quickpay'
         ]
     ];
     public const QUICKPAY_FIELD_SET = 'quickpay';
@@ -126,7 +136,7 @@ class WexoQuickpay extends Plugin
     public function uninstall(UninstallContext $context): void
     {
         parent::uninstall($context);
-        foreach (self::DEFAULT_PAYMENT_METHODS as $name => $props) {
+        foreach (self::DEFAULT_PAYMENT_METHODS as $props) {
             $paymentMethodId = $this->getPaymentMethodId($props['handler']);
             $this->setPaymentMethodIsActive(false, $context->getContext(), $paymentMethodId);
         }
@@ -187,7 +197,7 @@ class WexoQuickpay extends Plugin
      */
     public function activate(ActivateContext $context): void
     {
-        foreach (self::DEFAULT_PAYMENT_METHODS as $name => $props) {
+        foreach (self::DEFAULT_PAYMENT_METHODS as $props) {
             $paymentMethodId = $this->getPaymentMethodId($props['handler']);
             $this->setPaymentMethodIsActive(true, $context->getContext(), $paymentMethodId);
         }
@@ -199,7 +209,7 @@ class WexoQuickpay extends Plugin
      */
     public function deactivate(DeactivateContext $context): void
     {
-        foreach (self::DEFAULT_PAYMENT_METHODS as $name => $props) {
+        foreach (self::DEFAULT_PAYMENT_METHODS as $props) {
             $paymentMethodId = $this->getPaymentMethodId($props['handler']);
             $this->setPaymentMethodIsActive(false, $context->getContext(), $paymentMethodId);
         }

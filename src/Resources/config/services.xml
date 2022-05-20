@@ -67,6 +67,14 @@
                  parent="Wexo\Quickpay\Service\QuickpayPayment">
         </service>
 
+        <service id="Wexo\Quickpay\Service\GooglepayPayment"
+                 parent="Wexo\Quickpay\Service\QuickpayPayment">
+        </service>
+
+        <service id="Wexo\Quickpay\Service\ApplepayPayment"
+                 parent="Wexo\Quickpay\Service\QuickpayPayment">
+        </service>
+
         <service id="Wexo\Quickpay\Subscriber\OrderDetailSubscriber" public="true">
             <argument type="service" id="order.repository"/>
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />

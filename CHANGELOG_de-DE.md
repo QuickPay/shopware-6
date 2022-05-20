@@ -1,3 +1,6 @@
+# 6.1.0
+* Googlepay und Applepay als Zahlungsmethode hinzugefügt
+
 # 6.0.0
 * Abonnements für Quickpay hinzugefügt
 
