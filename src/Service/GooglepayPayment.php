@@ -10,7 +10,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 
 class GooglepayPayment extends QuickpayPayment
 {
-    public static string $quickpayName = 'googlepay';
+    public static string $quickpayName = 'google-pay';
 
     /**
      * @param AsyncPaymentTransactionStruct $transaction
