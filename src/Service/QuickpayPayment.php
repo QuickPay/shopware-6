@@ -39,7 +39,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
     public function __construct(
         QuickpayInterface $paymentService,
         QuickpayInterface $subscriptionService,
-        ShopwareStateService $shopwareStateService,
+        ShopwareStateService $shopwareStateService
     ) {
         $this->paymentService = $paymentService;
         $this->subscriptionService = $subscriptionService;
