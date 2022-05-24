@@ -1,5 +1,6 @@
 # 6.1.0
 * Added Googlepay and Applepay as a payment methods
+* Config to hide payment methods that is not supported in current user-agent 
 
 # 6.0.0
 * Subscriptions added for Quickpay
