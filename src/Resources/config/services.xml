@@ -41,38 +41,47 @@
 
         <service id="Wexo\Quickpay\Service\PaymentQuickpayService"
                  parent="Wexo\Quickpay\Service\QuickpayService">
+            <tag name="shopware.payment.method.async" />
         </service>
 
         <service id="Wexo\Quickpay\Service\SubscriptionQuickpayService"
                  parent="Wexo\Quickpay\Service\QuickpayService">
+            <tag name="shopware.payment.method.async" />
         </service>
 
         <service id="Wexo\Quickpay\Service\KlarnaPayment"
                  parent="Wexo\Quickpay\Service\QuickpayPayment">
+            <tag name="shopware.payment.method.async" />
         </service>
 
         <service id="Wexo\Quickpay\Service\ViabillPayment"
                  parent="Wexo\Quickpay\Service\QuickpayPayment">
+            <tag name="shopware.payment.method.async" />
         </service>
 
         <service id="Wexo\Quickpay\Service\MobilepayPayment"
                  parent="Wexo\Quickpay\Service\QuickpayPayment">
+            <tag name="shopware.payment.method.async" />
         </service>
 
         <service id="Wexo\Quickpay\Service\SwishPayment"
                  parent="Wexo\Quickpay\Service\QuickpayPayment">
+            <tag name="shopware.payment.method.async" />
         </service>
 
         <service id="Wexo\Quickpay\Service\PaypalPayment"
                  parent="Wexo\Quickpay\Service\QuickpayPayment">
+            <tag name="shopware.payment.method.async" />
         </service>
 
         <service id="Wexo\Quickpay\Service\GooglepayPayment"
                  parent="Wexo\Quickpay\Service\QuickpayPayment">
+            <tag name="shopware.payment.method.async" />
         </service>
 
         <service id="Wexo\Quickpay\Service\ApplepayPayment"
                  parent="Wexo\Quickpay\Service\QuickpayPayment">
+            <tag name="shopware.payment.method.async" />
         </service>
 
         <service id="Wexo\Quickpay\Subscriber\OrderDetailSubscriber" public="true">
