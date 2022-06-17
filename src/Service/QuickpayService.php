@@ -142,8 +142,7 @@ class QuickpayService
         string $event,
         array $context,
         int $level = Logger::ERROR
-    ): void
-    {
+    ): void {
         $this->logEntryRepository->create(
             [
                 [
@@ -255,15 +254,15 @@ class QuickpayService
     public function setOrderCustomFields(string $orderId, array $customFields): void
     {
         try {
-        $this->orderRepository->update(
-            [
+            $this->orderRepository->update(
                 [
-                    'id'           => $orderId,
-                    'customFields' => $customFields
-                ]
-            ],
-            Context::createDefaultContext()
-        );
+                    [
+                        'id'           => $orderId,
+                        'customFields' => $customFields
+                    ]
+                ],
+                Context::createDefaultContext()
+            );
         } catch (\Exception $e) {
             $this->logEntryRepository->create(
                 [
