@@ -1,0 +1,28 @@
+{% sw_extends '@Storefront/storefront/component/payment/payment-method.html.twig' %}
+    {% block component_payment_method_field %}
+        {% set userAgent = app.request.headers.get('user-agent') %}
+        {% set hide = false %}
+
+        {% if config('WexoQuickpay.config.quickpayDeviceCheck') %}
+            {% if payment.handlerIdentifier == 'Wexo\\Quickpay\\Service\\GooglepayPayment' %}
+                {% if (('Android' not in userAgent) and ('Chrome' not in userAgent)) %}
+                    {% set hide = true %}
+                {% endif %}
+            {% endif %}
+
+            {% if payment.handlerIdentifier == 'Wexo\\Quickpay\\Service\\ApplepayPayment' %}
+                {# show applepay if on iOS system, but not in Chrome or Firefox #}
+                {% if ('Mac' not in userAgent and 'iPhone' not in userAgent and 'iPad' not in userAgent) or
+                    'CriOS' in userAgent or 'Firefox' in userAgent
+                %}
+                    {% set hide = true %}
+                {% endif %}
+            {% endif %}
+        {% endif %}
+
+        <div class="payment-form-group form-group {% if hide %}d-none{% endif %}">
+            {% block component_payment_method_control %}
+                {{ parent() }}
+            {% endblock %}
+        </div>
+    {% endblock %}

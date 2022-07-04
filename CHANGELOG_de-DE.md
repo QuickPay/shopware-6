@@ -1,3 +1,7 @@
+# 6.1.0
+* Googlepay und Applepay als Zahlungsmethode hinzugefügt
+* Konfiguration zum Ausblenden von Zahlungsmethoden, die im aktuellen User-Agent nicht unterstützt werden
+
 # 6.0.0
 * Abonnements für Quickpay hinzugefügt
 

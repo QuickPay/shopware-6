@@ -138,8 +138,11 @@ class QuickpayService
      * @param array $context
      * @param int $level
      */
-    public function paymentLogger(string $event, array $context, int $level = Logger::ERROR): void
-    {
+    public function paymentLogger(
+        string $event,
+        array $context,
+        int $level = Logger::ERROR
+    ): void {
         $this->logEntryRepository->create(
             [
                 [

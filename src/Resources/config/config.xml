@@ -5,6 +5,13 @@
 
     <card>
         <title>QuickPay</title>
+        <input-field type="bool">
+            <name>quickpayDeviceCheck</name>
+            <label>Hide payment methods that is not supported in current user-agent</label>
+            <label lang="de-DE">Zahlungsmethoden ausblenden, die im aktuellen User-Agent nicht unterstützt werden</label>
+            <helpText>Example: only show GooglePay as a paymentmethod in checkout if user is on Android or in Chrome</helpText>
+            <helpText lang="de-DE">Beispiel: Zeigen Sie GooglePay nur als Zahlungsmethode an der Kasse an, wenn der Benutzer Android oder Chrome verwendet</helpText>
+        </input-field>
         <input-field>
             <name>quickpayApiKey</name>
             <label>QuickPay API key</label>
