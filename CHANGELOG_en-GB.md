@@ -1,3 +1,6 @@
+# 6.0.0
+* Subscriptions added for Quickpay
+
 # 5.2.0
 
 * Added Paypal as a payment method

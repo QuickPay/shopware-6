@@ -1,3 +1,6 @@
+# 6.0.0
+* Abonnements für Quickpay hinzugefügt
+
 # 5.2.0
 
 * Paypal als Zahlungsmethode hinzugefügt

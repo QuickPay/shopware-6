@@ -107,11 +107,11 @@ Component.register('quickpay-order-payment-details', {
             }
 
             this.quickpayResponse.operations.forEach((operation) => {
-                if (operation.type == "authorize") {
+                if (operation.type === "authorize" || operation.type === "recurring") {
                     this.authorized = operation.amount;
                 }
 
-                if (operation.type == "capture") {
+                if (operation.type === "capture") {
                     this.captured += operation.amount;
                 }
             });
