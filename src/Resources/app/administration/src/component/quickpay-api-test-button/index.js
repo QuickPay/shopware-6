@@ -20,13 +20,14 @@ Component.register('quickpay-api-test-button', {
 
     computed: {
         pluginConfig() {
-            let config = this.$parent.$parent.$parent.actualConfigData;
-            if (config) {
-                return config.null;
+            let systemConfigComponent = this.$parent;
+            while (!systemConfigComponent.hasOwnProperty('actualConfigData')) {
+                systemConfigComponent = systemConfigComponent.$parent
             }
-
-            // in SW6.3.4 it's one step above
-            return this.$parent.$parent.$parent.$parent.actualConfigData.null;
+            let selectedSalesChannelId = systemConfigComponent.currentSalesChannelId;
+            let config = systemConfigComponent.actualConfigData;
+            // Properties NOT set in the sales channel config will be inherited from default config.
+            return Object.assign({}, config.null, config[selectedSalesChannelId]);
         }
     },
 

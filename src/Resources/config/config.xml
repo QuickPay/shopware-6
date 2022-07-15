@@ -15,7 +15,11 @@
         <input-field>
             <name>quickpayApiKey</name>
             <label>QuickPay API key</label>
-            <helpText>User API key</helpText>
+            <helpText>
+                User API key.
+                Must have permissions to get /account/private-key.
+                Can be set in the QuickPay admin panel at Settings -> Users -> API User -> User Permissions
+            </helpText>
         </input-field>
         <input-field>
             <name>quickpayPrivateKey</name>

@@ -1,3 +1,6 @@
+# 6.1.1
+* Fixed API config test button
+
 # 6.1.0
 * Added Googlepay and Applepay as a payment methods
 * Config to hide payment methods that is not supported in current user-agent 

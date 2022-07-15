@@ -1,3 +1,6 @@
+# 6.1.1
+* API-Konfigurationstest-Schaltfläche korrigiert
+
 # 6.1.0
 * Googlepay und Applepay als Zahlungsmethode hinzugefügt
 * Konfiguration zum Ausblenden von Zahlungsmethoden, die im aktuellen User-Agent nicht unterstützt werden

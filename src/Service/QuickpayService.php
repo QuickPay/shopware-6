@@ -7,7 +7,6 @@ use GuzzleHttp\Exception\GuzzleException;
 use Monolog\Logger;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
 use Shopware\Core\Checkout\Order\OrderEntity;
-use Shopware\Core\Checkout\Payment\Cart\AsyncPaymentTransactionStruct;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
@@ -16,10 +15,6 @@ use Shopware\Core\System\StateMachine\StateMachineRegistry;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Wexo\Quickpay\WexoQuickpay;
 
-/**
- * Class SubscriptionService
- * @package Wexo\Quickpay\Service
- */
 class QuickpayService
 {
     /** @var Client[] $apiClients */
@@ -61,9 +56,9 @@ class QuickpayService
      */
     public function getClient(?string $salesChannelId): Client
     {
-        //If no string is supplied to system config service, it uses 'global' under the hood.
+        //If no string is supplied to system config service, it uses '_global_' under the hood.
         if (!$salesChannelId) {
-            $salesChannelId = 'global';
+            $salesChannelId = '_global_';
         }
 
         if (!isset($this->apiClients[$salesChannelId])) {
@@ -85,6 +80,7 @@ class QuickpayService
                 ],
             ]);
         }
+
         return $this->apiClients[$salesChannelId];
     }
 
