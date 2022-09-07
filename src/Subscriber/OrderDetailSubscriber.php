@@ -76,9 +76,9 @@ class OrderDetailSubscriber implements EventSubscriberInterface
             $event->getContext()
         )->first();
 
-        $criteria = (new Criteria())
-            ->addFilter(new EqualsFilter('id', $transactionId))
-            ->addAssociation('paymentMethod');
+        $criteria = new Criteria();
+        $criteria->addFilter(new EqualsFilter('id', $transactionId));
+        $criteria->addAssociation('paymentMethod');
 
         /** @var OrderTransactionEntity $orderTransaction */
         $orderTransaction = $this->orderTransactionRepository->search(
