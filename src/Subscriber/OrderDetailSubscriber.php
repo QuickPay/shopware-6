@@ -8,6 +8,7 @@ use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStat
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\ContainsFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\System\StateMachine\Event\StateMachineTransitionEvent;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
@@ -64,15 +65,18 @@ class OrderDetailSubscriber implements EventSubscriberInterface
         $transactionId = $event->getEntityId();
 
         $criteria = new Criteria();
+        $criteria->addAssociation('transactions.paymentMethod');
         $criteria->addFilter(new EqualsFilter('transactions.id', $transactionId));
+        $criteria->addFilter(new ContainsFilter('transactions.paymentMethod.handlerIdentifier', 'Quickpay'));
 
-        /** @var OrderEntity $orderTransaction */
+        /** @var OrderEntity $order */
         $order = $this->orderRepository->search(
             $criteria,
             $event->getContext()
         )->first();
 
         $capture = $event->getContext()->getExtension('capture');
+
         if ($order) {
             if ($eventName === OrderTransactionStates::STATE_CANCELLED) {
                 $this->paymentService->cancel($order);

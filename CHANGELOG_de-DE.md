@@ -1,3 +1,6 @@
+# 6.1.2
+* Behoben, sodass Statusänderungen bei Nicht-Quickpay-Zahlungen keine Quickpay-Funktionen auslösen
+
 # 6.1.1
 * API-Konfigurationstest-Schaltfläche korrigiert
 
