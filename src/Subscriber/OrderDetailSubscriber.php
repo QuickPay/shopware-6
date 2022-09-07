@@ -4,7 +4,6 @@ namespace Wexo\Quickpay\Subscriber;
 
 use GuzzleHttp\Exception\GuzzleException;
 use Shopware\Core\Checkout\Cart\Order\OrderConvertedEvent;
-use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
@@ -24,7 +23,6 @@ use Wexo\Quickpay\ServiceInterface\QuickpayInterface;
 class OrderDetailSubscriber implements EventSubscriberInterface
 {
     protected EntityRepositoryInterface $orderRepository;
-    protected EntityRepositoryInterface $orderTransactionRepository;
     protected SystemConfigService $systemConfigService;
     protected QuickpayInterface $paymentService;
     protected SubscriptionQuickpayService $subscriptionQuickpayService;
@@ -36,13 +34,11 @@ class OrderDetailSubscriber implements EventSubscriberInterface
      */
     public function __construct(
         EntityRepositoryInterface $orderRepository,
-        EntityRepositoryInterface $orderTransactionRepository,
         SystemConfigService $systemConfigService,
         QuickpayInterface $paymentService,
         SubscriptionQuickpayService $subscriptionQuickpayService
     ) {
         $this->orderRepository = $orderRepository;
-        $this->orderTransactionRepository = $orderTransactionRepository;
         $this->systemConfigService = $systemConfigService;
         $this->paymentService = $paymentService;
         $this->subscriptionQuickpayService = $subscriptionQuickpayService;
