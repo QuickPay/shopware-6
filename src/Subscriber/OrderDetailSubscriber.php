@@ -4,6 +4,7 @@ namespace Wexo\Quickpay\Subscriber;
 
 use GuzzleHttp\Exception\GuzzleException;
 use Shopware\Core\Checkout\Cart\Order\OrderConvertedEvent;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
@@ -22,6 +23,7 @@ use Wexo\Quickpay\ServiceInterface\QuickpayInterface;
 class OrderDetailSubscriber implements EventSubscriberInterface
 {
     protected EntityRepositoryInterface $orderRepository;
+    protected EntityRepositoryInterface $orderTransactionRepository;
     protected SystemConfigService $systemConfigService;
     protected QuickpayInterface $paymentService;
     protected SubscriptionQuickpayService $subscriptionQuickpayService;
@@ -33,11 +35,13 @@ class OrderDetailSubscriber implements EventSubscriberInterface
      */
     public function __construct(
         EntityRepositoryInterface $orderRepository,
+        EntityRepositoryInterface $orderTransactionRepository,
         SystemConfigService $systemConfigService,
         QuickpayInterface $paymentService,
         SubscriptionQuickpayService $subscriptionQuickpayService
     ) {
         $this->orderRepository = $orderRepository;
+        $this->orderTransactionRepository = $orderTransactionRepository;
         $this->systemConfigService = $systemConfigService;
         $this->paymentService = $paymentService;
         $this->subscriptionQuickpayService = $subscriptionQuickpayService;
@@ -66,14 +70,27 @@ class OrderDetailSubscriber implements EventSubscriberInterface
         $criteria = new Criteria();
         $criteria->addFilter(new EqualsFilter('transactions.id', $transactionId));
 
-        /** @var OrderEntity $orderTransaction */
+        /** @var OrderEntity $order */
         $order = $this->orderRepository->search(
             $criteria,
             $event->getContext()
         )->first();
 
+        $criteria = (new Criteria())
+            ->addFilter(new EqualsFilter('id', $transactionId))
+            ->addAssociation('paymentMethod');
+
+        /** @var OrderTransactionEntity $orderTransaction */
+        $orderTransaction = $this->orderTransactionRepository->search(
+            $criteria,
+            $event->getContext()
+        )->first();
+
+        $identifier = $orderTransaction->getPaymentMethod()->getHandlerIdentifier();
+
         $capture = $event->getContext()->getExtension('capture');
-        if ($order) {
+
+        if ($order && str_contains($identifier, 'Quickpay')) {
             if ($eventName === OrderTransactionStates::STATE_CANCELLED) {
                 $this->paymentService->cancel($order);
             }

@@ -86,6 +86,7 @@
 
         <service id="Wexo\Quickpay\Subscriber\OrderDetailSubscriber" public="true">
             <argument type="service" id="order.repository"/>
+            <argument type="service" id="order_transaction.repository"/>
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
             <argument type="service" id="Wexo\Quickpay\Service\PaymentQuickpayService" />
             <argument type="service" id="Wexo\Quickpay\Service\SubscriptionQuickpayService" />

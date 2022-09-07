@@ -1,3 +1,6 @@
+# 6.1.2
+* Fixed so state changes on non-quickpay payments doesn't trigger quickpay functions
+
 # 6.1.1
 * Fixed API config test button
 
