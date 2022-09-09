@@ -1,3 +1,6 @@
+# 6.1.3
+* Update so capture function always have the newest info from Quickpay
+
 # 6.1.2
 * Fixed so state changes on non-quickpay payments doesn't trigger quickpay functions
 
