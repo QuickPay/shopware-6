@@ -1,3 +1,6 @@
+# 6.1.4
+* Added Anyday payment method
+
 # 6.1.3
 * Update so capture function always have the newest info from Quickpay
 
