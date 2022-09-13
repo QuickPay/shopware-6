@@ -225,23 +225,8 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             return false;
         }
 
-        $customFields = $order->getCustomFields();
-        if (! $customFields || ! isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
-            $this->paymentLogger(
-                WexoQuickpay::ORDER_COMPLETE_ERROR,
-                [
-                    'error' => 'QuickPay response could not be found on order',
-                    'orderId' => $orderId,
-                    'orderNumber' => $order->getOrderNumber() ?? null,
-                    'customFields' => $customFields
-                ]
-            );
-
-            return null;
-        }
-
         /** @var \stdClass $paymentResponse */
-        $paymentResponse = json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
+        $paymentResponse = json_decode($this->updateResponse($orderId));
         if (!$paymentResponse
             || !property_exists($paymentResponse, 'id')
             || !property_exists($paymentResponse, 'order_id')
@@ -271,8 +256,8 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             return true;
         }
 
-        // TODO: The customer could go into QuickPay and withdraw manually.
         $availableAmount = $this->getAvailableAmount($paymentResponse);
+
         if (! $amount) {
             $amount = $availableAmount;
         } elseif ($amount > $availableAmount) {

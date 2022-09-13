@@ -1,3 +1,6 @@
+# 6.1.3
+* Aktualisieren Sie die Erfassungsfunktion, um immer die neuesten Informationen von Quickpay zu erhalten
+
 # 6.1.2
 * Behoben, sodass Statusänderungen bei Nicht-Quickpay-Zahlungen keine Quickpay-Funktionen auslösen
 
