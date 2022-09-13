@@ -1,9 +1,9 @@
 {
-    "name": "wexo/quickpay",
+    "name": "store.shopware.com/wexoquickpay",
     "description": "QuickPay Payment Integration",
     "type": "shopware-platform-plugin",
     "license": "proprietary",
-    "version": "6.1.3",
+    "version": "6.1.4",
     "authors": [
         {
             "name": "WEXO A/S",

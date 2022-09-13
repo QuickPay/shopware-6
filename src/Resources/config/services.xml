@@ -49,6 +49,7 @@
             <tag name="shopware.payment.method.async" />
         </service>
 
+        <!-- Payment Method(s) -->
         <service id="Wexo\Quickpay\Service\KlarnaPayment"
                  parent="Wexo\Quickpay\Service\QuickpayPayment">
             <tag name="shopware.payment.method.async" />
@@ -83,6 +84,11 @@
                  parent="Wexo\Quickpay\Service\QuickpayPayment">
             <tag name="shopware.payment.method.async" />
         </service>
+
+        <service id="Wexo\Quickpay\Service\AnydayPayment" parent="Wexo\Quickpay\Service\QuickpayPayment">
+            <tag name="shopware.payment.method.async"/>
+        </service>
+        <!-- Payment Method(s) end -->
 
         <service id="Wexo\Quickpay\Subscriber\OrderDetailSubscriber" public="true">
             <argument type="service" id="order.repository"/>
