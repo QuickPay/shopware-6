@@ -76,11 +76,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             ];
         }
 
-        if ($salesChannelContext->getCurrency()->getIsoCode() == 'TDK') {
-            $currency = 'DKK';
-        } else {
-            $currency = $salesChannelContext->getCurrency()->getIsoCode();
-        }
+        $currency = $salesChannelContext->getCurrency()->getIsoCode();
 
         $formParams = [
             'currency' => $currency,
