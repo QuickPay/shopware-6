@@ -1,3 +1,6 @@
+# 6.1.4
+* Bugfix for Swish payment callback and Shopware state transition
+
 # 6.1.3
 * Update so capture function always have the newest info from Quickpay
 

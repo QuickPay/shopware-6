@@ -9,6 +9,7 @@ use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryStates;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
 use Shopware\Core\Checkout\Order\OrderDefinition;
 use Shopware\Core\Checkout\Order\OrderEntity;
+use Shopware\Core\Checkout\Order\OrderStates;
 use Shopware\Core\Checkout\Payment\Cart\AsyncPaymentTransactionStruct;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
@@ -457,6 +458,20 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
      */
     private function swishPaymentUpdateOrderStates(OrderEntity $order, Context $context): void
     {
+        $orderState = $order->getStateMachineState()->getTechnicalName();
+
+        if ($orderState === OrderStates::STATE_OPEN) {
+            $this->stateMachineRegistry->transition(
+                new Transition(
+                    OrderDefinition::ENTITY_NAME,
+                    $order->getId(),
+                    StateMachineTransitionActions::ACTION_PROCESS,
+                    'stateId'
+                ),
+                $context
+            );
+        }
+
         $this->stateMachineRegistry->transition(
             new Transition(
                 OrderDefinition::ENTITY_NAME,

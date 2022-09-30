@@ -1,3 +1,6 @@
+# 6.1.4
+* Bugfix für Swish Payment Callback und Shopware State Transition
+
 # 6.1.3
 * Aktualisieren Sie die Erfassungsfunktion, um immer die neuesten Informationen von Quickpay zu erhalten
 
