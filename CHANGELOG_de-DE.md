@@ -1,3 +1,6 @@
+# 6.1.5
+* Bugfix beim Aktualisieren von Plugin und Abonnement customField bereits vorhanden 
+
 # 6.1.4
 * Bugfix für Swish Payment Callback und Shopware State Transition
 

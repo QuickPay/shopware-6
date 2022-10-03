@@ -156,7 +156,7 @@ class WexoQuickpay extends Plugin
             }
         }
 
-        if (version_compare($context->getCurrentPluginVersion(), '6.0.0', '>')) {
+        if (version_compare($context->getCurrentPluginVersion(), '6.0.0', '<')) {
             $customFieldSetRepository = $this->container->get('custom_field_set.repository');
 
             $criteria = new Criteria();
@@ -171,15 +171,15 @@ class WexoQuickpay extends Plugin
             if ($customFieldSet) {
                 $customFieldSetRepository->upsert([
                     [
-                        'id'           => $customFieldSet->getId(),
+                        'id' => $customFieldSet->getId(),
                         'customFields' => [
                             [
-                                'name'   => self::QUICKPAY_SUBSCRIPTION_ID,
-                                'type'   => CustomFieldTypes::TEXT,
+                                'name' => self::QUICKPAY_SUBSCRIPTION_ID,
+                                'type' => CustomFieldTypes::TEXT,
                                 'config' => [
-                                    'label'               => 'Subscription ID',
-                                    'componentName'       => 'sw-field',
-                                    'customFieldType'     => CustomFieldTypes::TEXT,
+                                    'label' => 'Subscription ID',
+                                    'componentName' => 'sw-field',
+                                    'customFieldType' => CustomFieldTypes::TEXT,
                                     'customFieldPosition' => 2,
                                 ],
                             ]
