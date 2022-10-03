@@ -1,3 +1,6 @@
+# 6.1.5
+* Bugfix when updating plugin and subscription customField already exist
+
 # 6.1.4
 * Bugfix for Swish payment callback and Shopware state transition
 
