@@ -84,6 +84,11 @@
             <tag name="shopware.payment.method.async" />
         </service>
 
+        <service id="Wexo\Quickpay\Service\VippsPayment"
+                 parent="Wexo\Quickpay\Service\QuickpayPayment">
+            <tag name="shopware.payment.method.async" />
+        </service>
+
         <service id="Wexo\Quickpay\Subscriber\OrderDetailSubscriber" public="true">
             <argument type="service" id="order.repository"/>
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />

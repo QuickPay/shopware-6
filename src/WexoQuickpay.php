@@ -20,6 +20,7 @@ use Wexo\Quickpay\Service\MobilepayPayment;
 use Wexo\Quickpay\Service\KlarnaPayment;
 use Wexo\Quickpay\Service\SwishPayment;
 use Wexo\Quickpay\Service\ViabillPayment;
+use Wexo\Quickpay\Service\VippsPayment;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Plugin\Context\ActivateContext;
@@ -63,6 +64,10 @@ class WexoQuickpay extends Plugin
         'ApplePay' => [
             'handler' => ApplepayPayment::class,
             'description' => 'ApplePay from Quickpay'
+        ],
+        'Vipps' => [
+            'handler' => VippsPayment::class,
+            'description' => 'Vipps from Quickpay'
         ]
     ];
     public const QUICKPAY_FIELD_SET = 'quickpay';

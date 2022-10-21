@@ -1,3 +1,6 @@
+# 6.1.6
+* Vipps als Zahlungsmethode hinzugefügt
+
 # 6.1.5
 * Bugfix beim Aktualisieren von Plugin und Abonnement customField bereits vorhanden 
 
