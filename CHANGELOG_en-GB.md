@@ -1,3 +1,6 @@
+# 6.1.6
+* Added Vipps as a payment method
+
 # 6.1.5
 * Bugfix when updating plugin and subscription customField already exist
 
