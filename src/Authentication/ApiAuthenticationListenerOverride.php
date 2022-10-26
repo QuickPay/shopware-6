@@ -69,7 +69,7 @@ class ApiAuthenticationListenerOverride extends ApiAuthenticationListener
      */
     public function setupOAuth(RequestEvent $event): void
     {
-        if (!$event->isMasterRequest()) {
+        if (!$event->isMainRequest()) {
             return;
         }
 

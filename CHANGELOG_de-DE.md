@@ -1,3 +1,6 @@
+# 6.1.7
+* Veraltete Ausnahmemeldung behoben
+
 # 6.1.6
 * Vipps als Zahlungsmethode hinzugefügt
 

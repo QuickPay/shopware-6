@@ -1,3 +1,6 @@
+# 6.1.7
+* Fixing Deprecated Exception message
+
 # 6.1.6
 * Added Vipps as a payment method
 
