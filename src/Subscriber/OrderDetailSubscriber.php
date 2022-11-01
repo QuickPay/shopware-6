@@ -14,6 +14,7 @@ use Shopware\Core\System\StateMachine\Event\StateMachineTransitionEvent;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Wexo\Quickpay\Service\SubscriptionQuickpayService;
+use Wexo\Quickpay\Service\SwishPayment;
 use Wexo\Quickpay\ServiceInterface\QuickpayInterface;
 
 /**
@@ -85,9 +86,15 @@ class OrderDetailSubscriber implements EventSubscriberInterface
             if ($capture && ! $capture->get('amount')) {
                 return;
             }
-
+            
             if ($eventName === OrderTransactionStates::STATE_PAID) {
-                $this->paymentService->capture($order->getId());
+                $paymentHandler = $order->getTransactions()->first()->getPaymentMethod()->getHandlerIdentifier();
+                // We don't want to try and capture on a swishpayment as Swish orders
+                // are set to Paid as soon as Quickpay response is accepted.
+                // When using Capture API on Swish payments, it is then set to order Status: Done and Delivery: Shipped
+                if ($paymentHandler !== SwishPayment::class) {
+                    $this->paymentService->capture($order->getId());
+                }
             }
 
             if ($eventName === OrderTransactionStates::STATE_PARTIALLY_PAID &&

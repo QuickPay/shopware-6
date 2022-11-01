@@ -21,6 +21,7 @@ use Wexo\Quickpay\Service\MobilepayPayment;
 use Wexo\Quickpay\Service\KlarnaPayment;
 use Wexo\Quickpay\Service\SwishPayment;
 use Wexo\Quickpay\Service\ViabillPayment;
+use Wexo\Quickpay\Service\VippsPayment;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Plugin\Context\ActivateContext;
@@ -64,6 +65,10 @@ class WexoQuickpay extends Plugin
         'ApplePay' => [
             'handler' => ApplepayPayment::class,
             'description' => 'ApplePay from Quickpay'
+        ],
+        'Vipps' => [
+            'handler' => VippsPayment::class,
+            'description' => 'Vipps from Quickpay'
         ],
         'Anyday' => [
             'handler' => AnydayPayment::class,
@@ -161,7 +166,7 @@ class WexoQuickpay extends Plugin
             }
         }
 
-        if (version_compare($context->getCurrentPluginVersion(), '6.0.0', '>')) {
+        if (version_compare($context->getCurrentPluginVersion(), '6.0.0', '<')) {
             $customFieldSetRepository = $this->container->get('custom_field_set.repository');
 
             $criteria = new Criteria();
@@ -176,15 +181,15 @@ class WexoQuickpay extends Plugin
             if ($customFieldSet) {
                 $customFieldSetRepository->upsert([
                     [
-                        'id'           => $customFieldSet->getId(),
+                        'id' => $customFieldSet->getId(),
                         'customFields' => [
                             [
-                                'name'   => self::QUICKPAY_SUBSCRIPTION_ID,
-                                'type'   => CustomFieldTypes::TEXT,
+                                'name' => self::QUICKPAY_SUBSCRIPTION_ID,
+                                'type' => CustomFieldTypes::TEXT,
                                 'config' => [
-                                    'label'               => 'Subscription ID',
-                                    'componentName'       => 'sw-field',
-                                    'customFieldType'     => CustomFieldTypes::TEXT,
+                                    'label' => 'Subscription ID',
+                                    'componentName' => 'sw-field',
+                                    'customFieldType' => CustomFieldTypes::TEXT,
                                     'customFieldPosition' => 2,
                                 ],
                             ]

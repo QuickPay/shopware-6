@@ -1,5 +1,17 @@
-# 6.1.4
+# 6.1.8
 * Added Anyday payment method
+
+# 6.1.7
+* Fixing Deprecated Exception message
+
+# 6.1.6
+* Added Vipps as a payment method
+
+# 6.1.5
+* Bugfix when updating plugin and subscription customField already exist
+
+# 6.1.4
+* Bugfix for Swish payment callback and Shopware state transition
 
 # 6.1.3
 * Update so capture function always have the newest info from Quickpay

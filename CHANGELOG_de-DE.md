@@ -1,5 +1,17 @@
-# 6.1.4
+# 6.1.8
 * Anyday Zahlungsmethode hinzugefügt
+
+# 6.1.7
+* Veraltete Ausnahmemeldung behoben
+
+# 6.1.6
+* Vipps als Zahlungsmethode hinzugefügt
+
+# 6.1.5
+* Bugfix beim Aktualisieren von Plugin und Abonnement customField bereits vorhanden 
+
+# 6.1.4
+* Bugfix für Swish Payment Callback und Shopware State Transition
 
 # 6.1.3
 * Aktualisieren Sie die Erfassungsfunktion, um immer die neuesten Informationen von Quickpay zu erhalten
