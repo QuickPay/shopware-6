@@ -11,4 +11,19 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 class AnydayPayment extends QuickpayPayment
 {
     public static string $quickpayName = 'anyday-split';
+
+    /**
+     * @param AsyncPaymentTransactionStruct $transaction
+     * @param RequestDataBag $dataBag
+     * @param SalesChannelContext $salesChannelContext
+     * @return RedirectResponse
+     * @throws GuzzleException
+     */
+    public function pay(
+        AsyncPaymentTransactionStruct $transaction,
+        RequestDataBag $dataBag,
+        SalesChannelContext $salesChannelContext
+    ): RedirectResponse {
+        return parent::pay($transaction, $dataBag, $salesChannelContext);
+    }
 }
