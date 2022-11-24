@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
  */
 class VippsPayment extends QuickpayPayment
 {
-    public static string $quickpayName = 'vipps';
+    public static string $quickpayName = 'vippspsp';
 
     /**
      * @param AsyncPaymentTransactionStruct $transaction

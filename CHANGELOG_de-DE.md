@@ -1,5 +1,6 @@
 # 6.1.8
 * Anyday Zahlungsmethode hinzugefügt
+* Die Vipps-Zahlungsmethode wurde von vipps zu vippspsp geändert, was Vipps über Quickpay ist
 
 # 6.1.7
 * Veraltete Ausnahmemeldung behoben
