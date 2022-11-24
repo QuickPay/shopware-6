@@ -8,13 +8,9 @@ use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
-/**
- * Class VippsPayment
- * @package Wexo\Quickpay\Service
- */
-class VippsPayment extends QuickpayPayment
+class AnydayPayment extends QuickpayPayment
 {
-    public static string $quickpayName = 'vippspsp';
+    public static string $quickpayName = 'anyday-split';
 
     /**
      * @param AsyncPaymentTransactionStruct $transaction

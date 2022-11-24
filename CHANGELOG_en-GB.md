@@ -1,3 +1,7 @@
+# 6.1.8
+* Added Anyday payment method
+* Changed Vipps paymentmethod from vipps to vippspsp, which is Vipps via Quickpay
+
 # 6.1.7
 * Fixing Deprecated Exception message
 

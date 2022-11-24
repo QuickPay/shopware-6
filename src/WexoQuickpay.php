@@ -12,6 +12,7 @@ use Shopware\Core\System\CustomField\Aggregate\CustomFieldSet\CustomFieldSetEnti
 use Shopware\Core\System\CustomField\CustomFieldTypes;
 use Shopware\Core\Framework\Plugin\Context\InstallContext;
 use Shopware\Core\Framework\Plugin\Context\UninstallContext;
+use Wexo\Quickpay\Service\AnydayPayment;
 use Wexo\Quickpay\Service\ApplepayPayment;
 use Wexo\Quickpay\Service\GooglepayPayment;
 use Wexo\Quickpay\Service\PaypalPayment;
@@ -68,7 +69,11 @@ class WexoQuickpay extends Plugin
         'Vipps' => [
             'handler' => VippsPayment::class,
             'description' => 'Vipps from Quickpay'
-        ]
+        ],
+        'Anyday' => [
+            'handler' => AnydayPayment::class,
+            'description' => 'Anyday from Quickpay'
+        ],
     ];
     public const QUICKPAY_FIELD_SET = 'quickpay';
     public const QUICKPAY_RESPONSE_FIELD = 'quickpay_response';
@@ -242,6 +247,7 @@ class WexoQuickpay extends Plugin
                 'name' => $name,
                 'description' => $props['description'],
                 'pluginId' => $pluginId,
+                'active' => true
             ];
             $paymentRepository->upsert([$paymentMethodData], $context);
         }
