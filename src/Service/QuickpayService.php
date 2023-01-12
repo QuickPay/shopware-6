@@ -8,7 +8,7 @@ use Monolog\Logger;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Framework\Context;
-use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\StateMachine\StateMachineRegistry;
@@ -20,25 +20,25 @@ class QuickpayService
     /** @var Client[] $apiClients */
     protected array $apiClients = [];
     protected SystemConfigService $systemConfigService;
-    protected EntityRepositoryInterface $logEntryRepository;
-    protected EntityRepositoryInterface $languageRepository;
-    protected EntityRepositoryInterface $orderRepository;
+    protected EntityRepository $logEntryRepository;
+    protected EntityRepository $languageRepository;
+    protected EntityRepository $orderRepository;
     protected OrderTransactionStateHandler $transactionStateHandler;
     protected StateMachineRegistry $stateMachineRegistry;
 
     /**
      * @param SystemConfigService $systemConfigService
-     * @param EntityRepositoryInterface $logEntryRepository
-     * @param EntityRepositoryInterface $languageRepository
-     * @param EntityRepositoryInterface $orderRepository
+     * @param EntityRepository $logEntryRepository
+     * @param EntityRepository $languageRepository
+     * @param EntityRepository $orderRepository
      * @param OrderTransactionStateHandler $transactionStateHandler
      * @param StateMachineRegistry $stateMachineRegistry
      */
     public function __construct(
         SystemConfigService $systemConfigService,
-        EntityRepositoryInterface $logEntryRepository,
-        EntityRepositoryInterface $languageRepository,
-        EntityRepositoryInterface $orderRepository,
+        EntityRepository $logEntryRepository,
+        EntityRepository $languageRepository,
+        EntityRepository $orderRepository,
         OrderTransactionStateHandler $transactionStateHandler,
         StateMachineRegistry $stateMachineRegistry
     ) {

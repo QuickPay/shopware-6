@@ -78,7 +78,8 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
      */
     public function getLink(
         AsyncPaymentTransactionStruct $transaction,
-        SalesChannelContext $salesChannelContext
+        SalesChannelContext $salesChannelContext,
+        Array $extraParams = []
     ): string {
         $returnUrl = $transaction->getReturnUrl();
 
@@ -99,6 +100,10 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                 $salesChannelContext->getContext()
             )
         ];
+
+        if (!empty($extraParams)) {
+            $updateFormParams = array_merge($updateFormParams, $extraParams);
+        }
 
         $linkResponse = $this->getClient($salesChannelContext->getSalesChannelId())
             ->request('put', 'subscriptions/' . $subscriptionResponse['id'] . "/link", [

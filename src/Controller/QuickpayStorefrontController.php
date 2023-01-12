@@ -8,7 +8,6 @@ use Shopware\Core\Checkout\Payment\Cart\Token\TokenFactoryInterfaceV2;
 use Shopware\Core\Checkout\Payment\PaymentService;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
-use Shopware\Core\Framework\Routing\Annotation\RouteScope;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -18,7 +17,7 @@ use Symfony\Component\Routing\Annotation\Route;
 use Wexo\Quickpay\WexoQuickpay;
 
 /**
- * @RouteScope(scopes={"storefront"})
+ * @Route(defaults={"_routeScope"={"storefront"}})
  */
 class QuickpayStorefrontController
 {
@@ -27,12 +26,6 @@ class QuickpayStorefrontController
     protected TokenFactoryInterfaceV2 $tokenFactory;
     protected CartPersisterInterface $cartPersister;
 
-    /**
-     * QuickpayApiController constructor.
-     *
-     * @param EntityRepositoryInterface $logEntryRepository
-     * @param PaymentService $paymentService
-     */
     public function __construct(
         EntityRepositoryInterface $logEntryRepository,
         PaymentService $paymentService,
@@ -76,6 +69,17 @@ class QuickpayStorefrontController
             }
         }
 
+        $this->logEntryRepository->create(
+            [
+                [
+                    'message' => 'quickpay_finalize_transaction_debug',
+                    'context' => (array)$request->getContent(),
+                    'level' => Logger::DEBUG,
+                    'channel' => WexoQuickpay::LOG_CHANNEL
+                ]
+            ],
+            $context->getContext()
+        );
 
         /* Delete cart when either customer or quickpay reaches this page.
          * This just runs executeStatement, which just returns number of rows affected,
@@ -91,6 +95,7 @@ class QuickpayStorefrontController
         } else {
             sleep(10);
         }
+
         $paymentToken = $request->get('_sw_payment_token');
 
         if ($finalizeAllowed) {
