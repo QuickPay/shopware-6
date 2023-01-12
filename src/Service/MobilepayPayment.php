@@ -14,6 +14,9 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
  */
 class MobilepayPayment extends QuickpayPayment
 {
+    /**
+     * @var string
+     */
     public static string $quickpayName = 'mobilepay';
 
     /**

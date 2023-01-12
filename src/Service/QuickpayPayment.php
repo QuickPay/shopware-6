@@ -59,16 +59,17 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         SalesChannelContext $salesChannelContext
     ): RedirectResponse {
         // Method that sends the return URL to the external gateway and gets a redirect URL back
-        try {
+            $extraParams = $dataBag->get('extraParams') ?? [];
             $order = $transaction->getOrder();
 
             $this->setCurrentService($order);
 
             $customFields = $order->getCustomFields() ?? [];
+        try {
             if (! isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
                 $this->currentService->create($transaction, $salesChannelContext);
             }
-            $link = $this->currentService->getLink($transaction, $salesChannelContext);
+            $link = $this->currentService->getLink($transaction, $salesChannelContext, $extraParams);
         } catch (Exception $e) {
             $this->currentService->paymentLogger(
                 WexoQuickpay::ORDER_CREATE_ERROR,
@@ -96,7 +97,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
      * @param AsyncPaymentTransactionStruct $transaction
      * @param Request $request
      * @param SalesChannelContext $salesChannelContext
-     * @throws Exception
+     * @throws Exception|GuzzleException
      */
     public function finalize(
         AsyncPaymentTransactionStruct $transaction,

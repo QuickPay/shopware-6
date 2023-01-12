@@ -13,6 +13,7 @@ interface QuickpayInterface
 
     public function getLink(
         AsyncPaymentTransactionStruct $transaction,
-        SalesChannelContext $salesChannelContext
+        SalesChannelContext $salesChannelContext,
+        Array $extraParams = []
     ): string;
 }

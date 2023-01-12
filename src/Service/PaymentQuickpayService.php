@@ -112,7 +112,8 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
      */
     public function getLink(
         AsyncPaymentTransactionStruct $transaction,
-        SalesChannelContext $salesChannelContext
+        SalesChannelContext $salesChannelContext,
+        array $extraParams = []
     ): string {
         $returnUrl = $transaction->getReturnUrl();
 
@@ -128,6 +129,10 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
                 $salesChannelContext->getContext()
             )
         ];
+
+        if (!empty($extraParams)) {
+            $updateFormParams = array_merge($updateFormParams, $extraParams);
+        }
 
         $order = $transaction->getOrder();
         $identifier = $transaction->getOrderTransaction()->getPaymentMethod()->getHandlerIdentifier();
@@ -225,7 +230,6 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         if (! $transaction) {
             return false;
         }
-
         /** @var \stdClass $paymentResponse */
         $paymentResponse = json_decode($this->updateResponse($orderId));
         if (!$paymentResponse
@@ -258,7 +262,6 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         }
 
         $availableAmount = $this->getAvailableAmount($paymentResponse);
-
         if (! $amount) {
             $amount = $availableAmount;
         } elseif ($amount > $availableAmount) {
