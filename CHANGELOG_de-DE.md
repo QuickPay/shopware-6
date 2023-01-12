@@ -1,3 +1,6 @@
+# 6.2.0
+* Interne API-Änderungen, um mehr Anpassbarkeit zu ermöglichen
+
 # 6.1.8
 * Anyday Zahlungsmethode hinzugefügt
 * Die Vipps-Zahlungsmethode wurde von vipps zu vippspsp geändert, was Vipps über Quickpay ist
