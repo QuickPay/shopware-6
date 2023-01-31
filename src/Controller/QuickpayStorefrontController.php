@@ -14,6 +14,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Wexo\Quickpay\WexoQuickpay;
 
 /**
@@ -25,17 +26,20 @@ class QuickpayStorefrontController
     protected PaymentService $paymentService;
     protected TokenFactoryInterfaceV2 $tokenFactory;
     protected CartPersisterInterface $cartPersister;
+    protected UrlGeneratorInterface $urlGenerator;
 
     public function __construct(
         EntityRepositoryInterface $logEntryRepository,
         PaymentService $paymentService,
         TokenFactoryInterfaceV2 $tokenFactory,
-        CartPersisterInterface $cartPersister
+        CartPersisterInterface $cartPersister,
+        UrlGeneratorInterface $urlGenerator
     ) {
         $this->logEntryRepository = $logEntryRepository;
         $this->paymentService = $paymentService;
         $this->tokenFactory = $tokenFactory;
         $this->cartPersister = $cartPersister;
+        $this->urlGenerator = $urlGenerator;
     }
 
     /**
@@ -90,7 +94,13 @@ class QuickpayStorefrontController
 
         if (in_array($status, ['accepted', 'cancel'])) {
             $token = $this->tokenFactory->parseToken($paymentToken);
-            $url = ($status == 'accepted' ? $token->getFinishUrl() : $token->getErrorUrl());
+            $url = ($status == 'accepted' ? $token->getFinishUrl() :
+                $this->urlGenerator->generate(
+                    'frontend.checkout.confirm.page',
+                    [],
+                    UrlGeneratorInterface::ABSOLUTE_URL
+                )
+            );
             return new RedirectResponse($url);
         } else {
             sleep(10);
