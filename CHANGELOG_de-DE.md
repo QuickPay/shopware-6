@@ -1,3 +1,6 @@
+# 6.2.1
+* Gehen Sie zurück zur Checkout-Bestätigungsseite, wenn Sie im Zahlungsfenster stornieren
+
 # 6.2.0
 * Interne API-Änderungen, um mehr Anpassbarkeit zu ermöglichen
 

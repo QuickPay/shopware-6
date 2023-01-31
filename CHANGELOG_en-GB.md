@@ -1,3 +1,6 @@
+# 6.2.1
+* Go back to checkout confirm page when cancelling in the payment window
+
 # 6.2.0
 * Internal API changes to allow more customizability
 
