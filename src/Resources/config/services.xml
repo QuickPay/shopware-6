@@ -114,6 +114,7 @@
             <argument type="service" id="Shopware\Core\Checkout\Payment\PaymentService"/>
             <argument type="service" id="Shopware\Core\Checkout\Payment\Cart\Token\JWTFactoryV2" />
             <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
+            <argument type="service" id="Symfony\Component\Routing\Generator\UrlGeneratorInterface" />
             <tag name="controller.service_arguments" />
         </service>
 
