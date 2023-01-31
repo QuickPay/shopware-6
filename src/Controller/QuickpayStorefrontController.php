@@ -95,7 +95,12 @@ class QuickpayStorefrontController
         if (in_array($status, ['accepted', 'cancel'])) {
             $token = $this->tokenFactory->parseToken($paymentToken);
             $url = ($status == 'accepted' ? $token->getFinishUrl() :
-                $this->urlGenerator->generate('frontend.checkout.confirm.page', [], UrlGeneratorInterface::ABSOLUTE_URL));
+                $this->urlGenerator->generate(
+                    'frontend.checkout.confirm.page',
+                    [],
+                    UrlGeneratorInterface::ABSOLUTE_URL
+                )
+            );
             return new RedirectResponse($url);
         } else {
             sleep(10);
