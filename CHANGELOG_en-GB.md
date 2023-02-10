@@ -1,3 +1,6 @@
+# 6.2.2
+* Improve logs
+
 # 6.2.1
 * Go back to checkout confirm page when cancelling in the payment window
 

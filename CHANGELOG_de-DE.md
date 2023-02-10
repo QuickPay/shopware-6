@@ -1,3 +1,6 @@
+# 6.2.2
+* Protokolle verbessern
+
 # 6.2.1
 * Gehen Sie zurück zur Checkout-Bestätigungsseite, wenn Sie im Zahlungsfenster stornieren
 
