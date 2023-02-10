@@ -16,6 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Wexo\Quickpay\WexoQuickpay;
+use Shopware\Core\Checkout\Payment\Exception\TokenInvalidatedException;
 
 /**
  * @Route(defaults={"_routeScope"={"storefront"}})
@@ -105,7 +106,6 @@ class QuickpayStorefrontController
         } else {
             sleep(10);
         }
-
         $paymentToken = $request->get('_sw_payment_token');
 
         if ($finalizeAllowed) {
@@ -114,6 +114,7 @@ class QuickpayStorefrontController
                     $paymentToken,
                     $request,
                     $context
+
                 );
 
                 $exception = $result->getException();
@@ -122,6 +123,11 @@ class QuickpayStorefrontController
                         'error' => $exception->getMessage()
                     ];
                 }
+            } catch (TokenInvalidatedException $exception) {
+                $data = [
+                    'warning' => $exception->getMessage(),
+                    'tokenInvalidated' => 'yes'
+                ];
             } catch (\Exception $exception) {
                 $data = [
                     'error' => $exception->getMessage()
@@ -133,13 +139,18 @@ class QuickpayStorefrontController
             if ($request->getContent()) {
                 $data['content'] = json_decode($request->getContent(), true);
             }
-
+            $errorLeve = Logger::ERROR;
+            $logMessage = 'quickpay_finalize_transaction_error';
+            if (isset($data['tokenInvalidated']) && $data['tokenInvalidated'] == 'yes' ) {
+                $errorLeve = Logger::WARNING;
+                $logMessage = 'quickpay_finalize_transaction_token_invalidated';
+            }
             $this->logEntryRepository->create(
                 [
                     [
-                        'message' => 'quickpay_finalize_transaction_error',
+                        'message' => $logMessage,
                         'context' => $data,
-                        'level' => Logger::ERROR,
+                        'level' => $errorLeve,
                         'channel' => WexoQuickpay::LOG_CHANNEL
                     ]
                 ],
