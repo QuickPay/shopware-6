@@ -114,7 +114,6 @@ class QuickpayStorefrontController
                     $paymentToken,
                     $request,
                     $context
-
                 );
 
                 $exception = $result->getException();
@@ -141,7 +140,7 @@ class QuickpayStorefrontController
             }
             $errorLeve = Logger::ERROR;
             $logMessage = 'quickpay_finalize_transaction_error';
-            if (isset($data['tokenInvalidated']) && $data['tokenInvalidated'] == 'yes' ) {
+            if (isset($data['tokenInvalidated']) && $data['tokenInvalidated'] == 'yes') {
                 $errorLeve = Logger::WARNING;
                 $logMessage = 'quickpay_finalize_transaction_token_invalidated';
             }
