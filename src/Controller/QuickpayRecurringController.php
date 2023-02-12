@@ -21,7 +21,7 @@ use Wexo\Quickpay\Service\ShopwareStateService;
 use Wexo\Quickpay\WexoQuickpay;
 
 /**
- * @RouteScope(scopes={"api"})
+ * @Route(defaults={"_routeScope"={"api"}})
  */
 class QuickpayRecurringController extends AbstractController
 {

@@ -1,3 +1,6 @@
+# 6.2.2
+* Entfernen Sie die Verwendung von @RouteScope für Shopware 6.5-Kompatibilität
+
 # 6.2.1
 * Gehen Sie zurück zur Checkout-Bestätigungsseite, wenn Sie im Zahlungsfenster stornieren
 
