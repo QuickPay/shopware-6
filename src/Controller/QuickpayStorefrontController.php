@@ -119,17 +119,22 @@ class QuickpayStorefrontController
                 $exception = $result->getException();
                 if ($exception) {
                     $data = [
-                        'error' => $exception->getMessage()
+                        'error' => 'payment_finalize_exception',
+                        'errorMessage' => $exception->getMessage(),
+                        'sw_status_code' => 400001
                     ];
                 }
             } catch (TokenInvalidatedException $exception) {
                 $data = [
-                    'warning' => $exception->getMessage(),
-                    'tokenInvalidated' => 'yes'
+                    'error' => 'token_invalidated_exception',
+                    'errorMessage' => $exception->getMessage(),
+                    'sw_status_code' => 400002
                 ];
             } catch (\Exception $exception) {
                 $data = [
-                    'error' => $exception->getMessage()
+                    'error' => 'quick_pay_finalize_exception',
+                    'errorMessage' => $exception->getMessage(),
+                    'sw_status_code' => 400003
                 ];
             }
         }
@@ -138,10 +143,10 @@ class QuickpayStorefrontController
             if ($request->getContent()) {
                 $data['content'] = json_decode($request->getContent(), true);
             }
-            $errorLeve = Logger::ERROR;
+            $errorLevel = Logger::ERROR;
             $logMessage = 'quickpay_finalize_transaction_error';
-            if (isset($data['tokenInvalidated']) && $data['tokenInvalidated'] == 'yes') {
-                $errorLeve = Logger::WARNING;
+            if (isset($data['sw_status_code']) && $data['sw_status_code'] == 400002) {
+                $errorLevel = Logger::WARNING;
                 $logMessage = 'quickpay_finalize_transaction_token_invalidated';
             }
             $this->logEntryRepository->create(
@@ -149,12 +154,15 @@ class QuickpayStorefrontController
                     [
                         'message' => $logMessage,
                         'context' => $data,
-                        'level' => $errorLeve,
+                        'level' => $errorLevel,
                         'channel' => WexoQuickpay::LOG_CHANNEL
                     ]
                 ],
                 Context::createDefaultContext()
             );
+            if (isset($data['errorMessage'])) {
+                unset($data['errorMessage']);
+            }
         }
 
         return new JsonResponse($data, !empty($data) ? Response::HTTP_BAD_REQUEST : Response::HTTP_OK);
