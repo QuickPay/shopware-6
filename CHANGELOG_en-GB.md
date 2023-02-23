@@ -1,3 +1,6 @@
+# 6.2.3
+* Improve exception logs, include sw_status_code response to quickpay finalize transaction request
+
 # 6.2.2
 * Remove the use of @RouteScope for Shopware 6.5 compatibility
 
