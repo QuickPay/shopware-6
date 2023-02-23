@@ -1,5 +1,8 @@
-# 6.2.2
+# 6.2.3
 * Improve logs
+
+# 6.2.2
+* Remove the use of @RouteScope for Shopware 6.5 compatibility
 
 # 6.2.1
 * Go back to checkout confirm page when cancelling in the payment window
