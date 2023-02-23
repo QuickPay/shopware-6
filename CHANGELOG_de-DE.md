@@ -1,5 +1,5 @@
 # 6.2.3
-* Protokolle verbessern
+* Verbessern Sie die Ausnahmeprotokolle, schließen Sie die sw_status_code-Antwort auf die Quickpay-Abschlusstransaktionsanforderung ein
 
 # 6.2.2
 * Entfernen Sie die Verwendung von @RouteScope für Shopware 6.5-Kompatibilität
