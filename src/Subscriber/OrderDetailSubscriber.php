@@ -63,6 +63,36 @@ class OrderDetailSubscriber implements EventSubscriberInterface
     public function onStateMachineTransitionEvent(StateMachineTransitionEvent $event)
     {
         $eventName = $event->getToPlace()->getTechnicalName();
+        $relevantEvent = in_array(
+            $eventName,
+            [
+                OrderTransactionStates::STATE_CANCELLED,
+                OrderTransactionStates::STATE_PARTIALLY_PAID,
+                OrderTransactionStates::STATE_PAID
+            ]
+        );
+        // Do not waste compute time fetching config or orders if the event should not be handled anyway
+        if (!$relevantEvent) {
+            return;
+        }
+
+        $capturePayments = $this->systemConfigService->get('WexoQuickpay.config.quickpayCaptureOnOrderPayment');
+        $cancelPayments = $this->systemConfigService->get('WexoQuickpay.config.quickpayCancelPaymentOnOrderCancel');
+
+        // If we shouldn't modify payment status in QuickPay at all, no need to waste computing time
+        if (!$capturePayments && !$cancelPayments) {
+            return;
+        }
+        if ($eventName === OrderTransactionStates::STATE_CANCELLED && !$cancelPayments) {
+            return;
+        }
+        if (($eventName === OrderTransactionStates::STATE_PAID
+                || $eventName === OrderTransactionStates::STATE_PARTIALLY_PAID)
+            && !$capturePayments
+        ) {
+            return;
+        }
+
         $transactionId = $event->getEntityId();
 
         $criteria = new Criteria();
@@ -90,7 +120,7 @@ class OrderDetailSubscriber implements EventSubscriberInterface
             if ($eventName === OrderTransactionStates::STATE_PAID) {
                 $paymentHandler = $order->getTransactions()->first()->getPaymentMethod()->getHandlerIdentifier();
                 // We don't want to try and capture on a swishpayment as Swish orders
-                // are set to Paid as soon as Quickpay response is accepted.
+                // are set as Paid as soon as Quickpay response is accepted.
                 // When using Capture API on Swish payments, it is then set to order Status: Done and Delivery: Shipped
                 if ($paymentHandler !== SwishPayment::class) {
                     $this->paymentService->capture($order->getId());
