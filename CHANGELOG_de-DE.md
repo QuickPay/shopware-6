@@ -1,3 +1,7 @@
+# 6.2.4
+* Leistungsoptimierungen bei der Ereignisbehandlung
+* Einstellungen zum Deaktivieren der Erfassung und Stornierung von Zahlungen in QuickPay hinzugefügt
+
 # 6.2.3
 * Verbessern Sie die Ausnahmeprotokolle, schließen Sie die sw_status_code-Antwort auf die Quickpay-Abschlusstransaktionsanforderung ein
 

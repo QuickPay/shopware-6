@@ -1,3 +1,7 @@
+# 6.2.4
+* Event handling performance optimizations
+* Added settings for disabling capture and cancel payments in QuickPay
+
 # 6.2.3
 * Improve exception logs, include sw_status_code response to quickpay finalize transaction request
 

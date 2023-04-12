@@ -4,14 +4,7 @@
         xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/shopware/platform/master/src/Core/System/SystemConfig/Schema/config.xsd">
 
     <card>
-        <title>QuickPay</title>
-        <input-field type="bool">
-            <name>quickpayDeviceCheck</name>
-            <label>Hide payment methods that is not supported in current user-agent</label>
-            <label lang="de-DE">Zahlungsmethoden ausblenden, die im aktuellen User-Agent nicht unterstützt werden</label>
-            <helpText>Example: only show GooglePay as a paymentmethod in checkout if user is on Android or in Chrome</helpText>
-            <helpText lang="de-DE">Beispiel: Zeigen Sie GooglePay nur als Zahlungsmethode an der Kasse an, wenn der Benutzer Android oder Chrome verwendet</helpText>
-        </input-field>
+        <title>API Keys</title>
         <input-field>
             <name>quickpayApiKey</name>
             <label>QuickPay API key</label>
@@ -25,13 +18,36 @@
             <name>quickpayPrivateKey</name>
             <label>QuickPay Private key</label>
         </input-field>
-        <input-field type="bool">
-            <name>quickpayUpdateShipping</name>
-            <label>Update shipping to shipped when payment is paid</label>
-        </input-field>
         <component name="quickpay-api-test-button">
             <name>quickpayApiTest</name>
             <btnLabel>Test API Connection</btnLabel>
         </component>
+    </card>
+
+    <card>
+        <title>Payment and Order Flow</title>
+        <input-field type="bool">
+            <name>quickpayDeviceCheck</name>
+            <label>Hide payment methods that is not supported in current user-agent</label>
+            <label lang="de-DE">Zahlungsmethoden ausblenden, die im aktuellen User-Agent nicht unterstützt werden</label>
+            <helpText>Example: only show GooglePay as a paymentmethod in checkout if user is on Android or in Chrome</helpText>
+            <helpText lang="de-DE">Beispiel: Zeigen Sie GooglePay nur als Zahlungsmethode an der Kasse an, wenn der Benutzer Android oder Chrome verwendet</helpText>
+        </input-field>
+        <input-field type="bool">
+            <name>quickpayUpdateShipping</name>
+            <label>Update shipping to shipped when payment is paid</label>
+        </input-field>
+        <input-field type="bool">
+            <name>quickpayCaptureOnOrderPayment</name>
+            <defaultValue>true</defaultValue>
+            <label>Capture payment in QuickPay when order is paid or partially paid in Shopware</label>
+            <label lang="de-DE">Erfassen Sie die Zahlung in QuickPay, wenn die Bestellung in Shopware bezahlt oder teilweise bezahlt wurde</label>
+        </input-field>
+        <input-field type="bool">
+            <name>quickpayCancelPaymentOnOrderCancel</name>
+            <defaultValue>true</defaultValue>
+            <label>Cancel payment in QuickPay when order is cancelled in Shopware</label>
+            <label lang="de-DE">Zahlung in QuickPay stornieren, wenn die Bestellung in Shopware storniert wird</label>
+        </input-field>
     </card>
 </config>
