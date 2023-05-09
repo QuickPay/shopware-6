@@ -30,9 +30,12 @@ class QuickpayStorefrontController
     ) {
     }
 
+    // phpcs:ignore
     #[Route(path: '/payment/quickpay-finalize-transaction', methods: ['POST', 'GET'], defaults: ['auth_required' => false, 'csrf_protected' => false])]
-    public function quickpayFinalizeTransaction(Request $request, SalesChannelContext $context): JsonResponse|RedirectResponse
-    {
+    public function quickpayFinalizeTransaction(
+        Request $request,
+        SalesChannelContext $context
+    ): JsonResponse|RedirectResponse {
         $finalizeAllowed = true;
         $data = [];
         $paymentToken = $request->get('_sw_payment_token');

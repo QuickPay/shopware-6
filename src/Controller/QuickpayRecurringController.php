@@ -9,7 +9,6 @@ use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
-use Shopware\Core\Framework\Routing\Annotation\RouteScope;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -31,6 +30,7 @@ class QuickpayRecurringController extends AbstractController
     ) {
     }
 
+    // phpcs:ignore
     #[Route(path: 'api/wexo/quickpay/recurring-callback', name: 'api.wexo.quickpay.recurring', methods: ['POST', 'GET'], defaults: ['auth_required' => false, 'csrf_protected' => false])]
     public function callback(Request $request): JsonResponse|RedirectResponse
     {
