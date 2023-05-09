@@ -2,10 +2,10 @@
 
 namespace Wexo\Quickpay\Core\Checkout\Cart\SalesChannel;
 
+use Shopware\Core\Checkout\Cart\CartPersister;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Checkout\Cart\Cart;
 use Shopware\Core\Checkout\Cart\CartCalculator;
-use Shopware\Core\Checkout\Cart\CartPersisterInterface;
 use Shopware\Core\Checkout\Cart\Order\OrderPersisterInterface;
 use Shopware\Core\Checkout\Cart\SalesChannel\AbstractCartOrderRoute;
 use Shopware\Core\Checkout\Cart\SalesChannel\CartOrderRouteResponse;
@@ -28,7 +28,7 @@ class CartOrderRouteDecorator extends AbstractCartOrderRoute
         protected EntityRepository $orderRepository,
         protected EntityRepository $orderCustomerRepository,
         protected OrderPersisterInterface $orderPersister,
-        protected CartPersisterInterface $cartPersister,
+        protected CartPersister $cartPersister,
         protected EventDispatcherInterface $eventDispatcher,
         protected EntityRepository $orderTransactionRepository,
         protected PluginIdProvider $pluginIdProvider

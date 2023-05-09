@@ -2,9 +2,9 @@
 
 namespace Wexo\Quickpay\Controller;
 
+use Shopware\Core\Checkout\Cart\CartPersister;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Monolog\Logger;
-use Shopware\Core\Checkout\Cart\CartPersisterInterface;
 use Shopware\Core\Checkout\Payment\Cart\Token\TokenFactoryInterfaceV2;
 use Shopware\Core\Checkout\Payment\PaymentService;
 use Shopware\Core\Framework\Context;
@@ -25,7 +25,7 @@ class QuickpayStorefrontController
         protected EntityRepository $logEntryRepository,
         protected PaymentService $paymentService,
         protected TokenFactoryInterfaceV2 $tokenFactory,
-        protected CartPersisterInterface $cartPersister,
+        protected CartPersister $cartPersister,
         protected UrlGeneratorInterface $urlGenerator
     ) {
     }
