@@ -18,17 +18,13 @@ use Shopware\Core\System\StateMachine\Transition;
 use Wexo\Quickpay\ServiceInterface\QuickpayInterface;
 use Wexo\Quickpay\WexoQuickpay;
 
-/**
- * Class SubscriptionService
- * @package Wexo\Quickpay\Service
- */
 class SubscriptionQuickpayService extends QuickpayService implements QuickpayInterface
 {
     /**
      * @param AsyncPaymentTransactionStruct $transaction
      * @param SalesChannelContext $salesChannelContext
      * @return void
-     * @throws \GuzzleHttp\Exception\GuzzleException
+     * @throws GuzzleException
      */
     public function create(
         AsyncPaymentTransactionStruct &$transaction,
@@ -74,7 +70,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
      * @param AsyncPaymentTransactionStruct $transaction
      * @param SalesChannelContext $salesChannelContext
      * @return string
-     * @throws \GuzzleHttp\Exception\GuzzleException
+     * @throws GuzzleException
      */
     public function getLink(
         AsyncPaymentTransactionStruct $transaction,
@@ -83,12 +79,12 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
     ): string {
         $returnUrl = $transaction->getReturnUrl();
 
-        $callbackUrl = str_replace('finalize-transaction', 'quickpay-finalize-transaction', $returnUrl);
+        $callbackUrl = str_replace('finalize-transaction', 'quickpay-finalize-transaction', (string) $returnUrl);
 
         $order = $transaction->getOrder();
 
         $customFields = $order->getCustomFields();
-        $subscriptionResponse = \json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
+        $subscriptionResponse = \json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
 
         $updateFormParams = [
             'amount' => $transaction->getOrder()->getAmountTotal() * 100,
@@ -143,8 +139,6 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
     }
 
     /**
-     * @param string $orderId
-     * @return void
      * @throws GuzzleException
      */
     public function recurring(
@@ -206,7 +200,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             return;
         }
 
-        $quickPayResponse = json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
+        $quickPayResponse = json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
         $subscriptionId = $customFields[WexoQuickpay::QUICKPAY_SUBSCRIPTION_ID];
         if (! $subscriptionId) {
             $this->paymentLogger(
@@ -230,7 +224,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         // A custom callback made for recurring payments, so we can validate them.
         $domain = $order->getSalesChannel()->getDomains() ? $order->getSalesChannel()->getDomains()->first() : null;
         if ($domain) {
-            $baseUrl = rtrim($domain->getUrl(), '/');
+            $baseUrl = rtrim((string) $domain->getUrl(), '/');
             $data['QuickPay-Callback-Url'] = $baseUrl . '/api/wexo/quickpay/recurring-callback';
         }
 
@@ -249,7 +243,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                     'orderId'   => $orderId ?? null,
                     'error'     => $e->getMessage(),
                     'trace'     => $e->getTraceAsString(),
-                    'errorType' => get_class($e)
+                    'errorType' => $e::class
                 ]
             );
         }
@@ -283,7 +277,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                             'orderId' => $orderId ?? null,
                             'error' => $e->getMessage(),
                             'trace' => $e->getTraceAsString(),
-                            'errorType' => get_class($e)
+                            'errorType' => $e::class
                         ]
                     );
                 }

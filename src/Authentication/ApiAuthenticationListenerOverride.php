@@ -15,37 +15,17 @@ use Shopware\Core\Framework\Routing\RouteScopeRegistry;
 use Symfony\Bridge\PsrHttpMessage\Factory\PsrHttpFactory;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 
-/**
- * Class ApiAuthenticationListenerOverride
- * @package Wexo\Quickpay\Authentication
- */
 class ApiAuthenticationListenerOverride extends ApiAuthenticationListener
 {
     use RouteScopeCheckTrait;
 
-    private ResourceServer $resourceServer;
-    private AuthorizationServer $authorizationServer;
-    private UserRepositoryInterface $userRepository;
-    private RefreshTokenRepositoryInterface $refreshTokenRepository;
-    private PsrHttpFactory $psrHttpFactory;
-    private RouteScopeRegistry $routeScopeRegistry;
-
-    /**
-     * ApiAuthenticationListenerOverride constructor.
-     * @param ResourceServer $resourceServer
-     * @param AuthorizationServer $authorizationServer
-     * @param UserRepositoryInterface $userRepository
-     * @param RefreshTokenRepositoryInterface $refreshTokenRepository
-     * @param PsrHttpFactory $psrHttpFactory
-     * @param RouteScopeRegistry $routeScopeRegistry
-     */
     public function __construct(
-        ResourceServer $resourceServer,
-        AuthorizationServer $authorizationServer,
-        UserRepositoryInterface $userRepository,
-        RefreshTokenRepositoryInterface $refreshTokenRepository,
-        PsrHttpFactory $psrHttpFactory,
-        RouteScopeRegistry $routeScopeRegistry
+        private readonly ResourceServer $resourceServer,
+        private readonly AuthorizationServer $authorizationServer,
+        private readonly UserRepositoryInterface $userRepository,
+        private readonly RefreshTokenRepositoryInterface $refreshTokenRepository,
+        private readonly PsrHttpFactory $psrHttpFactory,
+        private readonly RouteScopeRegistry $routeScopeRegistry
     ) {
         parent::__construct(
             $resourceServer,
@@ -55,13 +35,6 @@ class ApiAuthenticationListenerOverride extends ApiAuthenticationListener
             $psrHttpFactory,
             $routeScopeRegistry
         );
-
-        $this->resourceServer = $resourceServer;
-        $this->authorizationServer = $authorizationServer;
-        $this->userRepository = $userRepository;
-        $this->refreshTokenRepository = $refreshTokenRepository;
-        $this->psrHttpFactory = $psrHttpFactory;
-        $this->routeScopeRegistry = $routeScopeRegistry;
     }
 
     /**

@@ -1,3 +1,6 @@
+# 7.0.0
+* Shopware 6.5 kompatibel
+
 # 6.2.4
 * Leistungsoptimierungen bei der Ereignisbehandlung
 * Einstellungen zum Deaktivieren der Erfassung und Stornierung von Zahlungen in QuickPay hinzugefügt

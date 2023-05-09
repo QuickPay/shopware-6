@@ -19,31 +19,16 @@ use Wexo\Quickpay\Helper\ServiceHelper;
 use Wexo\Quickpay\ServiceInterface\QuickpayInterface;
 use Wexo\Quickpay\WexoQuickpay;
 
-/**
- * Class QuickpayPayment
- * @package Wexo\Quickpay\Service
- */
 class QuickpayPayment implements AsynchronousPaymentHandlerInterface
 {
     public static string $quickpayName = 'creditcard';
-    protected QuickpayInterface $paymentService;
-    protected QuickpayInterface $subscriptionService;
     protected QuickpayInterface $currentService;
-    protected ShopwareStateService $shopwareStateService;
 
-    /**
-     * @param QuickpayInterface $paymentService
-     * @param QuickpayInterface $subscriptionService
-     * @param ShopwareStateService $shopwareStateService
-     */
     public function __construct(
-        QuickpayInterface $paymentService,
-        QuickpayInterface $subscriptionService,
-        ShopwareStateService $shopwareStateService
+        protected QuickpayInterface $paymentService,
+        protected QuickpayInterface $subscriptionService,
+        protected ShopwareStateService $shopwareStateService
     ) {
-        $this->paymentService = $paymentService;
-        $this->subscriptionService = $subscriptionService;
-        $this->shopwareStateService = $shopwareStateService;
     }
 
     /**
@@ -76,7 +61,7 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
-                    'errorType' => get_class($e)
+                    'errorType' => $e::class
                 ]
             );
 
@@ -173,10 +158,6 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         }
     }
 
-    /**
-     * @param OrderEntity $order
-     * @return void
-     */
     private function setCurrentService(OrderEntity $order): void
     {
         $this->currentService = $this->paymentService;

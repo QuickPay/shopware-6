@@ -2,11 +2,11 @@
 
 namespace Wexo\Quickpay\Subscriber;
 
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use GuzzleHttp\Exception\GuzzleException;
 use Shopware\Core\Checkout\Cart\Order\OrderConvertedEvent;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
 use Shopware\Core\Checkout\Order\OrderEntity;
-use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\ContainsFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
@@ -17,32 +17,14 @@ use Wexo\Quickpay\Service\SubscriptionQuickpayService;
 use Wexo\Quickpay\Service\SwishPayment;
 use Wexo\Quickpay\ServiceInterface\QuickpayInterface;
 
-/**
- * Class OrderDetailSubscriber
- * @package Wexo\Quickpay\Subscriber
- */
 class OrderDetailSubscriber implements EventSubscriberInterface
 {
-    protected EntityRepositoryInterface $orderRepository;
-    protected SystemConfigService $systemConfigService;
-    protected QuickpayInterface $paymentService;
-    protected SubscriptionQuickpayService $subscriptionQuickpayService;
-
-    /**
-     * @param EntityRepositoryInterface $orderRepository
-     * @param SystemConfigService $systemConfigService
-     * @param QuickpayInterface $paymentService
-     */
     public function __construct(
-        EntityRepositoryInterface $orderRepository,
-        SystemConfigService $systemConfigService,
-        QuickpayInterface $paymentService,
-        SubscriptionQuickpayService $subscriptionQuickpayService
+        protected EntityRepository $orderRepository,
+        protected SystemConfigService $systemConfigService,
+        protected QuickpayInterface $paymentService,
+        protected SubscriptionQuickpayService $subscriptionQuickpayService
     ) {
-        $this->orderRepository = $orderRepository;
-        $this->systemConfigService = $systemConfigService;
-        $this->paymentService = $paymentService;
-        $this->subscriptionQuickpayService = $subscriptionQuickpayService;
     }
 
     /**
@@ -57,7 +39,6 @@ class OrderDetailSubscriber implements EventSubscriberInterface
     }
 
     /**
-     * @param StateMachineTransitionEvent $event
      * @throws GuzzleException
      */
     public function onStateMachineTransitionEvent(StateMachineTransitionEvent $event)
@@ -139,7 +120,6 @@ class OrderDetailSubscriber implements EventSubscriberInterface
     }
 
     /**
-     * @param OrderConvertedEvent $event
      * @return void
      * @throws GuzzleException
      */

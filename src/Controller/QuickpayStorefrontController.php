@@ -2,12 +2,12 @@
 
 namespace Wexo\Quickpay\Controller;
 
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Monolog\Logger;
 use Shopware\Core\Checkout\Cart\CartPersisterInterface;
 use Shopware\Core\Checkout\Payment\Cart\Token\TokenFactoryInterfaceV2;
 use Shopware\Core\Checkout\Payment\PaymentService;
 use Shopware\Core\Framework\Context;
-use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -18,43 +18,20 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Wexo\Quickpay\WexoQuickpay;
 use Shopware\Core\Checkout\Payment\Exception\TokenInvalidatedException;
 
-/**
- * @Route(defaults={"_routeScope"={"storefront"}})
- */
+#[Route(defaults: ['_routeScope' => ['storefront']])]
 class QuickpayStorefrontController
 {
-    protected EntityRepositoryInterface $logEntryRepository;
-    protected PaymentService $paymentService;
-    protected TokenFactoryInterfaceV2 $tokenFactory;
-    protected CartPersisterInterface $cartPersister;
-    protected UrlGeneratorInterface $urlGenerator;
-
     public function __construct(
-        EntityRepositoryInterface $logEntryRepository,
-        PaymentService $paymentService,
-        TokenFactoryInterfaceV2 $tokenFactory,
-        CartPersisterInterface $cartPersister,
-        UrlGeneratorInterface $urlGenerator
+        protected EntityRepository $logEntryRepository,
+        protected PaymentService $paymentService,
+        protected TokenFactoryInterfaceV2 $tokenFactory,
+        protected CartPersisterInterface $cartPersister,
+        protected UrlGeneratorInterface $urlGenerator
     ) {
-        $this->logEntryRepository = $logEntryRepository;
-        $this->paymentService = $paymentService;
-        $this->tokenFactory = $tokenFactory;
-        $this->cartPersister = $cartPersister;
-        $this->urlGenerator = $urlGenerator;
     }
 
-    /**
-     * @Route(
-     *     path="/payment/quickpay-finalize-transaction",
-     *     methods={"POST", "GET"},
-     *     defaults={"auth_required"=false, "csrf_protected"=false}
-     * )
-     * @param Request $request
-     * @param SalesChannelContext $context
-     *
-     * @return JsonResponse|RedirectResponse
-     */
-    public function quickpayFinalizeTransaction(Request $request, SalesChannelContext $context)
+    #[Route(path: '/payment/quickpay-finalize-transaction', methods: ['POST', 'GET'], defaults: ['auth_required' => false, 'csrf_protected' => false])]
+    public function quickpayFinalizeTransaction(Request $request, SalesChannelContext $context): JsonResponse|RedirectResponse
     {
         $finalizeAllowed = true;
         $data = [];
@@ -141,7 +118,7 @@ class QuickpayStorefrontController
 
         if ($data) {
             if ($request->getContent()) {
-                $data['content'] = json_decode($request->getContent(), true);
+                $data['content'] = json_decode((string) $request->getContent(), true);
             }
             $errorLevel = Logger::ERROR;
             $logMessage = 'quickpay_finalize_transaction_error';

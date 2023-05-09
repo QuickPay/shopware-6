@@ -1,3 +1,6 @@
+# 7.0.0
+* Shopware 6.5 compatible
+
 # 6.2.4
 * Event handling performance optimizations
 * Added settings for disabling capture and cancel payments in QuickPay

@@ -19,39 +19,18 @@ class QuickpayService
 {
     /** @var Client[] $apiClients */
     protected array $apiClients = [];
-    protected SystemConfigService $systemConfigService;
-    protected EntityRepository $logEntryRepository;
-    protected EntityRepository $languageRepository;
-    protected EntityRepository $orderRepository;
-    protected OrderTransactionStateHandler $transactionStateHandler;
-    protected StateMachineRegistry $stateMachineRegistry;
 
-    /**
-     * @param SystemConfigService $systemConfigService
-     * @param EntityRepository $logEntryRepository
-     * @param EntityRepository $languageRepository
-     * @param EntityRepository $orderRepository
-     * @param OrderTransactionStateHandler $transactionStateHandler
-     * @param StateMachineRegistry $stateMachineRegistry
-     */
     public function __construct(
-        SystemConfigService $systemConfigService,
-        EntityRepository $logEntryRepository,
-        EntityRepository $languageRepository,
-        EntityRepository $orderRepository,
-        OrderTransactionStateHandler $transactionStateHandler,
-        StateMachineRegistry $stateMachineRegistry
+        protected SystemConfigService $systemConfigService,
+        protected EntityRepository $logEntryRepository,
+        protected EntityRepository $languageRepository,
+        protected EntityRepository $orderRepository,
+        protected OrderTransactionStateHandler $transactionStateHandler,
+        protected StateMachineRegistry $stateMachineRegistry
     ) {
-        $this->systemConfigService = $systemConfigService;
-        $this->logEntryRepository = $logEntryRepository;
-        $this->languageRepository = $languageRepository;
-        $this->orderRepository = $orderRepository;
-        $this->transactionStateHandler = $transactionStateHandler;
-        $this->stateMachineRegistry = $stateMachineRegistry;
     }
 
     /**
-     * @param string|null $salesChannelId
      * @return Client
      */
     public function getClient(?string $salesChannelId): Client
@@ -85,9 +64,6 @@ class QuickpayService
     }
 
     /**
-     * @param string $salesChannelId
-     * @param string $content
-     * @param string $submittedChecksum
      * @return bool
      */
     public function checkPrivateKey(
@@ -103,7 +79,6 @@ class QuickpayService
     }
 
     /**
-     * @param array $config
      * @return bool
      * @throws GuzzleException
      */
@@ -129,11 +104,6 @@ class QuickpayService
         }
     }
 
-    /**
-     * @param string $event
-     * @param array $context
-     * @param int $level
-     */
     public function paymentLogger(
         string $event,
         array $context,
@@ -153,8 +123,6 @@ class QuickpayService
     }
 
     /**
-     * @param string $languageId
-     * @param Context $context
      * @return string
      */
     protected function getLanguage(string $languageId, Context $context): string
@@ -169,7 +137,7 @@ class QuickpayService
             'nn' => 'no',
         ];
 
-        $language = explode('-', $language->getLocale()->getCode())[0];
+        $language = explode('-', (string) $language->getLocale()->getCode())[0];
 
         if (isset($map[$language])) {
             return $map[$language];
@@ -179,9 +147,7 @@ class QuickpayService
     }
 
     /**
-     * @param string $orderId
      * @param null $paymentId
-     * @param SalesChannelContext|null $context
      * @return string|null
      * @throws GuzzleException
      */
@@ -205,7 +171,7 @@ class QuickpayService
 
             $customFields = $order->getCustomFields();
             if ($customFields && isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
-                $data = json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
+                $data = json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
 
                 if (property_exists($data, 'id')) {
                     $paymentId = $data->id;
@@ -234,7 +200,7 @@ class QuickpayService
                     'formParams' => $orderId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
-                    'errorType' => get_class($e)
+                    'errorType' => $e::class
                 ]
             );
         }
@@ -243,8 +209,6 @@ class QuickpayService
     }
 
     /**
-     * @param string $orderId
-     * @param array $customFields
      * @return void
      */
     public function setOrderCustomFields(string $orderId, array $customFields): void

@@ -2,8 +2,8 @@
 
 namespace Wexo\Quickpay;
 
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\Context;
-use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\ContainsFilter;
 use Shopware\Core\Framework\Plugin;
 use Shopware\Core\Framework\Plugin\Context\UpdateContext;
@@ -27,13 +27,9 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Plugin\Context\ActivateContext;
 use Shopware\Core\Framework\Plugin\Context\DeactivateContext;
 
-/**
- * Class WexoQuickpay
- * @package Wexo\Quickpay
- */
 class WexoQuickpay extends Plugin
 {
-    public const DEFAULT_PAYMENT_METHODS = [
+    final public const DEFAULT_PAYMENT_METHODS = [
         'MobilePay' => [
             'handler' => MobilepayPayment::class,
             'description' => 'MobilePay from QuickPay'
@@ -75,15 +71,20 @@ class WexoQuickpay extends Plugin
             'description' => 'Anyday from Quickpay'
         ],
     ];
-    public const QUICKPAY_FIELD_SET = 'quickpay';
-    public const QUICKPAY_RESPONSE_FIELD = 'quickpay_response';
-    public const QUICKPAY_SUBSCRIPTION_ID = 'quickpay_subscription_id';
-    public const LOG_CHANNEL = 'quickpay';
-    public const ORDER_CREATE_SUCCESS = 'quickpay.order.create.success';
-    public const ORDER_CREATE_ERROR = 'quickpay.order.create.error';
-    public const ORDER_COMPLETE_SUCCESS = 'quickpay.order.finalize.success';
-    public const ORDER_COMPLETE_ERROR = 'quickpay.order.finalize.error';
-    public const ORDER_CANCEL_ERROR = 'quickpay.order.cancel.error';
+    final public const QUICKPAY_FIELD_SET = 'quickpay';
+    final public const QUICKPAY_RESPONSE_FIELD = 'quickpay_response';
+    final public const QUICKPAY_SUBSCRIPTION_ID = 'quickpay_subscription_id';
+    final public const LOG_CHANNEL = 'quickpay';
+    final public const ORDER_CREATE_SUCCESS = 'quickpay.order.create.success';
+    final public const ORDER_CREATE_ERROR = 'quickpay.order.create.error';
+    final public const ORDER_COMPLETE_SUCCESS = 'quickpay.order.finalize.success';
+    final public const ORDER_COMPLETE_ERROR = 'quickpay.order.finalize.error';
+    final public const ORDER_CANCEL_ERROR = 'quickpay.order.cancel.error';
+
+    public function executeComposerCommands(): bool
+    {
+        return true;
+    }
 
     /**
      * @param InstallContext $installContext
@@ -226,9 +227,6 @@ class WexoQuickpay extends Plugin
         parent::deactivate($context);
     }
 
-    /**
-     * @param Context $context
-     */
     private function addPaymentMethods(Context $context): void
     {
         $paymentRepository = $this->container->get('payment_method.repository');
@@ -254,13 +252,11 @@ class WexoQuickpay extends Plugin
     }
 
     /**
-     * @param bool $active
-     * @param Context $context
      * @param $paymentMethodId
      */
     private function setPaymentMethodIsActive(bool $active, Context $context, $paymentMethodId): void
     {
-        /** @var EntityRepositoryInterface $paymentRepository */
+        /** @var EntityRepository $paymentRepository */
         $paymentRepository = $this->container->get('payment_method.repository');
         // Payment does not even exist, so nothing to (de-)activate here
         if (!$paymentMethodId) {
@@ -275,11 +271,10 @@ class WexoQuickpay extends Plugin
 
     /**
      * @param $identifier
-     * @return string|null
      */
     private function getPaymentMethodId($identifier): ?string
     {
-        /** @var EntityRepositoryInterface $paymentRepository */
+        /** @var EntityRepository $paymentRepository */
         $paymentRepository = $this->container->get('payment_method.repository');
         // Fetch ID for update
         $paymentCriteria = (new Criteria())->addFilter(new EqualsFilter('handlerIdentifier', $identifier));
@@ -292,7 +287,7 @@ class WexoQuickpay extends Plugin
 
     private function getPaymentMethodIdByName($identifier, $name): ?string
     {
-        /** @var EntityRepositoryInterface $paymentRepository */
+        /** @var EntityRepository $paymentRepository */
         $paymentRepository = $this->container->get('payment_method.repository');
         // Fetch ID for update
         $paymentCriteria = (new Criteria())

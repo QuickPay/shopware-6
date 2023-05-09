@@ -2,6 +2,7 @@
 
 namespace Wexo\Quickpay\Core\Checkout\Cart\SalesChannel;
 
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Checkout\Cart\Cart;
 use Shopware\Core\Checkout\Cart\CartCalculator;
 use Shopware\Core\Checkout\Cart\CartPersisterInterface;
@@ -11,7 +12,6 @@ use Shopware\Core\Checkout\Cart\SalesChannel\CartOrderRouteResponse;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Payment\PaymentMethodEntity;
-use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Plugin\Util\PluginIdProvider;
@@ -20,54 +20,19 @@ use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Wexo\Quickpay\WexoQuickpay;
 
-/**
- * Class CartOrderRouteDecorator
- * @package Wexo\Quickpay\Core\Checkout\Cart\SalesChannel
- */
 class CartOrderRouteDecorator extends AbstractCartOrderRoute
 {
-    protected AbstractCartOrderRoute $decoratedService;
-    protected CartCalculator $cartCalculator;
-    protected EntityRepositoryInterface $orderRepository;
-    protected OrderPersisterInterface $orderPersister;
-    protected CartPersisterInterface $cartPersister;
-    protected EventDispatcherInterface $eventDispatcher;
-    protected EntityRepositoryInterface $orderCustomerRepository;
-    protected EntityRepositoryInterface $orderTransactionRepository;
-    protected PluginIdProvider $pluginIdProvider;
-
-    /**
-     * CartOrderRouteDecorator constructor.
-     * @param AbstractCartOrderRoute $cartOrderRoute
-     * @param CartCalculator $cartCalculator
-     * @param EntityRepositoryInterface $orderRepository
-     * @param EntityRepositoryInterface $orderCustomerRepository
-     * @param OrderPersisterInterface $orderPersister
-     * @param CartPersisterInterface $cartPersister
-     * @param EventDispatcherInterface $eventDispatcher
-     * @param EntityRepositoryInterface $orderTransactionRepository
-     * @param PluginIdProvider $pluginIdProvider
-     */
     public function __construct(
-        AbstractCartOrderRoute $cartOrderRoute,
-        CartCalculator $cartCalculator,
-        EntityRepositoryInterface $orderRepository,
-        EntityRepositoryInterface $orderCustomerRepository,
-        OrderPersisterInterface $orderPersister,
-        CartPersisterInterface $cartPersister,
-        EventDispatcherInterface $eventDispatcher,
-        EntityRepositoryInterface $orderTransactionRepository,
-        PluginIdProvider $pluginIdProvider
+        protected AbstractCartOrderRoute $decoratedService,
+        protected CartCalculator $cartCalculator,
+        protected EntityRepository $orderRepository,
+        protected EntityRepository $orderCustomerRepository,
+        protected OrderPersisterInterface $orderPersister,
+        protected CartPersisterInterface $cartPersister,
+        protected EventDispatcherInterface $eventDispatcher,
+        protected EntityRepository $orderTransactionRepository,
+        protected PluginIdProvider $pluginIdProvider
     ) {
-        $this->decoratedService = $cartOrderRoute;
-        $this->cartCalculator = $cartCalculator;
-        $this->orderRepository = $orderRepository;
-        $this->orderCustomerRepository = $orderCustomerRepository;
-        $this->orderPersister = $orderPersister;
-        $this->cartPersister = $cartPersister;
-        $this->eventDispatcher = $eventDispatcher;
-        $this->orderTransactionRepository = $orderTransactionRepository;
-        $this->pluginIdProvider = $pluginIdProvider;
     }
 
     /**
@@ -99,11 +64,6 @@ class CartOrderRouteDecorator extends AbstractCartOrderRoute
         return $response;
     }
 
-    /**
-     * @param Cart $cart
-     * @param OrderEntity $orderEntity
-     * @param SalesChannelContext $context
-     */
     protected function restoreCartIfQuickpay(Cart $cart, OrderEntity $orderEntity, SalesChannelContext $context)
     {
         $criteria = (new Criteria())

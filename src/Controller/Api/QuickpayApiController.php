@@ -8,28 +8,17 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
 use Wexo\Quickpay\Service\PaymentQuickpayService;
 
-/**
- * @Route(defaults={"_routeScope"={"administration"}})
- */
+#[Route(defaults: ['_routeScope' => ['administration']])]
 class QuickpayApiController
 {
-    protected PaymentQuickpayService $paymentQuickpayService;
-
-    /**
-     * @param PaymentQuickpayService $paymentQuickpayService
-     */
-    public function __construct(
-        PaymentQuickpayService $paymentQuickpayService
-    ) {
-        $this->paymentQuickpayService = $paymentQuickpayService;
+    public function __construct(protected PaymentQuickpayService $paymentQuickpayService)
+    {
     }
 
     /**
-     * @Route(path="/api/_action/quickpay-api/verify")
-     * @param RequestDataBag $dataBag
-     * @return JsonResponse
      * @throws GuzzleException
      */
+    #[Route(path: '/api/_action/quickpay-api/verify')]
     public function check(RequestDataBag $dataBag): JsonResponse
     {
         $config = [
@@ -45,15 +34,9 @@ class QuickpayApiController
     }
 
     /**
-     * @Route(
-     *     path="/api/_action/quickpay-api/capture",
-     *     methods={"POST"},
-     *     defaults={"auth_required"=false}
-     * )
-     * @param RequestDataBag $dataBag
-     * @return JsonResponse
      * @throws GuzzleException
      */
+    #[Route(path: '/api/_action/quickpay-api/capture', methods: ['POST'], defaults: ['auth_required' => false])]
     public function capture(RequestDataBag $dataBag): JsonResponse
     {
         $amount = $dataBag->get('amount');
@@ -67,15 +50,9 @@ class QuickpayApiController
     }
 
     /**
-     * @Route(
-     *     path="/api/_action/quickpay-api/update",
-     *     methods={"POST"},
-     *     defaults={"auth_required"=false}
-     * )
-     * @param RequestDataBag $dataBag
-     * @return JsonResponse
      * @throws GuzzleException
      */
+    #[Route(path: '/api/_action/quickpay-api/update', methods: ['POST'], defaults: ['auth_required' => false])]
     public function update(RequestDataBag $dataBag): JsonResponse
     {
         $orderId = $dataBag->get('orderId');

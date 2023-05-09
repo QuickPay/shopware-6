@@ -2,11 +2,11 @@
 
 namespace Wexo\Quickpay\Controller;
 
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Monolog\Logger;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Framework\Context;
-use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Routing\Annotation\RouteScope;
@@ -20,45 +20,19 @@ use Wexo\Quickpay\Service\QuickpayService;
 use Wexo\Quickpay\Service\ShopwareStateService;
 use Wexo\Quickpay\WexoQuickpay;
 
-/**
- * @Route(defaults={"_routeScope"={"api"}})
- */
+#[Route(defaults: ['_routeScope' => ['api']])]
 class QuickpayRecurringController extends AbstractController
 {
-    protected EntityRepositoryInterface $logEntryRepository;
-    protected EntityRepositoryInterface $orderRepository;
-    protected QuickpayService $quickpayService;
-    protected ShopwareStateService $shopwareStateService;
-
-    /**
-     * @param EntityRepositoryInterface $logEntryRepository
-     * @param EntityRepositoryInterface $orderRepository
-     * @param QuickpayService $quickpayService
-     * @param ShopwareStateService $shopwareStateService
-     */
     public function __construct(
-        EntityRepositoryInterface $logEntryRepository,
-        EntityRepositoryInterface $orderRepository,
-        QuickpayService $quickpayService,
-        ShopwareStateService $shopwareStateService
+        protected EntityRepository $logEntryRepository,
+        protected EntityRepository $orderRepository,
+        protected QuickpayService $quickpayService,
+        protected ShopwareStateService $shopwareStateService
     ) {
-        $this->logEntryRepository = $logEntryRepository;
-        $this->orderRepository = $orderRepository;
-        $this->quickpayService = $quickpayService;
-        $this->shopwareStateService = $shopwareStateService;
     }
 
-    /**
-     * @Route("api/wexo/quickpay/recurring-callback",
-     *     name="api.wexo.quickpay.recurring",
-     *     methods={"POST", "GET"},
-     *     defaults={"auth_required"=false, "csrf_protected"=false}
-     * )
-     * @param Request $request
-     *
-     * @return JsonResponse|RedirectResponse
-     */
-    public function callback(Request $request)
+    #[Route(path: 'api/wexo/quickpay/recurring-callback', name: 'api.wexo.quickpay.recurring', methods: ['POST', 'GET'], defaults: ['auth_required' => false, 'csrf_protected' => false])]
+    public function callback(Request $request): JsonResponse|RedirectResponse
     {
         try {
             $this->logEntryRepository->create(
@@ -66,7 +40,7 @@ class QuickpayRecurringController extends AbstractController
                     [
                         'message' => 'quickpay.recurring.payment.callback',
                         'context' => [
-                            'contentType' => $request->getContentType(),
+                            'contentType' => $request->getContentTypeFormat(),
                             'content'     => $request->getContent()
                         ],
                         'level'   => Logger::INFO,
@@ -79,7 +53,7 @@ class QuickpayRecurringController extends AbstractController
             // do nothing
         }
 
-        $response = json_decode($request->getContent(), true);
+        $response = json_decode((string) $request->getContent(), true);
         if (! isset($response['order_id'])) {
             return new JsonResponse([], Response::HTTP_BAD_REQUEST);
         }
@@ -163,13 +137,6 @@ class QuickpayRecurringController extends AbstractController
         return new JsonResponse([], Response::HTTP_OK);
     }
 
-    /**
-     * @param String $message
-     * @param OrderEntity $order
-     * @param Request $request
-     * @param \Exception $e
-     * @return void
-     */
     public function logError(String $message, OrderEntity $order, Request $request, \Exception $e): void
     {
         $this->logEntryRepository->create(
@@ -180,7 +147,7 @@ class QuickpayRecurringController extends AbstractController
                         'error' => $e->getMessage(),
                         'errorMessage'=> $e->getTraceAsString(),
                         'orderId' => $order->getId(),
-                        'contentType' => $request->getContentType(),
+                        'contentType' => $request->getContentTypeFormat(),
                         'content'     => $request->getContent()
                     ],
                     'level'   => Logger::CRITICAL,

@@ -21,10 +21,6 @@ use Shopware\Core\System\StateMachine\Transition;
 use Wexo\Quickpay\ServiceInterface\QuickpayInterface;
 use Wexo\Quickpay\WexoQuickpay;
 
-/**
- * Class PaymentService
- * @package Wexo\Quickpay\Service
- */
 class PaymentQuickpayService extends QuickpayService implements QuickpayInterface
 {
     /**
@@ -139,7 +135,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         $updateFormParams['payment_methods'] = $identifier::$quickpayName;
 
         $customFields = $order->getCustomFields();
-        $paymentResponse = \json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
+        $paymentResponse = \json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
         $linkResponse = $this->getClient($salesChannelContext->getSalesChannelId())
             ->request('put', 'payments/' . $paymentResponse['id'] . "/link", [
                 'form_params' => $updateFormParams
@@ -178,9 +174,6 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
     }
 
     /**
-     * @param string $orderId
-     * @param float|null $amount
-     * @return bool|null
      * @throws GuzzleException
      */
     public function capture(
@@ -348,7 +341,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
                 $logEntry
             );
 
-            $quickPayResponse = json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
+            $quickPayResponse = json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
             $availableAmount = $this->getAvailableAmount($quickPayResponse);
             if ($availableAmount != 0) {
                 $this->transactionStateHandler->reopen(
@@ -398,13 +391,12 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
     }
 
     /**
-     * @param OrderEntity $order
      * @throws GuzzleException
      */
     public function cancel(OrderEntity $order): void
     {
         $customFields = $order->getCustomFields();
-        $paymentResponse = \json_decode($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
+        $paymentResponse = \json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
         $id = $paymentResponse['id'] ?? null;
         $accepted = $paymentResponse['accepted'] ?? false;
         if ($id && $accepted) {
@@ -412,10 +404,6 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         }
     }
 
-    /**
-     * @param \stdClass $quickpayResponse
-     * @return float
-     */
     private function getAvailableAmount(\stdClass $quickpayResponse): float
     {
         $capturedAmount = 0;
@@ -455,9 +443,6 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
 
     /**
      * On swish payment, skip trying to capture and update Shopware states for Shipping and Order
-     * @param OrderEntity $order
-     * @param Context $context
-     * @return void
      */
     private function swishPaymentUpdateOrderStates(OrderEntity $order, Context $context): void
     {

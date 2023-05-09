@@ -11,31 +11,15 @@ use Shopware\Core\System\StateMachine\Aggregation\StateMachineTransition\StateMa
 use Shopware\Core\System\StateMachine\StateMachineRegistry;
 use Shopware\Core\System\StateMachine\Transition;
 
-/**
- * Class SubscriptionService
- * @package Wexo\Quickpay\Service
- */
 class ShopwareStateService
 {
-    protected OrderTransactionStateHandler $transactionStateHandler;
-    protected StateMachineRegistry $stateMachineRegistry;
-
-    /**
-     * @param OrderTransactionStateHandler $transactionStateHandler
-     * @param StateMachineRegistry $stateMachineRegistry
-     */
     public function __construct(
-        OrderTransactionStateHandler $transactionStateHandler,
-        StateMachineRegistry $stateMachineRegistry
+        protected OrderTransactionStateHandler $transactionStateHandler,
+        protected StateMachineRegistry $stateMachineRegistry
     ) {
-        $this->transactionStateHandler = $transactionStateHandler;
-        $this->stateMachineRegistry = $stateMachineRegistry;
     }
 
     /**
-     * @param string $transactionId
-     * @param string $paymentState
-     * @param string $orderState
      * @return void
      */
     public function cancel(
@@ -65,13 +49,6 @@ class ShopwareStateService
         }
     }
 
-    /**
-     * @param string $transactionId
-     * @param string $orderId
-     * @param string $paymentState
-     * @param string $orderState
-     * @return void
-     */
     public function success(
         string $transactionId,
         string $orderId,
@@ -118,13 +95,6 @@ class ShopwareStateService
         }
     }
 
-    /**
-     * @param string $transactionId
-     * @param string $orderId
-     * @param string $paymentState
-     * @param string $orderState
-     * @return void
-     */
     public function paid(
         string $transactionId,
         string $orderId,

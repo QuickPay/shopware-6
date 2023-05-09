@@ -7,10 +7,6 @@ use Wexo\Quickpay\WexoQuickpay;
 
 class ServiceHelper
 {
-    /**
-     * @param OrderEntity $order
-     * @return bool
-     */
     public static function isOrderSubscription(OrderEntity $order): bool
     {
         $customFields = $order->getCustomFields() ?? [];

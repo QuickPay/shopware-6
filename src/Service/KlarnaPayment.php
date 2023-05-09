@@ -8,10 +8,6 @@ use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
-/**
- * Class KlarnaPayment
- * @package Wexo\Quickpay\Service
- */
 class KlarnaPayment extends QuickpayPayment
 {
     public static string $quickpayName = 'klarna-payments';
