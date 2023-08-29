@@ -89,6 +89,10 @@ Component.register('quickpay-order-payment-details', {
             if (this.quickpayResponse.metadata && 'is_3d_secure' in this.quickpayResponse.metadata) {
                 secure3d = this.quickpayResponse.metadata.is_3d_secure
             }
+            let brand = '-';
+            if (this.quickpayResponse.metadata && 'brand' in this.quickpayResponse.metadata) {
+                brand = this.quickpayResponse.metadata.brand
+            }
             let acquirer = '-';
             if (this.quickpayResponse && 'acquirer' in this.quickpayResponse) {
                 acquirer = this.quickpayResponse.acquirer
@@ -136,6 +140,10 @@ Component.register('quickpay-order-payment-details', {
                 id: 'uuid4',
                 attribute: 'Type',
                 value: type
+            }, {
+                id: 'uuid10',
+                attribute: 'Brand',
+                value: brand
             }, {
                 id: 'uuid5',
                 attribute: 'Currency code',
@@ -200,5 +208,3 @@ Component.register('quickpay-order-payment-details', {
         }
     }
 });
-
-

@@ -1,3 +1,6 @@
+# 7.0.1
+* Added payment brand info on QuickPay Payment tab on the order
+
 # 7.0.0
 * Shopware 6.5 compatible
 

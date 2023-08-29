@@ -1,3 +1,6 @@
+# 7.0.1
+* Auf der Registerkarte „QuickPay-Zahlung“ der Bestellung wurden Informationen zur Zahlungsmarke hinzugefügt
+
 # 7.0.0
 * Shopware 6.5 kompatibel
 
