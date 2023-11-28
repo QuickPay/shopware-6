@@ -1,34 +1,47 @@
 {% block quickpay_order_payment_details %}
-    <sw-card v-if="orderId"
-             :orderId="orderId"
-             :title="'Payment Details'"
-             :isLoading="isLoading"
-             :isEditing="isEditing"
-             class="quickpay-order-payment-details">
-        {% block quickpay_order_payment_details_payment_data_title %}
-            <strong>QuickPay | Payment solution</strong><br><br>
-        {% endblock %}
-        {% block quickpay_order_payment_details_payment_data %}
-            <sw-data-grid v-if="quickpayResponse"
-                          :dataSource="dataSource"
-                          :columns="orderColumns"
-                          :showActions="false"
-                          :showSelection="false"
-                          :showHeader="false">
-            </sw-data-grid><br>
-            <sw-field
-                type="number"
-                :label="$t('quickpay.label.capture')"
-                v-model="amount"
-                min="0"
-                :max="available"
-                input-change="updateAmount()">
-            </sw-field>
-            <sw-button
-                @click="capture()"
-                size="small">
-                {{ $tc('quickpay.label.capture') }}
-            </sw-button>
-        {% endblock %}
-    </sw-card>
+  <sw-card
+    v-if="orderId"
+    position-identifier="quickpay-order-payment-details"
+    class="quickpay-order-payment-details"
+    :title="'Payment Details'"
+    :is-loading="isLoading"
+    :is-editing="isEditing"
+  >
+    {% block quickpay_order_payment_details_payment_data_title %}
+      <strong>QuickPay | Payment solution</strong><br><br>
+    {% endblock %}
+
+    {% block quickpay_order_payment_details_payment_data %}
+      <sw-data-grid
+        v-if="quickpayResponse"
+        :data-source="dataSource"
+        :columns="orderColumns"
+        :show-actions="false"
+        :show-selection="false"
+        :show-header="false"
+      ></sw-data-grid>
+
+      <br>
+
+      <sw-number-field
+        v-model="amount"
+        allow-empty
+        number-type="float"
+        :disabled="isCapturing || !available"
+        :label="$t('quickpay.label.capture')"
+        :min="0"
+        :max="available"
+      ></sw-number-field>
+
+      <sw-button-process
+        v-model="captureSuccessful"
+        size="small"
+        :is-loading="isCapturing"
+        :disabled="isCapturing || !available"
+        @click="capture"
+      >
+        {{ $tc('quickpay.label.capture') }}
+      </sw-button-process>
+    {% endblock %}
+  </sw-card>
 {% endblock %}

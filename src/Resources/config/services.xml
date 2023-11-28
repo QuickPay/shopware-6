@@ -5,19 +5,6 @@
            xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
 
     <services>
-        <service id="Wexo\Quickpay\Core\Checkout\Cart\SalesChannel\CartOrderRouteDecorator"
-                 decorates="Shopware\Core\Checkout\Cart\SalesChannel\CartOrderRoute">
-            <argument type="service" id="Wexo\Quickpay\Core\Checkout\Cart\SalesChannel\CartOrderRouteDecorator.inner" />
-            <argument type="service" id="Shopware\Core\Checkout\Cart\CartCalculator"/>
-            <argument type="service" id="order.repository"/>
-            <argument type="service" id="order_customer.repository"/>
-            <argument type="service" id="Shopware\Core\Checkout\Cart\Order\OrderPersister"/>
-            <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
-            <argument type="service" id="event_dispatcher"/>
-            <argument type="service" id="order_transaction.repository"/>
-            <argument type="service" id="Shopware\Core\Framework\Plugin\Util\PluginIdProvider"/>
-        </service>
-
         <service id="Wexo\Quickpay\Service\QuickpayPayment">
             <argument type="service" id="Wexo\Quickpay\Service\PaymentQuickpayService" />
             <argument type="service" id="Wexo\Quickpay\Service\SubscriptionQuickpayService" />
@@ -140,6 +127,18 @@
             <argument type="service" id="Shopware\Core\Framework\Api\OAuth\RefreshTokenRepository"/>
             <argument type="service" id="Symfony\Bridge\PsrHttpMessage\Factory\PsrHttpFactory"/>
             <argument type="service" id="Shopware\Core\Framework\Routing\RouteScopeRegistry"/>
+        </service>
+
+        <service id="Wexo\Quickpay\Service\RefundService">
+            <argument type="service" id="order.repository"/>
+            <argument type="service" id="Shopware\Core\Framework\Plugin\Util\PluginIdProvider"/>
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+            <argument type="service" id="log_entry.repository"/>
+        </service>
+
+        <service id="Wexo\Quickpay\Command\RefundCommand">
+            <argument type="service" id="Wexo\Quickpay\Service\RefundService"/>
+            <tag name="console.command" command="wexo:quickpay:refund"/>
         </service>
     </services>
 </container>

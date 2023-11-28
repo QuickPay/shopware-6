@@ -27,3 +27,7 @@ Shopware.Module.register('quickpay-order-payment-details-tab', {
         next(currentRoute);
     }
 });
+
+if (module.hot) {
+  module.hot.accept();
+}

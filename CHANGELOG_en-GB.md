@@ -1,3 +1,6 @@
+# 7.0.2
+* Added service to handle refunding
+
 # 7.0.1
 * Added payment brand info on QuickPay Payment tab on the order
 
