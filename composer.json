@@ -1,5 +1,5 @@
 {
-    "name": "store.shopware.com/wexoquickpay",
+    "name": "wexo/quickpay",
     "description": "QuickPay Payment Integration",
     "type": "shopware-platform-plugin",
     "license": "proprietary",
