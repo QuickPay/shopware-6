@@ -29,7 +29,7 @@ validate-plugin:
     entrypoint: ["/usr/local/bin/entrypoint.sh"]
   script:
     - shopware-cli extension zip . --disable-git
-    - shopware-cli extension validate --verbose -vvv $PLUGIN_NAME.zip
+    - shopware-cli extension validate $PLUGIN_NAME.zip
 
 upload-plugin:
   needs: ["validate-plugin"]
