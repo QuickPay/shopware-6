@@ -54,7 +54,7 @@ class RefundExceptions extends HttpException
         );
     }
 
-    public static function amountToLarge(float $amount, float $currentBalance): self
+    public static function refundAmountToLarge(float $amount, float $currentBalance): self
     {
         return new self(
             Response::HTTP_BAD_REQUEST,

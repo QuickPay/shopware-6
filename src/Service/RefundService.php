@@ -16,6 +16,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsAnyFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\HttpException;
 use Shopware\Core\Framework\Plugin\Util\PluginIdProvider;
+use Shopware\Core\Framework\Util\FloatComparator;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Wexo\Quickpay\Content\RefundExceptions;
 use Wexo\Quickpay\WexoQuickpay;
@@ -41,7 +42,7 @@ class RefundService
         string $orderId,
         float $amount,
         Context $context
-    ): ?bool {
+    ): bool {
         if (!$amount) {
             throw RefundExceptions::invalidAmount($amount);
         }
@@ -106,8 +107,8 @@ class RefundService
         $this->verifyResponse($clientResponse, $orderId, $context);
 
         $currentBalance = (float)($this->response['balance'] ?? 0);
-        if ($amount * 100 > $currentBalance) {
-            throw RefundExceptions::amountToLarge($amount, $currentBalance / 100);
+        if (FloatComparator::greaterThan($amount * 100, $currentBalance)) {
+            throw RefundExceptions::refundAmountToLarge($amount, $currentBalance / 100);
         }
 
         $refundResponse = $client->post(
