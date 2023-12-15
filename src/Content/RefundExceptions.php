@@ -54,11 +54,11 @@ class RefundExceptions extends HttpException
         );
     }
 
-    public static function refundAmountToLarge(float $amount, float $currentBalance): self
+    public static function refundAmountTooLarge(float $amount, float $currentBalance): self
     {
         return new self(
             Response::HTTP_BAD_REQUEST,
-            'QUICKPAY__REFUND_AMOUNT_TO_LARGE',
+            'QUICKPAY__REFUND_AMOUNT_TOO_LARGE',
             'Amount {{ amount }} must be less than or equal to {{ currentBalance }}',
             ['amount' => $amount, 'currentBalance' => $currentBalance]
         );

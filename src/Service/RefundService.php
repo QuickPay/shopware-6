@@ -108,7 +108,7 @@ class RefundService
 
         $currentBalance = (float)($this->response['balance'] ?? 0);
         if (FloatComparator::greaterThan($amount * 100, $currentBalance)) {
-            throw RefundExceptions::refundAmountToLarge($amount, $currentBalance / 100);
+            throw RefundExceptions::refundAmountTooLarge($amount, $currentBalance / 100);
         }
 
         $refundResponse = $client->post(
