@@ -1,5 +1,5 @@
 # 7.0.2
-* Zusätzlicher Service zur Abwicklung der Rückerstattung
+* Zusätzlicher Service zur Abwicklung der Rückerstattung (Für Entwickler)
  
 # 7.0.1
 * Auf der Registerkarte „QuickPay-Zahlung“ der Bestellung wurden Informationen zur Zahlungsmarke hinzugefügt
