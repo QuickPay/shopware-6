@@ -223,8 +223,9 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         if (! $transaction) {
             return false;
         }
-        /** @var \stdClass $paymentResponse */
-        $paymentResponse = json_decode($this->updateResponse($orderId));
+
+        $paymentResponse = $this->updateResponse($orderId);
+        $paymentResponse = $paymentResponse ? json_decode($paymentResponse) : null;
         if (!$paymentResponse
             || !property_exists($paymentResponse, 'id')
             || !property_exists($paymentResponse, 'order_id')
