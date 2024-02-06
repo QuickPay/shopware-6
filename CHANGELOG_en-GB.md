@@ -1,3 +1,6 @@
+# 7.0.3 
+* Improved conditional check on tax rate to ensure safety against potential null pointer exceptions.
+
 # 7.0.2
 * Added service to handle refunding (For developers)
 

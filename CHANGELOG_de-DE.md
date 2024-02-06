@@ -1,3 +1,6 @@
+# 7.0.3
+* Verbesserte bedingte Überprüfung des Steuersatzes, um die Sicherheit gegen potenzielle Nullzeiger-Ausnahmen zu gewährleisten.
+
 # 7.0.2
 * Zusätzlicher Service zur Abwicklung der Rückerstattung (Für Entwickler)
  
