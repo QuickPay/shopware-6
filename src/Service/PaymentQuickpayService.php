@@ -58,8 +58,9 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         $shippingTotal = $order->getShippingTotal();
 
         $shippingTaxRate = 0;
-        if ($order->getShippingCosts()->getTaxRules()->first()->getTaxRate()) {
-            $shippingTaxRate = $order->getShippingCosts()->getTaxRules()->first()->getTaxRate() / 100;
+        $taxRules = $order->getShippingCosts()->getTaxRules();
+        if ($taxRules && $taxRules->first() && $taxRules->first()->getTaxRate()) {
+            $shippingTaxRate = $taxRules->first()->getTaxRate() / 100;
         }
 
         if ($shippingTotal) {
