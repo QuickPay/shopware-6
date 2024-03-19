@@ -57,10 +57,18 @@ Component.register('quickpay-order-payment-details', {
 
     this.repository.get(this.orderId, Shopware.Context.api).then(entity => {
       this.order = entity;
-      this.quickpayResponse = JSON.parse(this.order?.customFields?.quickpay_response);
-      this.$emit('loading-change', false);
+      const orderResponse = this.order?.customFields?.quickpay_response;
 
-      return Promise.resolve();
+      if (orderResponse) {
+        this.quickpayResponse = JSON.parse(orderResponse);
+        this.$emit('loading-change', false);
+
+        return Promise.resolve();
+
+      } else {
+        this.$emit('loading-change', false);
+      }
+
     });
   },
   computed: {
