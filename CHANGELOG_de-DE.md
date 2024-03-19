@@ -1,3 +1,6 @@
+# 7.0.4
+* Ändern Sie den Ladestatus, wenn keine Quickpay-Antwort erfolgt, um das unendliche Laden im Admin-Panel zu beheben.
+
 # 7.0.3
 * Verbesserte bedingte Überprüfung des Steuersatzes, um die Sicherheit gegen potenzielle Nullzeiger-Ausnahmen zu gewährleisten.
 
