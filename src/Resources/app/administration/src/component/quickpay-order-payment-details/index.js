@@ -64,7 +64,6 @@ Component.register('quickpay-order-payment-details', {
         this.$emit('loading-change', false);
 
         return Promise.resolve();
-
       } else {
         this.$emit('loading-change', false);
       }
