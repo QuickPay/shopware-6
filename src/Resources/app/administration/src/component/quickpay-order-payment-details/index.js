@@ -68,7 +68,6 @@ Component.register('quickpay-order-payment-details', {
       } else {
         this.$emit('loading-change', false);
       }
-
     });
   },
   computed: {
