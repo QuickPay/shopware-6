@@ -1,3 +1,6 @@
+# 7.0.4
+* Change loading status if there is no quickpay response to fix infinite loading on the admin panel.
+
 # 7.0.3 
 * Improved conditional check on tax rate to ensure safety against potential null pointer exceptions.
 
