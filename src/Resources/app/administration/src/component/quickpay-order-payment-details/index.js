@@ -119,7 +119,14 @@ Component.register('quickpay-order-payment-details', {
         amount = this.quickpayResponse.link.amount ? this.quickpayResponse.link.amount : amount
       }
 
+      const isValid = (operation) => (operation['qp_status_msg'] || null) === 'Approved' ||
+      (operation['aq_status_msg'] || null) === 'Approved';
+
       this.quickpayResponse.operations.forEach((operation) => {
+        if(!isValid(operation)){
+          return;
+        }
+
         if (operation.type === "authorize" || operation.type === "recurring") {
           this.authorized = operation.amount;
         }

@@ -1,3 +1,6 @@
+# 7.0.5
+* Fixed invalid validation of refund status
+
 # 7.0.4
 * Change loading status if there is no quickpay response to fix infinite loading on the admin panel.
 

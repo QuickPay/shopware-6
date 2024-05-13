@@ -5,6 +5,19 @@
            xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
 
     <services>
+        <service id="Wexo\Quickpay\Core\Checkout\Cart\SalesChannel\CartOrderRouteDecorator"
+                 decorates="Shopware\Core\Checkout\Cart\SalesChannel\CartOrderRoute">
+            <argument type="service" id="Wexo\Quickpay\Core\Checkout\Cart\SalesChannel\CartOrderRouteDecorator.inner" />
+            <argument type="service" id="Shopware\Core\Checkout\Cart\CartCalculator"/>
+            <argument type="service" id="order.repository"/>
+            <argument type="service" id="order_customer.repository"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\Order\OrderPersister"/>
+            <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
+            <argument type="service" id="event_dispatcher"/>
+            <argument type="service" id="order_transaction.repository"/>
+            <argument type="service" id="Shopware\Core\Framework\Plugin\Util\PluginIdProvider"/>
+        </service>
+
         <service id="Wexo\Quickpay\Service\QuickpayPayment">
             <argument type="service" id="Wexo\Quickpay\Service\PaymentQuickpayService" />
             <argument type="service" id="Wexo\Quickpay\Service\SubscriptionQuickpayService" />

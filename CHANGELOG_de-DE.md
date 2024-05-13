@@ -1,3 +1,6 @@
+# 7.0.5
+* Ungültige Validierung des Rückerstattungsstatus behoben
+
 # 7.0.4
 * Ändern Sie den Ladestatus, wenn keine Quickpay-Antwort erfolgt, um das unendliche Laden im Admin-Panel zu beheben.
 
