@@ -138,7 +138,19 @@ class RefundService
                 ], $context);
             }
 
-            return true;
+            if (isset($this->response['operations']) && is_array($this->response['operations'])) {
+                $refunds = array_filter(
+                    $this->response['operations'],
+                    static fn($operation) => $operation['type'] === 'refund'
+                );
+
+                $currentRefund = end($refunds);
+                if (($currentRefund['qp_status_msg'] ?? null) === 'Approved' ||
+                    ($currentRefund['aq_status_msg'] ?? null) === 'Approved'
+                ) {
+                    return true;
+                }
+            }
         }
 
         return false;
@@ -159,5 +171,10 @@ class RefundService
         }
 
         $this->response = json_decode($content, true);
+    }
+
+    public function getResponse(): ?array
+    {
+        return $this->response;
     }
 }
