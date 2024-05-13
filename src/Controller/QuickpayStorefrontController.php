@@ -2,7 +2,7 @@
 
 namespace Wexo\Quickpay\Controller;
 
-use Shopware\Core\Checkout\Cart\CartPersister;
+use Shopware\Core\Checkout\Cart\AbstractCartPersister;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Monolog\Logger;
 use Shopware\Core\Checkout\Payment\Cart\Token\TokenFactoryInterfaceV2;
@@ -25,13 +25,16 @@ class QuickpayStorefrontController
         protected EntityRepository $logEntryRepository,
         protected PaymentService $paymentService,
         protected TokenFactoryInterfaceV2 $tokenFactory,
-        protected CartPersister $cartPersister,
+        protected AbstractCartPersister $cartPersister,
         protected UrlGeneratorInterface $urlGenerator
     ) {
     }
 
-    // phpcs:ignore
-    #[Route(path: '/payment/quickpay-finalize-transaction', methods: ['POST', 'GET'], defaults: ['auth_required' => false, 'csrf_protected' => false])]
+    #[Route(
+        path: '/payment/quickpay-finalize-transaction',
+        defaults: ['auth_required' => false, 'csrf_protected' => false],
+        methods: ['POST', 'GET']
+    )]
     public function quickpayFinalizeTransaction(
         Request $request,
         SalesChannelContext $context
