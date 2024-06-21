@@ -55,7 +55,10 @@ Component.register('quickpay-order-payment-details', {
       'orderId': this.orderId
     });
 
-    this.repository.get(this.orderId, Shopware.Context.api).then(entity => {
+    const criteria = new Shopware.Data.Criteria();
+    criteria.addAssociation('stateMachineState');
+
+    this.repository.get(this.orderId, Shopware.Context.api, criteria).then(entity => {
       this.order = entity;
       const orderResponse = this.order?.customFields?.quickpay_response;
 
@@ -144,7 +147,7 @@ Component.register('quickpay-order-payment-details', {
 
       return [{
         attribute: 'Transaction Status',
-        value: this.order.stateMachineState.name
+        value: this.order.stateMachineState?.name || '-'
       }, {
         attribute: 'Order Number',
         value: this.order.orderNumber

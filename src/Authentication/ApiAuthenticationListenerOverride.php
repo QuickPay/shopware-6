@@ -10,6 +10,8 @@ use League\OAuth2\Server\Repositories\RefreshTokenRepositoryInterface;
 use League\OAuth2\Server\Repositories\UserRepositoryInterface;
 use League\OAuth2\Server\ResourceServer;
 use Shopware\Core\Framework\Api\EventListener\Authentication\ApiAuthenticationListener;
+use Shopware\Core\Framework\Api\OAuth\BearerTokenValidator;
+use Shopware\Core\Framework\Api\OAuth\SymfonyBearerTokenValidator;
 use Shopware\Core\Framework\Routing\RouteScopeCheckTrait;
 use Shopware\Core\Framework\Routing\RouteScopeRegistry;
 use Symfony\Bridge\PsrHttpMessage\Factory\PsrHttpFactory;
@@ -20,19 +22,21 @@ class ApiAuthenticationListenerOverride extends ApiAuthenticationListener
     use RouteScopeCheckTrait;
 
     public function __construct(
-        private readonly ResourceServer $resourceServer,
+        private readonly BearerTokenValidator $bearerTokenValidator,
+        private readonly SymfonyBearerTokenValidator $symfonyBearerTokenValidator,
+        private readonly PsrHttpFactory $psrHttpFactory,
         private readonly AuthorizationServer $authorizationServer,
         private readonly UserRepositoryInterface $userRepository,
         private readonly RefreshTokenRepositoryInterface $refreshTokenRepository,
-        private readonly PsrHttpFactory $psrHttpFactory,
-        private readonly RouteScopeRegistry $routeScopeRegistry
+        private readonly RouteScopeRegistry $routeScopeRegistry,
     ) {
         parent::__construct(
-            $resourceServer,
+            $bearerTokenValidator,
+            $symfonyBearerTokenValidator,
+            $psrHttpFactory,
             $authorizationServer,
             $userRepository,
             $refreshTokenRepository,
-            $psrHttpFactory,
             $routeScopeRegistry
         );
     }
