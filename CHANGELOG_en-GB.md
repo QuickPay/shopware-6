@@ -1,3 +1,6 @@
+# 8.0.0
+* Shopware 6.6 compatible.
+
 # 7.0.5
 * Fixed invalid validation of refund status
 

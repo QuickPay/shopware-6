@@ -1,3 +1,6 @@
+# 8.0.0
+* Shopware 6.6 kompatibel.
+
 # 7.0.5
 * Ungültige Validierung des Rückerstattungsstatus behoben
 
