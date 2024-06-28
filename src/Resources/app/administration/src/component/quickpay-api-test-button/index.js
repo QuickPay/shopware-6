@@ -1,4 +1,4 @@
-const { Component, Mixin } = Shopware;
+const {Component, Mixin} = Shopware;
 import template from './quickpay-api-test-button.html.twig';
 
 Component.register('quickpay-api-test-button', {
@@ -21,8 +21,8 @@ Component.register('quickpay-api-test-button', {
     computed: {
         pluginConfig() {
             let systemConfigComponent = this.$parent;
-            while (!systemConfigComponent.hasOwnProperty('actualConfigData')) {
-                systemConfigComponent = systemConfigComponent.$parent
+            while (systemConfigComponent && !systemConfigComponent.actualConfigData) {
+                systemConfigComponent = systemConfigComponent.$parent;
             }
             let selectedSalesChannelId = systemConfigComponent.currentSalesChannelId;
             let config = systemConfigComponent.actualConfigData;

@@ -5,7 +5,7 @@ namespace Wexo\Quickpay\Controller\Api;
 use GuzzleHttp\Exception\GuzzleException;
 use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Routing\Attribute\Route;
 use Wexo\Quickpay\Service\PaymentQuickpayService;
 
 #[Route(defaults: ['_routeScope' => ['administration']])]
