@@ -120,8 +120,16 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
                 throw new \Exception('Checksum check failed for orderId: ' . $order->getId());
             }
 
-            $paymentState = $transaction->getOrderTransaction()->getStateMachineState()->getTechnicalName();
-            $orderState = $transaction->getOrder()->getStateMachineState()->getTechnicalName();
+            $orderTransaction = $transaction->getOrderTransaction();
+            $orderTransactionStateMachineState = $orderTransaction->getStateMachineState();
+            $orderStateMachineState = $order->getStateMachineState();
+
+            if (!$orderTransactionStateMachineState || !$orderStateMachineState) {
+                throw new \Exception('State machine state not loaded for transaction ID: ' . $transactionId);
+            }
+
+            $paymentState = $orderTransactionStateMachineState->getTechnicalName();
+            $orderState = $orderStateMachineState->getTechnicalName();
 
             $accepted = $response['accepted'] ?? false;
             if ($accepted) {
