@@ -1,3 +1,6 @@
+# 8.0.1
+* Fixed issue causing "Call to a member function getTechnicalName() on null" by ensuring stateMachineState association is loaded for OrderTransaction and Order entities in QuickpayPayment service.
+
 # 8.0.0
 * Shopware 6.6 compatible.
 
