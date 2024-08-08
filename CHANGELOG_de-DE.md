@@ -1,3 +1,6 @@
+# 8.0.1
+* Problem behoben, das den Fehler "Call to a member function getTechnicalName() on null" verursachte.
+
 # 8.0.0
 * Shopware 6.6 kompatibel.
 

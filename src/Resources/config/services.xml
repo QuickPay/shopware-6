@@ -104,6 +104,11 @@
             <tag name="kernel.event_subscriber"/>
         </service>
 
+        <service id="Wexo\Quickpay\Subscriber\FinalizePaymentOrderTransactionCriteriaSubscriber"
+                 class="Wexo\Quickpay\Subscriber\FinalizePaymentOrderTransactionCriteriaSubscriber">
+            <tag name="kernel.event_subscriber"/>
+        </service>
+
         <service id="Wexo\Quickpay\Controller\Api\QuickpayApiController">
             <argument type="service" id="Wexo\Quickpay\Service\PaymentQuickpayService"/>
             <tag name="controller.service_arguments"/>
