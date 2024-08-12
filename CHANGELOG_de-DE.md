@@ -1,3 +1,6 @@
+# 7.0.6
+* Ändern Sie den CartPersister-Typhinweis in Abstract TypePersister im CartOrderRoute Decorator, um Dekoration zu ermöglichen
+
 # 7.0.5
 * Ungültige Validierung des Rückerstattungsstatus behoben
 
