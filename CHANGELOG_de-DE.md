@@ -1,8 +1,14 @@
+# 8.0.2
+* Ändern Sie den CartPersister-Typhinweis in Abstract TypePersister im CartOrderRoute Decorator, um Dekoration zu ermöglichen
+
 # 8.0.1
 * Problem behoben, das den Fehler "Call to a member function getTechnicalName() on null" verursachte.
 
 # 8.0.0
 * Shopware 6.6 kompatibel.
+
+# 7.0.6
+* Ändern Sie den CartPersister-Typhinweis in Abstract TypePersister im CartOrderRoute Decorator, um Dekoration zu ermöglichen
 
 # 7.0.5
 * Ungültige Validierung des Rückerstattungsstatus behoben

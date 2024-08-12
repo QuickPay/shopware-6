@@ -1,8 +1,14 @@
+# 8.0.2
+* Change CartPersister typehint to AbstractTypePersister in CartOrderRouteDecorator to allow for decoration
+
 # 8.0.1
 * Fixed issue causing "Call to a member function getTechnicalName() on null" by ensuring stateMachineState association is loaded for OrderTransaction and Order entities in QuickpayPayment service.
 
 # 8.0.0
 * Shopware 6.6 compatible.
+
+# 7.0.6
+* Change CartPersister typehint to AbstractTypePersister in CartOrderRouteDecorator to allow for decoration
 
 # 7.0.5
 * Fixed invalid validation of refund status
