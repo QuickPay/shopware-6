@@ -189,6 +189,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         $criteria = new Criteria([$orderId]);
         $criteria->addAssociation('transactions');
         $criteria->addAssociation('deliveries');
+        $criteria->addAssociation('transactions.stateMachineState');
 
         /** @var OrderEntity $order */
         $order = $this->orderRepository->search(

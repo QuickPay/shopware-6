@@ -1,3 +1,6 @@
+# 8.0.3
+* StateMachineState-Verknüpfung hinzugefügt, um den Fehler "Call to a member function getTechnicalName() on null" zu vermeiden.
+
 # 8.0.2
 * Ändern Sie den CartPersister-Typhinweis in Abstract TypePersister im CartOrderRoute Decorator, um Dekoration zu ermöglichen
 
