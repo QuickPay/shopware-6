@@ -1,3 +1,6 @@
+# 8.0.3
+* Added StateMachineState association to avoid "Call to member function getTechnicalName() on null"
+
 # 8.0.2
 * Change CartPersister typehint to AbstractTypePersister in CartOrderRouteDecorator to allow for decoration
 
