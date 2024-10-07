@@ -1,3 +1,6 @@
+# 7.0.7
+* Added renew functionality for subscription orders.
+
 # 7.0.6
 * Change CartPersister typehint to AbstractTypePersister in CartOrderRouteDecorator to allow for decoration
 
