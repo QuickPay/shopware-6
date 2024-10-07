@@ -112,26 +112,26 @@ class QuickpayRecurringController extends AbstractController
         $quickpayPaymentId = $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]['id'];
         $paymentResponse = $client->request(
             'GET',
-        'payments/' . $quickpayPaymentId
+            'payments/' . $quickpayPaymentId
         )?->getBody();
 
         if ($response['accepted'] ?? false) {
             try {
-               if ($paymentResponse['state'] === 'processed') {
-                   $this->shopwareStateService->success(
-                       $transaction->getId(),
-                       $order->getId(),
-                       $paymentState,
-                       $orderState
-                   );
-               } else if ($paymentResponse['state'] === 'rejected') {
-                   $this->shopwareStateService->cancel(
-                       $transaction->getId(),
-                       $order->getId(),
-                       $paymentState,
-                       $orderState
-                   );
-               }
+                if ($paymentResponse['state'] === 'processed') {
+                    $this->shopwareStateService->success(
+                        $transaction->getId(),
+                        $order->getId(),
+                        $paymentState,
+                        $orderState
+                    );
+                } elseif ($paymentResponse['state'] === 'rejected') {
+                    $this->shopwareStateService->cancel(
+                        $transaction->getId(),
+                        $order->getId(),
+                        $paymentState,
+                        $orderState
+                    );
+                }
             } catch (\Exception $e) {
                 $message = 'Could not update order state authorized ';
                 $this->logError($message, $order, $request, $e);

@@ -36,8 +36,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
     public function create(
         AsyncPaymentTransactionStruct &$transaction,
         SalesChannelContext           $salesChannelContext
-    ): void
-    {
+    ): void {
         $order = $transaction->getOrder();
 
         $currency = $salesChannelContext->getCurrency()->getIsoCode();
@@ -65,7 +64,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             throw new Exception(
                 $subscriptionResponse->getBody()->getContents()
                 ?? 'Failed to create payment for order '
-            . $formParams['order_id'] ?? null
+                . $formParams['order_id'] ?? null
             );
         }
 
@@ -246,8 +245,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         AsyncPaymentTransactionStruct $transaction,
         SalesChannelContext           $salesChannelContext,
         array                         $extraParams = []
-    ): string
-    {
+    ): string {
         $returnUrl = $transaction->getReturnUrl();
 
         $callbackUrl = str_replace('finalize-transaction', 'quickpay-finalize-transaction', (string)$returnUrl);
@@ -281,7 +279,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             throw new Exception(
                 $linkResponse->getBody()->getContents()
                 ?? 'Failed to link payment for order '
-            . $order->getOrderNumber()
+                . $order->getOrderNumber()
             );
         }
 
@@ -291,7 +289,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             throw new Exception(
                 $linkResponse->getBody()->getContents()
                 ?? 'Failed to link payment for order '
-            . $order->getOrderNumber()
+                . $order->getOrderNumber()
             );
         }
 
@@ -314,8 +312,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
      */
     public function recurring(
         string $orderId
-    ): void
-    {
+    ): void {
         $context = Context::createDefaultContext();
 
         $criteria = new Criteria([$orderId]);
@@ -522,5 +519,4 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
 
         return $responseData;
     }
-
 }
