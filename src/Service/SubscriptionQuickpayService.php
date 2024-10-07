@@ -503,7 +503,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         }
     }
 
-    function checkSubscriptionStatusByOrderId(
+    public function checkSubscriptionStatusByOrderId(
         string $orderId,
         SalesChannelContext $salesChannelContext
     ) {
