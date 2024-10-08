@@ -1,3 +1,6 @@
+# 7.0.8
+* Fixed an issue where the new subscription order wasn't fetched correctly.
+
 # 7.0.7
 * Added renew functionality for subscription orders.
 

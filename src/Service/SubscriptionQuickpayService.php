@@ -222,8 +222,8 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
 
         $criteria = new Criteria();
         $criteria->addFilter(new EqualsFilter('salesChannelId', $originalOrder->getSalesChannelId()));
+        $criteria->addFilter(new EqualsFilter('orderNumber', $newOrderNumber));
         $criteria->addAssociations(['lineItems', 'deliveries', 'transactions']);
-        $criteria->addSorting(new FieldSorting('createdAt', FieldSorting::DESCENDING));
         $newOrder = $this->orderRepository->search($criteria, $context)->first();
 
         if (!$newOrder) {
