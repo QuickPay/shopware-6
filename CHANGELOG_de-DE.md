@@ -1,3 +1,6 @@
+# 7.0.8
+* Ein Problem behoben, bei dem die neue Abonnementbestellung nicht korrekt abgerufen wurde.
+
 # 7.0.7
 * Erneuerungsfunktion für Abonnement-Bestellungen hinzugefügt.
 
