@@ -1,3 +1,6 @@
+# 7.1.0
+* Behebt ein Problem, das das Stornieren von Bestellungen in Quickpay verhinderte.
+
 # 7.0.8
 * Ein Problem behoben, bei dem die neue Abonnementbestellung nicht korrekt abgerufen wurde.
 

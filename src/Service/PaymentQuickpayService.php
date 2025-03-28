@@ -400,8 +400,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         $customFields = $order->getCustomFields();
         $paymentResponse = \json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
         $id = $paymentResponse['id'] ?? null;
-        $accepted = $paymentResponse['accepted'] ?? false;
-        if ($id && $accepted) {
+        if ($id) {
             $this->getClient($order->getSalesChannelId())->request('POST', 'payments/' . $id . "/cancel");
         }
     }
