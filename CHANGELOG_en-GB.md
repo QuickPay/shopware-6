@@ -1,3 +1,6 @@
+# 7.1.0
+* Fixed an issue that prevented orders from being cancelled in Quickpay.
+
 # 7.0.8
 * Fixed an issue where the new subscription order wasn't fetched correctly.
 
