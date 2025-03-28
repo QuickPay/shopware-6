@@ -1,3 +1,6 @@
+# 8.1.0
+* Fixed an issue that prevented orders from being cancelled in Quickpay.
+
 # 8.0.3
 * Added StateMachineState association to avoid "Call to member function getTechnicalName() on null"
 
