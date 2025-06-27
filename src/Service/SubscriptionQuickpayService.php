@@ -392,7 +392,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             ->format(DateTime::ATOM);
 
         // We're adding a -S to the orderId for the subscription, as the recurring payment will use the orderId.
-        if ($initial){
+        if ($initial) {
             $recurringOrderNumber = $order->getOrderNumber() . '-S-Initial';
         } else {
             $recurringOrderNumber = $order->getOrderNumber() . '-S';
