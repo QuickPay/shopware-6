@@ -13,6 +13,15 @@
 # 8.0.0
 * Shopware 6.6 kompatibel.
 
+# 7.1.0
+* Behebt ein Problem, das das Stornieren von Bestellungen in Quickpay verhinderte.
+
+# 7.0.8
+* Ein Problem behoben, bei dem die neue Abonnementbestellung nicht korrekt abgerufen wurde.
+
+# 7.0.7
+* Erneuerungsfunktion für Abonnement-Bestellungen hinzugefügt.
+
 # 7.0.6
 * Ändern Sie den CartPersister-Typhinweis in Abstract TypePersister im CartOrderRoute Decorator, um Dekoration zu ermöglichen
 

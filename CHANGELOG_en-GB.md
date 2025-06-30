@@ -13,6 +13,15 @@
 # 8.0.0
 * Shopware 6.6 compatible.
 
+# 7.1.0
+* Fixed an issue that prevented orders from being cancelled in Quickpay.
+
+# 7.0.8
+* Fixed an issue where the new subscription order wasn't fetched correctly.
+
+# 7.0.7
+* Added renew functionality for subscription orders.
+
 # 7.0.6
 * Change CartPersister typehint to AbstractTypePersister in CartOrderRouteDecorator to allow for decoration
 
