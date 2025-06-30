@@ -311,7 +311,8 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
      * @throws GuzzleException
      */
     public function recurring(
-        string $orderId
+        string $orderId,
+        ?bool $initial = false
     ): void {
         $context = Context::createDefaultContext();
 
@@ -391,9 +392,15 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             ->format(DateTime::ATOM);
 
         // We're adding a -S to the orderId for the subscription, as the recurring payment will use the orderId.
+        if ($initial) {
+            $recurringOrderNumber = $order->getOrderNumber() . '-S-Initial';
+        } else {
+            $recurringOrderNumber = $order->getOrderNumber() . '-S';
+        }
+
         $data = [
             'amount' => $order->getAmountTotal() * 100,
-            'order_id' => $order->getOrderNumber() . '-S',
+            'order_id' => $recurringOrderNumber,
             'auto_capture_at' => $autoCaptureAt
         ];
 
