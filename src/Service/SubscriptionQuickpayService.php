@@ -125,7 +125,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
     ): OrderEntity {
         $context = $salesChannelContext->getContext();
         $criteria = new Criteria([$orderId]);
-        $criteria->addAssociations(['lineItems', 'deliveries', 'transactions']);
+        $criteria->addAssociations(['lineItems', 'deliveries.shippingOrderAddress', 'transactions']);
 
         /** @var OrderEntity $originalOrder */
         $originalOrder = $this->orderRepository->search($criteria, $context)->first();

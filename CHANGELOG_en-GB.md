@@ -1,3 +1,6 @@
+# 8.1.2
+* Added missing shippingOrderAddress association on subscriptionQuickpay service
+
 # 8.1.1
 * Refactored recurring payment logic to differentiate initial subscription payments from subsequent ones.
 

@@ -1,3 +1,6 @@
+# 8.1.2
+* Fehlende shippingOrderAddress-Assoziation im SubscriptionQuickpayService hinzugefügt
+
 # 8.1.1
 * Die Logik für wiederkehrende Zahlungen wurde überarbeitet, um Initialzahlungen von Folgezahlungen bei Abonnements zu unterscheiden.
 
