@@ -7,6 +7,8 @@ use DateTimeInterface;
 use Exception;
 use GuzzleHttp\Exception\GuzzleException;
 use Monolog\Logger;
+use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryDefinition;
+use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryStates;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
 use Shopware\Core\Checkout\Order\OrderDefinition;
 use Shopware\Core\Checkout\Order\OrderEntity;
@@ -17,6 +19,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Sorting\FieldSorting;
 use Shopware\Core\Framework\Struct\ArrayEntity;
+use Shopware\Core\Framework\Struct\ArrayStruct;
 use Shopware\Core\Framework\Uuid\Uuid;
 use Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInterface;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
@@ -50,7 +53,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         // We're adding a -S to the orderId for the subscription, as the recurring payment will use the orderId.
         $formParams = [
             'currency' => $currency,
-            'order_id' => $order->getOrderNumber() . '-S',
+            'order_id' => $order->getOrderNumber(),
             'description' => $salesChannelName,
             'auto_capture_at' => $autoCaptureAt
         ];
@@ -317,7 +320,8 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         $context = Context::createDefaultContext();
 
         $criteria = new Criteria([$orderId]);
-        $criteria->addAssociation('transactions');
+        $criteria->addAssociation('stateMachineState');
+        $criteria->addAssociation('transactions.stateMachineState');
         $criteria->addAssociation('deliveries');
         $criteria->addAssociation('salesChannel.domains');
 
@@ -392,11 +396,8 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             ->format(DateTime::ATOM);
 
         // We're adding a -S to the orderId for the subscription, as the recurring payment will use the orderId.
-        if ($initial) {
-            $recurringOrderNumber = $order->getOrderNumber() . '-S-Initial';
-        } else {
-            $recurringOrderNumber = $order->getOrderNumber() . '-S';
-        }
+
+        $recurringOrderNumber = $order->getOrderNumber() . '-S';
 
         $data = [
             'amount' => $order->getAmountTotal() * 100,
@@ -525,5 +526,272 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         $responseData = json_decode($content, true);
 
         return $responseData;
+    }
+
+    /**
+     * @throws GuzzleException
+     */
+    // Taken from PaymentQucikpayService
+    // only changed different comparing method for subscriptionCapture
+    public function subscriptionCapture(
+        string $orderId,
+        ?float $amount = null
+    ): ?bool {
+        $context = Context::createDefaultContext();
+        $context->addExtension('capture', new ArrayStruct([
+            'amount' => false
+        ]));
+
+        $criteria = new Criteria([$orderId]);
+        $criteria->addAssociation('stateMachineState');
+        $criteria->addAssociation('transactions.stateMachineState');
+        $criteria->addAssociation('deliveries');
+
+        /** @var OrderEntity $order */
+        $order = $this->orderRepository->search(
+            $criteria,
+            $context
+        )->first();
+
+        // TODO: Send emails to shop admin on payment error
+        if (! $order) {
+            $this->paymentLogger(
+                WexoQuickpay::ORDER_COMPLETE_ERROR,
+                [
+                    'error' => 'Order with ID ' . $orderId . ' could no be found'
+                ]
+            );
+
+            return null;
+        }
+
+        $states = [
+            OrderTransactionStates::STATE_PAID,
+            OrderTransactionStates::STATE_PARTIALLY_PAID,
+            OrderTransactionStates::STATE_AUTHORIZED
+        ];
+
+        foreach ($states as $state) {
+            $transaction = $order->getTransactions()->filterByState($state)->first();
+            if ($transaction) {
+                break;
+            }
+        }
+
+        if (!$transaction) {
+            return false;
+        }
+
+        $paymentResponse = $this->updateResponse($orderId);
+        $paymentResponse = $paymentResponse ? json_decode($paymentResponse) : null;
+        if (!$paymentResponse
+            || !property_exists($paymentResponse, 'id')
+            || !property_exists($paymentResponse, 'order_id')
+        ) {
+            $this->paymentLogger(
+                WexoQuickpay::ORDER_COMPLETE_ERROR,
+                [
+                    'error' => 'QuickPay ID or order ID could not be found in the orders QuickPay response',
+                    'orderId' => $orderId,
+                    'orderNumber' => $order->getOrderNumber() ?? null,
+                    'paymentResponse' => $paymentResponse ?? null
+                ]
+            );
+
+            return null;
+        }
+
+        // Ensure it's the correct QuickPay payment by comparing paymentid
+        $customFields = $order->getCustomFields();
+        if ($customFields && isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
+            $data = json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
+
+            if (is_object($data) && property_exists($data, 'id')) {
+                if ((int) $paymentResponse->id !== (int) $data->id) {
+                    $this->paymentLogger(
+                        WexoQuickpay::ORDER_COMPLETE_ERROR,
+                        [
+                            'error'            => 'QuickPay payment id mismatch',
+                            'orderId'          => $orderId,
+                            'orderNumber'      => $order->getOrderNumber() ?? null,
+                            'expectedPaymentId'=> (int) $data->id,
+                            'actualPaymentId'  => (int) $paymentResponse->id,
+                        ]
+                    );
+                    return null;
+                }
+            }
+        }
+
+        $availableAmount = $this->getAvailableAmount($paymentResponse);
+        if (! $amount) {
+            $amount = $availableAmount;
+        } elseif ($amount > $availableAmount) {
+            $this->paymentLogger(
+                WexoQuickpay::ORDER_COMPLETE_ERROR,
+                [
+                    'error'           => 'The amount: "' . $amount . '", is not available to capture.',
+                    'orderId'         => $orderId,
+                    'orderNumber'     => $order->getOrderNumber() ?? null,
+                    'paymentResponse' => $paymentResponse
+                ]
+            );
+
+            return false;
+        }
+
+        $payment = false;
+        $orderComplete = true;
+
+        $response = $this->getClient($order->getSalesChannelId())->request(
+            'POST',
+            'payments/' . $paymentResponse->id . '/capture',
+            [
+                'form_params' => [
+                    'amount' => $amount
+                ]
+            ]
+        );
+
+        $statusCode = $response->getStatusCode();
+        $responseBody = $response->getBody()->getContents();
+        $logEntry = [
+            'orderId'            => $orderId,
+            'orderNumber'        => $order->getOrderNumber() ?? null,
+            'paymentId'          => $paymentResponse->id,
+            'responseStatusCode' => $statusCode,
+            'response'           => json_decode($response->getBody()->getContents())
+        ];
+
+        if ($statusCode === 202) {
+            $this->paymentLogger(
+                WexoQuickpay::ORDER_COMPLETE_SUCCESS,
+                $logEntry,
+                Logger::INFO
+            );
+
+            if (! $responseBody) {
+                $responseBody = $this->updateResponse($orderId, $paymentResponse->id);
+            } else {
+                $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $responseBody;
+                $this->setOrderCustomFields($orderId, $customFields);
+            }
+
+            $availableAmount = $this->getAvailableAmount(json_decode($responseBody)) - (float) $amount;
+            $stateName = $transaction->getStateMachineState()->getTechnicalName();
+            if ($availableAmount == 0.0 && $stateName !== OrderTransactionStates::STATE_PAID) {
+                if ($stateName !== OrderTransactionStates::STATE_AUTHORIZED) {
+                    $this->transactionStateHandler->process(
+                        $transaction->getId(),
+                        $context
+                    );
+                }
+
+                $this->transactionStateHandler->paid(
+                    $transaction->getId(),
+                    $context
+                );
+            } elseif ($stateName !== OrderTransactionStates::STATE_PAID &&
+                $stateName !== OrderTransactionStates::STATE_PARTIALLY_PAID) {
+                $this->transactionStateHandler->payPartially(
+                    $transaction->getId(),
+                    $context
+                );
+
+                $orderComplete = false;
+            } elseif ($stateName === OrderTransactionStates::STATE_PARTIALLY_PAID) {
+                $orderComplete = false;
+            }
+
+            $payment = true;
+        } else {
+            $this->paymentLogger(
+                WexoQuickpay::ORDER_COMPLETE_ERROR,
+                $logEntry
+            );
+
+            $quickPayResponse = json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
+            $availableAmount = $this->getAvailableAmount($quickPayResponse);
+            if ($availableAmount != 0) {
+                $this->transactionStateHandler->reopen(
+                    $transaction->getId(),
+                    $context
+                );
+
+                $this->transactionStateHandler->fail(
+                    $transaction->getId(),
+                    $context
+                );
+
+                $orderComplete = false;
+            }
+        }
+
+        if ($orderComplete) {
+            $this->stateMachineRegistry->transition(
+                new Transition(
+                    OrderDefinition::ENTITY_NAME,
+                    $order->getId(),
+                    StateMachineTransitionActions::ACTION_COMPLETE,
+                    'stateId'
+                ),
+                $context
+            );
+
+            $updateShipping = $this->systemConfigService->get('WexoQuickpay.config.quickpayUpdateShipping');
+            $delivery = $order->getDeliveries()->first();
+            if ($updateShipping &&
+                $delivery &&
+                $delivery->getStateMachineState()->getTechnicalName() !== OrderDeliveryStates::STATE_SHIPPED
+            ) {
+                $this->stateMachineRegistry->transition(
+                    new Transition(
+                        OrderDeliveryDefinition::ENTITY_NAME,
+                        $delivery->getId(),
+                        StateMachineTransitionActions::ACTION_SHIP,
+                        'stateId'
+                    ),
+                    $context
+                );
+            }
+        }
+
+        return $payment;
+    }
+    private function getAvailableAmount(\stdClass $quickpayResponse): float
+    {
+        $capturedAmount = 0;
+        $authorizedAmount = 0;
+        if (property_exists($quickpayResponse, 'operations')) {
+            foreach ($quickpayResponse->operations as $operation) {
+                $approved = false;
+                if ((property_exists($operation, 'qp_status_msg') &&
+                        $operation->qp_status_msg == 'Approved') ||
+                    (property_exists($operation, 'aq_status_msg') &&
+                        $operation->aq_status_msg == 'Approved')
+                ) {
+                    $approved = true;
+                }
+
+                if (! property_exists($operation, 'type') ||
+                    ! property_exists($operation, 'amount') ||
+                    ! $approved
+                ) {
+                    continue;
+                }
+
+                if ($operation->type === 'capture') {
+                    $capturedAmount += $operation->amount;
+                } elseif ($operation->type === 'authorize') {
+                    $authorizedAmount += $operation->amount;
+                } elseif ($operation->type === 'recurring') {
+                    $authorizedAmount += $operation->amount;
+                }
+            }
+        }
+
+        $availableAmount = $authorizedAmount - $capturedAmount;
+
+        return (float) $availableAmount;
     }
 }
