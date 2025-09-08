@@ -1,3 +1,6 @@
+# 8.1.3
+* Updated SubscriptionQuickpayService for 6.6
+
 # 8.1.2
 * Added missing shippingOrderAddress association on subscriptionQuickpay service
 
