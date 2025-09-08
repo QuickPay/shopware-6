@@ -792,5 +792,4 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
 
         return (float) $availableAmount;
     }
-
 }
