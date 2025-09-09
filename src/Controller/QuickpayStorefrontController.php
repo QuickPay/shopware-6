@@ -2,11 +2,15 @@
 
 namespace Wexo\Quickpay\Controller;
 
-use Shopware\Core\Checkout\Cart\AbstractCartPersister;
-use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Monolog\Logger;
+use Shopware\Core\Checkout\Cart\AbstractCartPersister;
+use Shopware\Core\Checkout\Payment\Controller\PaymentController;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
+use Monolog\Level;
 use Shopware\Core\Checkout\Payment\Cart\Token\TokenFactoryInterfaceV2;
-use Shopware\Core\Checkout\Payment\PaymentService;
+use Shopware\Core\Checkout\Payment\PaymentProcessor;
+use Shopware\Core\Checkout\Cart\CartPersister;
+use Shopware\Core\Checkout\Payment\PaymentException;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -16,17 +20,16 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Wexo\Quickpay\WexoQuickpay;
-use Shopware\Core\Checkout\Payment\Exception\TokenInvalidatedException;
 
 #[Route(defaults: ['_routeScope' => ['storefront']])]
 class QuickpayStorefrontController
 {
     public function __construct(
         protected EntityRepository $logEntryRepository,
-        protected PaymentService $paymentService,
+        protected PaymentProcessor $paymentProcessor,
         protected TokenFactoryInterfaceV2 $tokenFactory,
         protected AbstractCartPersister $cartPersister,
-        protected UrlGeneratorInterface $urlGenerator
+        protected UrlGeneratorInterface $urlGenerator,
     ) {
     }
 
@@ -40,8 +43,6 @@ class QuickpayStorefrontController
         SalesChannelContext $context
     ): JsonResponse|RedirectResponse {
         $finalizeAllowed = true;
-        $data = [];
-        $paymentToken = $request->get('_sw_payment_token');
         $status = $request->query->get('status');
         $forbiddenStatuses = [30100, 30101,40000, 40001, 50000, 50300];
 
@@ -62,7 +63,7 @@ class QuickpayStorefrontController
                 [
                     'message' => 'quickpay_finalize_transaction_debug',
                     'context' => (array)$request->getContent(),
-                    'level' => Logger::DEBUG,
+                    'level' => Level::Debug->value,
                     'channel' => WexoQuickpay::LOG_CHANNEL
                 ]
             ],
@@ -77,6 +78,7 @@ class QuickpayStorefrontController
         }
 
         if (in_array($status, ['accepted', 'cancel'])) {
+            $paymentToken = $request->get('_sw_payment_token');
             $token = $this->tokenFactory->parseToken($paymentToken);
             $url = ($status == 'accepted' ? $token->getFinishUrl() :
                 ($token->getErrorUrl() ?:
@@ -90,12 +92,14 @@ class QuickpayStorefrontController
         } else {
             sleep(10);
         }
-        $paymentToken = $request->get('_sw_payment_token');
 
+        $data = [];
+        $paymentToken = $request->get('_sw_payment_token');
+        $token = $this->tokenFactory->parseToken($paymentToken);
         if ($finalizeAllowed) {
             try {
-                $result = $this->paymentService->finalizeTransaction(
-                    $paymentToken,
+                $result = $this->paymentProcessor->finalize(
+                    $token,
                     $request,
                     $context
                 );
@@ -108,7 +112,7 @@ class QuickpayStorefrontController
                         'sw_status_code' => 400001
                     ];
                 }
-            } catch (TokenInvalidatedException $exception) {
+            } catch (PaymentException $exception) {
                 $data = [
                     'error' => 'token_invalidated_exception',
                     'errorMessage' => $exception->getMessage(),
@@ -127,10 +131,10 @@ class QuickpayStorefrontController
             if ($request->getContent()) {
                 $data['content'] = json_decode((string) $request->getContent(), true);
             }
-            $errorLevel = Logger::ERROR;
+            $errorLevel = Level::Error;
             $logMessage = 'quickpay_finalize_transaction_error';
             if (isset($data['sw_status_code']) && $data['sw_status_code'] == 400002) {
-                $errorLevel = Logger::WARNING;
+                $errorLevel = Level::Warning;
                 $logMessage = 'quickpay_finalize_transaction_token_invalidated';
             }
             $this->logEntryRepository->create(

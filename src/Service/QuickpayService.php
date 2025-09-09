@@ -21,6 +21,7 @@ class QuickpayService
     protected array $apiClients = [];
 
     public function __construct(
+        private readonly EntityRepository $orderTransactionRepository,
         protected SystemConfigService $systemConfigService,
         protected EntityRepository $logEntryRepository,
         protected EntityRepository $languageRepository,
@@ -28,6 +29,25 @@ class QuickpayService
         protected OrderTransactionStateHandler $transactionStateHandler,
         protected StateMachineRegistry $stateMachineRegistry
     ) {
+    }
+
+    protected function loadTransaction(string $orderTransactionId, Context $context)
+    {
+        $criteria = new Criteria([$orderTransactionId])
+            ->addAssociation('order.lineItems')
+            ->addAssociation('order.currency')
+            ->addAssociation('order.stateMachineState')
+            ->addAssociation('stateMachineState')
+            ->addAssociation('paymentMethod');
+        // add more associations only if you need them later
+
+        $tx = $this->orderTransactionRepository->search($criteria, $context)->first();
+        if (!$tx) {
+            throw new \RuntimeException('Order transaction not found: ' . $orderTransactionId);
+            // or PaymentException::invalidOrderTransaction($orderTransactionId)
+        }
+
+        return $tx;
     }
 
     public function getClient(?string $salesChannelId): Client

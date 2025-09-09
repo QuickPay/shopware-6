@@ -104,7 +104,10 @@ class OrderDetailSubscriber implements EventSubscriberInterface
                 // are set as Paid as soon as Quickpay response is accepted.
                 // When using Capture API on Swish payments, it is then set to order Status: Done and Delivery: Shipped
                 if ($paymentHandler !== SwishPayment::class) {
-                    $this->paymentService->capture($order->getId());
+                    $this->paymentService->capture(
+                        $order->getId(),
+                        $event->getContext(),
+                    );
                 }
             }
 
@@ -113,6 +116,7 @@ class OrderDetailSubscriber implements EventSubscriberInterface
             ) {
                 $this->paymentService->capture(
                     $order->getId(),
+                    $event->getContext(),
                     (float) $capture->get('amount')
                 );
             }

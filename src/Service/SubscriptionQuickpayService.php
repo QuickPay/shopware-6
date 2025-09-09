@@ -3,7 +3,6 @@
 namespace Wexo\Quickpay\Service;
 
 use DateTime;
-use DateTimeInterface;
 use Exception;
 use GuzzleHttp\Exception\GuzzleException;
 use Monolog\Logger;
@@ -11,14 +10,11 @@ use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStat
 use Shopware\Core\Checkout\Order\OrderDefinition;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Order\OrderStates;
-use Shopware\Core\Checkout\Payment\Cart\AsyncPaymentTransactionStruct;
+use Shopware\Core\Checkout\Payment\Cart\PaymentTransactionStruct;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
-use Shopware\Core\Framework\DataAbstractionLayer\Search\Sorting\FieldSorting;
 use Shopware\Core\Framework\Struct\ArrayEntity;
-use Shopware\Core\Framework\Uuid\Uuid;
-use Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInterface;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineTransition\StateMachineTransitionActions;
 use Shopware\Core\System\StateMachine\Transition;
@@ -28,24 +24,25 @@ use Wexo\Quickpay\WexoQuickpay;
 class SubscriptionQuickpayService extends QuickpayService implements QuickpayInterface
 {
     /**
-     * @param AsyncPaymentTransactionStruct $transaction
-     * @param SalesChannelContext $salesChannelContext
+     * @param PaymentTransactionStruct $transaction
+     * @param Context $context
      * @return void
      * @throws GuzzleException
      */
     public function create(
-        AsyncPaymentTransactionStruct &$transaction,
-        SalesChannelContext           $salesChannelContext
+        PaymentTransactionStruct $transaction,
+        Context $context
     ): void {
-        $order = $transaction->getOrder();
+        $tx = $this->loadTransaction($transaction->getOrderTransactionId(), $context);
+        $order = $tx->getOrder();
 
-        $currency = $salesChannelContext->getCurrency()->getIsoCode();
+        $currency = $tx->getCurrency()->getIsoCode();
 
         $autoCaptureAt = (new \DateTime())
             ->modify('+2 days')
             ->setTime(0, 0)
             ->format(DateTime::ATOM);
-        $salesChannelName = $salesChannelContext->getSalesChannel()->getName();
+        $salesChannelName = $tx->getSalesChannel()->getName();
 
         // We're adding a -S to the orderId for the subscription, as the recurring payment will use the orderId.
         $formParams = [
@@ -55,7 +52,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             'auto_capture_at' => $autoCaptureAt
         ];
 
-        $subscriptionResponse = $this->getClient($salesChannelContext->getSalesChannelId())
+        $subscriptionResponse = $this->getClient($tx->getSalesChannelId())
             ->request('POST', 'subscriptions', [
                 'json' => $formParams
             ]);
@@ -77,7 +74,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         ];
 
         $this->setOrderCustomFields($order->getId(), $customFields);
-        $transaction->getOrder()->setCustomFields($customFields);
+        $order->setCustomFields($customFields);
     }
 
     /**
@@ -236,33 +233,34 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
     }
 
     /**
-     * @param AsyncPaymentTransactionStruct $transaction
-     * @param SalesChannelContext $salesChannelContext
+     * @param PaymentTransactionStruct $transaction
+     * @param Context $context
      * @return string
      * @throws GuzzleException
      */
     public function getLink(
-        AsyncPaymentTransactionStruct $transaction,
-        SalesChannelContext           $salesChannelContext,
-        array                         $extraParams = []
+        PaymentTransactionStruct $transaction,
+        Context $context,
+        array $extraParams = []
     ): string {
         $returnUrl = $transaction->getReturnUrl();
 
         $callbackUrl = str_replace('finalize-transaction', 'quickpay-finalize-transaction', (string)$returnUrl);
 
-        $order = $transaction->getOrder();
+        $tx = $this->loadTransaction($transaction->getOrderTransactionId(), $context);
+        $order = $tx->getOrder();
 
         $customFields = $order->getCustomFields();
         $subscriptionResponse = \json_decode((string)$customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
 
         $updateFormParams = [
-            'amount' => $transaction->getOrder()->getAmountTotal() * 100,
+            'amount' => $tx->getOrder()->getAmountTotal() * 100,
             'continue_url' => $callbackUrl . '&status=accepted',
             'cancel_url' => $callbackUrl . '&status=cancel',
             'callback_url' => $callbackUrl,
             'language' => $this->getLanguage(
-                $salesChannelContext->getSalesChannel()->getLanguageId(),
-                $salesChannelContext->getContext()
+                $tx->getSalesChannel()->getLanguageId(),
+                $tx->getContext()
             )
         ];
 
@@ -270,7 +268,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             $updateFormParams = array_merge($updateFormParams, $extraParams);
         }
 
-        $linkResponse = $this->getClient($salesChannelContext->getSalesChannelId())
+        $linkResponse = $this->getClient($tx->getSalesChannelId())
             ->request('put', 'subscriptions/' . $subscriptionResponse['id'] . "/link", [
                 'form_params' => $updateFormParams
             ]);

@@ -227,6 +227,14 @@ class WexoQuickpay extends Plugin
         parent::deactivate($context);
     }
 
+    private function toTechnical(string $name): string
+    {
+        $slug = strtolower(preg_replace('/[^a-z0-9]+/', '_', $name));
+        $slug = trim($slug, '_');
+        $tech = 'wexo_quickpay_' . $slug;
+        return substr($tech, 0, 64);
+    }
+
     private function addPaymentMethods(Context $context): void
     {
         $paymentRepository = $this->container->get('payment_method.repository');
@@ -234,6 +242,8 @@ class WexoQuickpay extends Plugin
         $pluginId = $pluginIdProvider->getPluginIdByBaseClass(WexoQuickpay::class, $context);
 
         foreach (self::DEFAULT_PAYMENT_METHODS as $name => $props) {
+            // technicalName value required for plugin installation in Shopware v. 6.7
+            $technical = $this->toTechnical($name);
             $paymentMethodExists = $this->getPaymentMethodId($props['handler']);
             // Payment method exists already, no need to continue here
             if ($paymentMethodExists) {
@@ -242,6 +252,7 @@ class WexoQuickpay extends Plugin
 
             $paymentMethodData = [
                 'handlerIdentifier' => $props['handler'],
+                'technicalName' => $technical,
                 'name' => $name,
                 'description' => $props['description'],
                 'pluginId' => $pluginId,

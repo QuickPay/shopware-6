@@ -1,19 +1,20 @@
 <?php
 namespace Wexo\Quickpay\ServiceInterface;
 
-use Shopware\Core\Checkout\Payment\Cart\AsyncPaymentTransactionStruct;
-use Shopware\Core\System\SalesChannel\SalesChannelContext;
+use Shopware\Core\Checkout\Payment\Cart\PaymentTransactionStruct;
+//use Shopware\Core\System\SalesChannel\SalesChannelContext;
+use Shopware\Core\Framework\Context;
 
 interface QuickpayInterface
 {
     public function create(
-        AsyncPaymentTransactionStruct &$transaction,
-        SalesChannelContext $salesChannelContext
+        PaymentTransactionStruct $transaction,
+        Context $context
     ): void;
 
     public function getLink(
-        AsyncPaymentTransactionStruct $transaction,
-        SalesChannelContext $salesChannelContext,
+        PaymentTransactionStruct $transaction,
+        Context $context,
         Array $extraParams = []
     ): string;
 }

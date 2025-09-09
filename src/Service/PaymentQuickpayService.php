@@ -10,11 +10,10 @@ use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStat
 use Shopware\Core\Checkout\Order\OrderDefinition;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Order\OrderStates;
-use Shopware\Core\Checkout\Payment\Cart\AsyncPaymentTransactionStruct;
+use Shopware\Core\Checkout\Payment\Cart\PaymentTransactionStruct;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\Struct\ArrayStruct;
-use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineTransition\StateMachineTransitionActions;
 use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryDefinition;
 use Shopware\Core\System\StateMachine\Transition;
@@ -24,15 +23,17 @@ use Wexo\Quickpay\WexoQuickpay;
 class PaymentQuickpayService extends QuickpayService implements QuickpayInterface
 {
     /**
-     * @param AsyncPaymentTransactionStruct $transaction
-     * @param SalesChannelContext $salesChannelContext
+     * @param PaymentTransactionStruct $transaction
+     * @param Context $context
      * @throws GuzzleException
      */
     public function create(
-        AsyncPaymentTransactionStruct &$transaction,
-        SalesChannelContext $salesChannelContext
+        PaymentTransactionStruct $transaction,
+        Context $context
     ): void {
-        $order = $transaction->getOrder();
+        $tx = $this->loadTransaction($transaction->getOrderTransactionId(), $context);
+        $order = $tx->getOrder();
+
         $basket = [];
         foreach ($order->getLineItems() as $orderLineItem) {
             $payload = $orderLineItem->getPayload();
@@ -73,7 +74,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             ];
         }
 
-        $currency = $salesChannelContext->getCurrency()->getIsoCode();
+        $currency = $order->getCurrency()->getIsoCode();
 
         $formParams = [
             'currency' => $currency,
@@ -81,7 +82,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             'basket' => $basket
         ];
 
-        $paymentResponse = $this->getClient($salesChannelContext->getSalesChannelId())
+        $paymentResponse = $this->getClient($order->getSalesChannelId())
             ->request('POST', 'payments', [
                 'json' => $formParams
             ]);
@@ -98,48 +99,48 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
 
         $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $content;
         $this->setOrderCustomFields($order->getId(), $customFields);
-        $transaction->getOrder()->setCustomFields($customFields);
+        $order->setCustomFields($customFields);
     }
 
     /**
-     * @param AsyncPaymentTransactionStruct $transaction
-     * @param SalesChannelContext $salesChannelContext
+     * @param PaymentTransactionStruct $transaction
+     * @param Context $context
+     * @param array $extraParams
      * @return string
      * @throws GuzzleException
      */
     public function getLink(
-        AsyncPaymentTransactionStruct $transaction,
-        SalesChannelContext $salesChannelContext,
+        PaymentTransactionStruct $transaction,
+        Context $context,
         array $extraParams = []
     ): string {
         $returnUrl = $transaction->getReturnUrl();
 
         $callbackUrl = str_replace('finalize-transaction', 'quickpay-finalize-transaction', $returnUrl);
 
+        $tx    = $this->loadTransaction($transaction->getOrderTransactionId(), $context);
+        $order = $tx->getOrder();
+
         $updateFormParams = [
-            'amount' => $transaction->getOrder()->getAmountTotal() * 100,
+            'amount' => (int) \round($order->getAmountTotal() * 100),
             'continue_url' => $callbackUrl . '&status=accepted',
             'cancel_url' => $callbackUrl . '&status=cancel',
             'callback_url' => $callbackUrl,
-            'language' => $this->getLanguage(
-                $salesChannelContext->getSalesChannel()->getLanguageId(),
-                $salesChannelContext->getContext()
-            )
+            'language' => $this->getLanguage($order->getLanguageId(), $context),
         ];
 
         if (!empty($extraParams)) {
             $updateFormParams = array_merge($updateFormParams, $extraParams);
         }
 
-        $order = $transaction->getOrder();
-        $identifier = $transaction->getOrderTransaction()->getPaymentMethod()->getHandlerIdentifier();
+        $identifier = $tx->getPaymentMethod()?->getHandlerIdentifier();
         $updateFormParams['payment_methods'] = $identifier::$quickpayName;
+        $customFields     = $order->getCustomFields() ?? [];
+        $paymentResponse  = \json_decode((string) ($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] ?? ''), true);
 
-        $customFields = $order->getCustomFields();
-        $paymentResponse = \json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
-        $linkResponse = $this->getClient($salesChannelContext->getSalesChannelId())
-            ->request('put', 'payments/' . $paymentResponse['id'] . "/link", [
-                'form_params' => $updateFormParams
+        $linkResponse = $this->getClient($order->getSalesChannelId())
+            ->request('PUT', 'payments/' . $paymentResponse['id'] . '/link', [
+                'form_params' => $updateFormParams,
             ]);
 
         if ($linkResponse->getStatusCode() !== 200) {
@@ -179,9 +180,9 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
      */
     public function capture(
         string $orderId,
+        Context $context,
         ?float $amount = null
     ): ?bool {
-        $context = Context::createDefaultContext();
         $context->addExtension('capture', new ArrayStruct([
             'amount' => false
         ]));
@@ -343,6 +344,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
                 WexoQuickpay::ORDER_COMPLETE_ERROR,
                 $logEntry
             );
+            $customFields = $order->getCustomFields() ?? [];
 
             $quickPayResponse = json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
             $availableAmount = $this->getAvailableAmount($quickPayResponse);
