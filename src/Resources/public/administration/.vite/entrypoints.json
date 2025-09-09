@@ -1,0 +1,23 @@
+{
+  "base": "/bundles/wexoquickpay/administration/",
+  "entryPoints": {
+    "wexo-quickpay": {
+      "css": [],
+      "dynamic": [],
+      "js": [
+        "/bundles/wexoquickpay/administration/assets/wexo-quickpay-BxQeO7hv.js"
+      ],
+      "legacy": false,
+      "preload": []
+    }
+  },
+  "legacy": false,
+  "metadatas": {},
+  "version": [
+    "7.1.0",
+    7,
+    1,
+    0
+  ],
+  "viteServer": null
+}
