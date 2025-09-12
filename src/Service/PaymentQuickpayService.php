@@ -6,6 +6,7 @@ use Exception;
 use GuzzleHttp\Exception\GuzzleException;
 use Monolog\Logger;
 use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryStates;
+use Shopware\Core\Checkout\Order\Aggregate\OrderLineItem\OrderLineItemCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
 use Shopware\Core\Checkout\Order\OrderDefinition;
 use Shopware\Core\Checkout\Order\OrderEntity;
@@ -17,6 +18,7 @@ use Shopware\Core\Framework\Struct\ArrayStruct;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineTransition\StateMachineTransitionActions;
 use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryDefinition;
 use Shopware\Core\System\StateMachine\Transition;
+use stdClass;
 use Wexo\Quickpay\ServiceInterface\QuickpayInterface;
 use Wexo\Quickpay\WexoQuickpay;
 
@@ -35,23 +37,37 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         $order = $tx->getOrder();
 
         $basket = [];
-        foreach ($order->getLineItems() as $orderLineItem) {
-            $payload = $orderLineItem->getPayload();
+
+        if (!($order instanceof OrderEntity)) {
+            return;
+        }
+
+        $lineItems = $order->getLineItems() ?? new OrderLineItemCollection();
+
+        foreach ($lineItems as $orderLineItem) {
+            $payload = $orderLineItem->getPayload() ?? [];
             $itemNo = ($payload && isset($payload['productNumber']))
                 ? $payload['productNumber']
                 : $orderLineItem->getLabel();
 
+            $price = $orderLineItem->getPrice();
+
             $taxRate = 0;
 
-            if ($orderLineItem->getPrice()->getTaxRules()->first()) {
-                $taxRate = $orderLineItem->getPrice()->getTaxRules()->first()->getTaxRate() / 100;
+            if ($price !== null) {
+                $firstRule = $price->getTaxRules()->first();
+                if ($firstRule !== null) {
+                    $taxRate = $firstRule->getTaxRate() / 100;
+                }
             }
+
+            $unitPrice = $price?->getUnitPrice() ?? 0.0;
 
             $basket[] = [
                 'qty' => $orderLineItem->getQuantity(),
                 'item_no' => $itemNo,
                 'item_name' => $orderLineItem->getLabel(),
-                'item_price' => $orderLineItem->getUnitPrice() * 100,
+                'item_price' => (int) round($unitPrice * 100),
                 'vat_rate' => $taxRate,
             ];
         }
@@ -408,41 +424,52 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         }
     }
 
-    private function getAvailableAmount(\stdClass $quickpayResponse): float
+    /**
+     * @param stdClass $quickpayResponse
+     * @return float
+     */
+    private function getAvailableAmount(stdClass $quickpayResponse): float
     {
-        $capturedAmount = 0;
-        $authorizedAmount = 0;
-        if (property_exists($quickpayResponse, 'operations')) {
-            foreach ($quickpayResponse->operations as $operation) {
-                $approved = false;
-                if ((property_exists($operation, 'qp_status_msg') &&
-                        $operation->qp_status_msg == 'Approved') ||
-                    (property_exists($operation, 'aq_status_msg') &&
-                        $operation->aq_status_msg == 'Approved')
-                ) {
-                    $approved = true;
-                }
+        $capturedAmount   = 0.0;
+        $authorizedAmount = 0.0;
 
-                if (! property_exists($operation, 'type') ||
-                    ! property_exists($operation, 'amount') ||
-                    ! $approved
-                ) {
-                    continue;
-                }
+        $ops = $quickpayResponse->operations ?? null;
+        if (!is_iterable($ops)) {
+            return 0.0;
+        }
 
-                if ($operation->type === 'capture') {
-                    $capturedAmount += $operation->amount;
-                } elseif ($operation->type === 'authorize') {
-                    $authorizedAmount += $operation->amount;
-                } elseif ($operation->type === 'recurring') {
-                    $authorizedAmount += $operation->amount;
-                }
+        /** @var object{type:string, amount:int|float, qp_status_msg?:string, aq_status_msg?:string} $operation */
+        foreach ($ops as $operation) {
+            if (!is_object($operation)) {
+                continue;
+            }
+
+            $approved = (($operation->qp_status_msg ?? null) === 'Approved')
+                || (($operation->aq_status_msg ?? null) === 'Approved');
+            if (!$approved || !isset($operation->type, $operation->amount)) {
+                continue;
+            }
+
+            $type   = (string) $operation->type;
+            $amount = (float) $operation->amount;
+
+            switch ($type) {
+                case 'capture':
+                    $capturedAmount += $amount;
+                    break;
+
+                case 'authorize':
+                case 'recurring':
+                    $authorizedAmount += $amount;
+                    break;
+
+                default:
+                    // ignore unknown operation types
+                    break;
             }
         }
 
-        $availableAmount = $authorizedAmount - $capturedAmount;
-
-        return (float) $availableAmount;
+        return $authorizedAmount - $capturedAmount;
     }
 
     /**
@@ -450,7 +477,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
      */
     private function swishPaymentUpdateOrderStates(OrderEntity $order, Context $context): void
     {
-        $orderState = $order->getStateMachineState()->getTechnicalName();
+        $orderState = $order->getStateMachineState()?->getTechnicalName();
 
         if ($orderState === OrderStates::STATE_OPEN) {
             $this->stateMachineRegistry->transition(
@@ -474,14 +501,18 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             $context
         );
 
-        $this->stateMachineRegistry->transition(
-            new Transition(
-                OrderDeliveryDefinition::ENTITY_NAME,
-                $order->getDeliveries()->first()->getId(),
-                StateMachineTransitionActions::ACTION_SHIP,
-                'stateId'
-            ),
-            $context
-        );
+        $deliveryId = $order->getDeliveries()?->first()?->getId();
+
+        if ($deliveryId !== null && $deliveryId !== '') {
+            $this->stateMachineRegistry->transition(
+                new Transition(
+                    OrderDeliveryDefinition::ENTITY_NAME,
+                    $deliveryId,
+                    StateMachineTransitionActions::ACTION_SHIP,
+                    'stateId'
+                ),
+                $context
+            );
+        }
     }
 }

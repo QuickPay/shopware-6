@@ -37,15 +37,16 @@ class RefundCommand extends Command
             throw new InvalidUuidException($orderId);
         }
 
-        $amount = $input->hasOption('amount') ?
-            (float)$input->getOption('amount') :
-            null;
+        $rawAmount = (string) $input->getOption('amount');
 
-        $status = $this->refundService->refund($orderId, $amount, Context::createDefaultContext());
-        if ($status === null) {
-            $output->writeln('Invalid amount or orderId');
+        if (!is_numeric($rawAmount) || (float) $rawAmount <= 0.0) {
+            $output->writeln('<error>Invalid amount. Must be a positive decimal.</error>');
             return Command::INVALID;
         }
+
+        $amount = (float) $rawAmount;
+
+        $status = $this->refundService->refund($orderId, $amount, Context::createDefaultContext());
 
         $output->writeln(
             $status ?

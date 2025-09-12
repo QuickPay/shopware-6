@@ -3,9 +3,12 @@
 namespace Wexo\Quickpay\Service;
 
 use DateTime;
+use DateTimeInterface;
 use Exception;
 use GuzzleHttp\Exception\GuzzleException;
+use Monolog\Level;
 use Monolog\Logger;
+use Random\RandomException;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
 use Shopware\Core\Checkout\Order\OrderDefinition;
 use Shopware\Core\Checkout\Order\OrderEntity;
@@ -28,6 +31,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
      * @param Context $context
      * @return void
      * @throws GuzzleException
+     * @throws Exception
      */
     public function create(
         PaymentTransactionStruct $transaction,
@@ -36,13 +40,33 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         $tx = $this->loadTransaction($transaction->getOrderTransactionId(), $context);
         $order = $tx->getOrder();
 
-        $currency = $tx->getCurrency()->getIsoCode();
+        $currency = $order?->getCurrency()?->getIsoCode() ?? '';
 
-        $autoCaptureAt = (new \DateTime())
+        if ($currency === '') {
+            throw new \RuntimeException(sprintf(
+                'Currency missing for order %s',
+                $order?->getId() ?? '(unknown)'
+            ));
+        }
+
+        $autoCaptureAt = new \DateTime()
             ->modify('+2 days')
             ->setTime(0, 0)
-            ->format(DateTime::ATOM);
-        $salesChannelName = $tx->getSalesChannel()->getName();
+            ->format(DateTimeInterface::ATOM);
+        $salesChannelName = $order?->getSalesChannel()?->getName();
+
+        if ($salesChannelName === '') {
+            throw new \RuntimeException(sprintf(
+                'Sales channel missing for order %s',
+                $order?->getId() ?? '(unknown)'
+            ));
+        }
+
+        if ($order === null) {
+            throw new \RuntimeException(
+                sprintf('Order not found for transaction %s', $transaction->getOrderTransactionId())
+            );
+        }
 
         // We're adding a -S to the orderId for the subscription, as the recurring payment will use the orderId.
         $formParams = [
@@ -52,7 +76,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             'auto_capture_at' => $autoCaptureAt
         ];
 
-        $subscriptionResponse = $this->getClient($tx->getSalesChannelId())
+        $subscriptionResponse = $this->getClient($order->getSalesChannelId())
             ->request('POST', 'subscriptions', [
                 'json' => $formParams
             ]);
@@ -60,8 +84,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         if ($subscriptionResponse->getStatusCode() !== 201) {
             throw new Exception(
                 $subscriptionResponse->getBody()->getContents()
-                ?? 'Failed to create payment for order '
-                . $formParams['order_id'] ?? null
+                . $formParams['order_id']
             );
         }
 
@@ -111,8 +134,10 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
 
     /**
      * @param string $orderId
+     * @param string $newOrderNumber
      * @param SalesChannelContext $salesChannelContext
-     * @return array
+     * @return OrderEntity
+     * @throws RandomException
      * @throws Exception
      */
     public function renew(
@@ -150,7 +175,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                 'type' => $item->getType(),
                 'payload' => $item->getPayload(),
             ];
-        }, $originalOrder->getLineItems()->getElements());
+        }, $originalOrder->getLineItems()?->getElements() ?? []);
 
         $deliveries = array_map(function ($delivery) {
             $shippingCosts = $delivery->getShippingCosts();
@@ -166,19 +191,19 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                     'regulationPrice' => $shippingCosts->getRegulationPrice()?->jsonSerialize(),
                 ],
                 'shippingOrderAddress' => [
-                    'firstName' => $delivery->getShippingOrderAddress()->getFirstName(),
-                    'lastName' => $delivery->getShippingOrderAddress()->getLastName(),
-                    'street' => $delivery->getShippingOrderAddress()->getStreet(),
-                    'zipcode' => $delivery->getShippingOrderAddress()->getZipcode(),
-                    'city' => $delivery->getShippingOrderAddress()->getCity(),
-                    'countryId' => $delivery->getShippingOrderAddress()->getCountryId(),
+                    'firstName' => $delivery->getShippingOrderAddress()?->getFirstName() ?? null,
+                    'lastName' => $delivery->getShippingOrderAddress()?->getLastName() ?? null,
+                    'street' => $delivery->getShippingOrderAddress()?->getStreet() ?? null,
+                    'zipcode' => $delivery->getShippingOrderAddress()?->getZipcode() ?? null,
+                    'city' => $delivery->getShippingOrderAddress()?->getCity() ?? null,
+                    'countryId' => $delivery->getShippingOrderAddress()?->getCountryId() ?? null,
                 ],
                 'shippingMethodId' => $delivery->getShippingMethodId(),
                 'shippingDateEarliest' => $delivery->getShippingDateEarliest(),
                 'shippingDateLatest' => $delivery->getShippingDateLatest(),
                 'stateId' => $delivery->getStateId(),
             ];
-        }, $originalOrder->getDeliveries()->getElements());
+        }, $originalOrder->getDeliveries()?->getElements() ?? []);
 
         $transactions = array_map(function ($transaction) {
             return [
@@ -186,7 +211,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                 'paymentMethodId' => $transaction->getPaymentMethodId(),
                 'stateId' => $transaction->getStateId(),
             ];
-        }, $originalOrder->getTransactions()->getElements());
+        }, $originalOrder->getTransactions()?->getElements() ?? []);
 
         $newOrderData = [
             'salesChannelId' => $originalOrder->getSalesChannelId(),
@@ -197,17 +222,17 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             'shippingCosts' => $originalOrder->getShippingCosts(),
             'orderDateTime' => new \DateTime(),
             'orderCustomer' => [
-                'customerId' => $originalOrder->getOrderCustomer()->getCustomerId(),
-                'email' => $originalOrder->getOrderCustomer()->getEmail(),
-                'firstName' => $originalOrder->getOrderCustomer()->getFirstName(),
-                'lastName' => $originalOrder->getOrderCustomer()->getLastName(),
-                'salutationId' => $originalOrder->getOrderCustomer()->getSalutationId(),
+                'customerId' => $originalOrder->getOrderCustomer()?->getCustomerId() ?? '',
+                'email' => $originalOrder->getOrderCustomer()?->getEmail() ?? '',
+                'firstName' => $originalOrder->getOrderCustomer()?->getFirstName() ?? '',
+                'lastName' => $originalOrder->getOrderCustomer()?->getLastName() ?? '',
+                'salutationId' => $originalOrder->getOrderCustomer()?->getSalutationId() ?? '',
             ],
             'deepLinkCode' => bin2hex(random_bytes(16)),
             'ruleIds' => $originalOrder->getRuleIds(),
             'currencyFactor' => $originalOrder->getCurrencyFactor() ?? 1.0,
-            'itemRounding' => $originalOrder->getItemRounding()->jsonSerialize(),
-            'totalRounding' => $originalOrder->getTotalRounding()->jsonSerialize(),
+            'itemRounding' => $originalOrder->getItemRounding()?->jsonSerialize(),
+            'totalRounding' => $originalOrder->getTotalRounding()?->jsonSerialize(),
             'lineItems' => $lineItems,
             'deliveries' => $deliveries,
             'transactions' => $transactions,
@@ -235,8 +260,10 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
     /**
      * @param PaymentTransactionStruct $transaction
      * @param Context $context
+     * @param array<string, mixed> $extraParams
      * @return string
      * @throws GuzzleException
+     * @throws Exception
      */
     public function getLink(
         PaymentTransactionStruct $transaction,
@@ -250,33 +277,67 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         $tx = $this->loadTransaction($transaction->getOrderTransactionId(), $context);
         $order = $tx->getOrder();
 
+        if ($order === null) {
+            throw new \RuntimeException('Order not found for transaction ' . $transaction->getOrderTransactionId());
+        }
+
+        /** @var array<string,mixed>|null $customFields */
         $customFields = $order->getCustomFields();
-        $subscriptionResponse = \json_decode((string)$customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
+        if (!\is_array($customFields)) {
+            $customFields = [];
+        }
+
+        /** @var array<string,mixed>|null $subscriptionResponse */
+        $subscriptionResponse = null;
+        if (isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
+            $subscriptionResponse = \json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
+            if (!\is_array($subscriptionResponse)) {
+                $subscriptionResponse = null;
+            }
+        }
+
+        $salesChannel   = $order->getSalesChannel();
+        $languageId     = $salesChannel?->getLanguageId();
+        $shopContext    = method_exists($order, 'getContext') ? $order->getContext() : $context; // fallback
+
+        $language = 'en';
+        if (\is_string($languageId) && $languageId !== '') {
+            $language = $this->getLanguage($languageId, $shopContext);
+        }
+
+        $amountCents = (int) \round($order->getAmountTotal() * 100);
 
         $updateFormParams = [
-            'amount' => $tx->getOrder()->getAmountTotal() * 100,
+            'amount'       => $amountCents,
             'continue_url' => $callbackUrl . '&status=accepted',
-            'cancel_url' => $callbackUrl . '&status=cancel',
+            'cancel_url'   => $callbackUrl . '&status=cancel',
             'callback_url' => $callbackUrl,
-            'language' => $this->getLanguage(
-                $tx->getSalesChannel()->getLanguageId(),
-                $tx->getContext()
-            )
+            'language'     => $language,
         ];
 
-        if (!empty($extraParams)) {
+        if ($extraParams !== []) {
+            /** @var array<string,mixed> $updateFormParams */
             $updateFormParams = array_merge($updateFormParams, $extraParams);
         }
 
-        $linkResponse = $this->getClient($tx->getSalesChannelId())
-            ->request('put', 'subscriptions/' . $subscriptionResponse['id'] . "/link", [
-                'form_params' => $updateFormParams
+        /** @var array<string,mixed>|null $subscriptionResponse */
+        $subId = (is_array($subscriptionResponse) && isset($subscriptionResponse['id']))
+            ? (string) $subscriptionResponse['id']
+            : null;
+
+        if ($subId === null) {
+            // choose: throw, return, or log
+            throw new \RuntimeException('Missing Quickpay subscription id on order ' . $order->getOrderNumber());
+        }
+
+        $linkResponse = $this->getClient($order->getSalesChannelId())
+            ->request('PUT', 'subscriptions/' . $subId . '/link', [
+                'form_params' => $updateFormParams,
             ]);
 
         if ($linkResponse->getStatusCode() !== 200) {
             throw new Exception(
                 $linkResponse->getBody()->getContents()
-                ?? 'Failed to link payment for order '
                 . $order->getOrderNumber()
             );
         }
@@ -286,7 +347,6 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         if (!isset($linkResponseContent['url'])) {
             throw new Exception(
                 $linkResponse->getBody()->getContents()
-                ?? 'Failed to link payment for order '
                 . $order->getOrderNumber()
             );
         }
@@ -299,7 +359,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                 'subscriptionResponse' => $subscriptionResponse,
                 'linkResponse' => $linkResponseContent
             ],
-            Logger::INFO
+            Level::Info->value
         );
 
         return $linkResponseContent['url'];
@@ -307,12 +367,13 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
 
     /**
      * @throws GuzzleException
+     * @throws \DateMalformedStringException
      */
     public function recurring(
         string $orderId,
         ?bool $initial = false
     ): void {
-        $context = Context::createDefaultContext();
+        $context = Context::createCLIContext();
 
         $criteria = new Criteria([$orderId]);
         $criteria->addAssociation('transactions');
@@ -342,14 +403,19 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             OrderTransactionStates::STATE_AUTHORIZED
         ];
 
-        foreach ($states as $state) {
-            $transaction = $order->getTransactions()->filterByState($state)->first();
-            if ($transaction) {
-                break;
+        $transaction = null;
+        $transactions = $order->getTransactions();
+
+        if ($transactions !== null) {
+            foreach ($states as $state) {
+                $transaction = $transactions->filterByState($state)->first();
+                if ($transaction !== null) {
+                    break;
+                }
             }
         }
 
-        if (!$transaction) {
+        if ($transaction === null) {
             return;
         }
 
@@ -384,10 +450,10 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             return;
         }
 
-        $autoCaptureAt = (new \DateTime())
+        $autoCaptureAt = new \DateTime()
             ->modify('+2 days')
             ->setTime(0, 0)
-            ->format(DateTime::ATOM);
+            ->format(DateTimeInterface::ATOM);
 
         // We're adding a -S to the orderId for the subscription, as the recurring payment will use the orderId.
         if ($initial) {
@@ -403,11 +469,14 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         ];
 
         // A custom callback made for recurring payments, so we can validate them.
-        $domain = $order->getSalesChannel()->getDomains() ? $order->getSalesChannel()->getDomains()->first() : null;
-        if ($domain) {
-            $baseUrl = rtrim((string)$domain->getUrl(), '/');
+        $salesChannel = $order->getSalesChannel();
+
+        $domain = $salesChannel?->getDomains()?->first();
+        if ($domain !== null) {
+            $baseUrl = rtrim($domain->getUrl(), '/');
             $data['QuickPay-Callback-Url'] = $baseUrl . '/api/wexo/quickpay/recurring-callback';
         }
+
 
         try {
             $response = $this->getClient($order->getSalesChannelId())->request(
@@ -421,7 +490,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             $this->paymentLogger(
                 WexoQuickpay::ORDER_COMPLETE_ERROR,
                 [
-                    'orderId' => $orderId ?? null,
+                    'orderId' => $orderId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'errorType' => $e::class
@@ -439,8 +508,8 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             'response' => json_decode($response->getBody()->getContents())
         ];
 
-        $paymentState = $transaction->getStateMachineState()->getTechnicalName();
-        $orderState = $order->getStateMachineState()->getTechnicalName();
+        $paymentState = $transaction->getStateMachineState()?->getTechnicalName();
+        $orderState = $order->getStateMachineState()?->getTechnicalName();
         $responseBody = $response->getBody()->getContents();
         if ($statusCode === 202 || $statusCode === 200) {
             if (!$responseBody) {
@@ -456,7 +525,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                     $this->paymentLogger(
                         WexoQuickpay::ORDER_COMPLETE_ERROR,
                         [
-                            'orderId' => $orderId ?? null,
+                            'orderId' => $orderId,
                             'error' => $e->getMessage(),
                             'trace' => $e->getTraceAsString(),
                             'errorType' => $e::class
@@ -508,10 +577,15 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         }
     }
 
+    /**
+     * @return array<string, mixed>
+     * @throws GuzzleException
+     */
     public function checkSubscriptionStatusByOrderId(
         string $orderId,
         SalesChannelContext $salesChannelContext
-    ) {
+    ): array
+    {
         $subscriptionResponse = $this->getClient($salesChannelContext->getSalesChannelId())
             ->request('GET', 'subscriptions', [
                 'query' => [
@@ -520,8 +594,6 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             ]);
 
         $content = $subscriptionResponse->getBody()->getContents();
-        $responseData = json_decode($content, true);
-
-        return $responseData;
+        return json_decode($content, true);
     }
 }

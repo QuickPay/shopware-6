@@ -5,11 +5,17 @@ namespace Wexo\Quickpay\Service;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use Monolog\Level;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionCollection;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
+use Shopware\Core\Checkout\Order\OrderCollection;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
+use Shopware\Core\Framework\Log\LogEntryCollection;
+use Shopware\Core\System\Language\LanguageCollection;
+use Shopware\Core\System\Language\LanguageEntity;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\StateMachine\StateMachineRegistry;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
@@ -20,6 +26,15 @@ class QuickpayService
     /** @var Client[] $apiClients */
     protected array $apiClients = [];
 
+    /**
+     * @param EntityRepository<OrderTransactionCollection> $orderTransactionRepository
+     * @param SystemConfigService $systemConfigService
+     * @param EntityRepository<LogEntryCollection> $logEntryRepository
+     * @param EntityRepository<LanguageCollection> $languageRepository
+     * @param EntityRepository<OrderCollection> $orderRepository
+     * @param OrderTransactionStateHandler $transactionStateHandler
+     * @param StateMachineRegistry $stateMachineRegistry
+     */
     public function __construct(
         private readonly EntityRepository $orderTransactionRepository,
         protected SystemConfigService $systemConfigService,
@@ -31,7 +46,12 @@ class QuickpayService
     ) {
     }
 
-    protected function loadTransaction(string $orderTransactionId, Context $context)
+    /**
+     * @param string $orderTransactionId
+     * @param Context $context
+     * @return OrderTransactionEntity
+     */
+    protected function loadTransaction(string $orderTransactionId, Context $context): OrderTransactionEntity
     {
         $criteria = new Criteria([$orderTransactionId])
             ->addAssociation('order.lineItems')
@@ -80,12 +100,18 @@ class QuickpayService
         return $this->apiClients[$salesChannelId];
     }
 
+    /**
+     * @param string $salesChannelId
+     * @param string $content
+     * @param string|null $submittedChecksum
+     * @return bool
+     */
     public function checkPrivateKey(
         string $salesChannelId,
         string $content,
-        string $submittedChecksum
+        ?string $submittedChecksum
     ): bool {
-        $key = $this->systemConfigService->get('WexoQuickpay.config.quickpayPrivateKey', $salesChannelId);
+        $key = (string) $this->systemConfigService->get('WexoQuickpay.config.quickpayPrivateKey', $salesChannelId);
 
         $checksum = hash_hmac('sha256', $content, $key);
 
@@ -93,6 +119,8 @@ class QuickpayService
     }
 
     /**
+     * @param array<array<string, array|int|object|string> $config
+     * @return bool
      * @throws GuzzleException
      */
     public function isConfigValid(array $config): bool
@@ -105,10 +133,13 @@ class QuickpayService
                 ]
             ]);
 
-            $pKey = json_decode($response->getBody()->getContents());
-            if ($pKey->private_key == $config['quickpayPrivateKey']) {
+            /** @var array<string, mixed>|null $pKey */
+            $pKey = json_decode($response->getBody()->getContents(), true);
+
+            if (is_array($pKey) && isset($pKey['private_key']) && $pKey['private_key'] === $config['quickpayPrivateKey']) {
                 return $response->getStatusCode() === 200;
             }
+
             return false;
         } catch (\Exception $exception) {
             $this->paymentLogger($exception->getMessage(), $exception->getTrace());
@@ -117,21 +148,25 @@ class QuickpayService
         }
     }
 
+    /**
+     * @param string $event
+     * @param array<string, mixed> $context
+     * @return void
+     */
     public function paymentLogger(
         string $event,
         array $context,
-        ?int $level = null
     ): void {
         $this->logEntryRepository->create(
             [
                 [
                     'message' => $event,
                     'context' => $context,
-                    'level' => $level ?: Level::Error->value,
+                    'level' => Level::Error->value,
                     'channel' => WexoQuickpay::LOG_CHANNEL
                 ]
             ],
-            Context::createDefaultContext()
+            Context::createCLIContext()
         );
     }
 
@@ -139,24 +174,23 @@ class QuickpayService
     {
         $criteria = new Criteria([$languageId]);
         $criteria->addAssociation('locale');
+
+        /** @var LanguageEntity|null $lang */
         $language = $this->languageRepository->search($criteria, $context)->first();
 
-        // Map both norwegian locales to no
-        $map = [
-            'nb' => 'no',
-            'nn' => 'no',
-        ];
+        $localeCode = $language?->getLocale()?->getCode();
+        $base = $localeCode !== null && $localeCode !== ''
+            ? strtolower(explode('-', $localeCode, 2)[0])
+            : 'en';
 
-        $language = explode('-', (string) $language->getLocale()->getCode())[0];
+        // Map both Norwegian locales to "no"
+        $map = ['nb' => 'no', 'nn' => 'no'];
 
-        if (isset($map[$language])) {
-            return $map[$language];
-        }
-
-        return $language;
+        return $map[$base] ?? $base;
     }
 
     /**
+     * return string|null
      * @throws GuzzleException
      */
     public function updateResponse(
@@ -164,7 +198,7 @@ class QuickpayService
         mixed $paymentId = null,
         ?SalesChannelContext $context = null
     ): ?string {
-        $context = $context ? $context->getContext() : Context::createDefaultContext();
+        $context = $context ? $context->getContext() : Context::createCLIContext();
 
         /** @var OrderEntity|null $order */
         $order = $this->orderRepository->search(new Criteria([$orderId]), $context)->get($orderId);
@@ -177,21 +211,28 @@ class QuickpayService
             if ($customFields && isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
                 $data = json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
 
-                if (property_exists($data, 'id')) {
-                    $paymentId = $data->id;
+                if (\is_array($data) && isset($data['id'])) {
+                    $paymentId = (string) $data['id'];
                 }
             }
         }
 
-        if (! $paymentId) {
+        if ($paymentId === null || $paymentId === '') {
             return null;
         }
 
         try {
             $response = $this->getClient($order->getSalesChannelId())
                 ->request('GET', 'payments/' . $paymentId);
-            $content = $response->getBody()->getContents();
-            if ($response->getStatusCode() === 200 && $content) {
+
+            $content = (string) $response->getBody();
+
+            if ($response->getStatusCode() === 200 && $content !== '') {
+                $customFields = $order->getCustomFields();
+                if (!\is_array($customFields)) {
+                    $customFields = [];
+                }
+
                 $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $content;
                 $this->setOrderCustomFields($orderId, $customFields);
 
@@ -212,6 +253,11 @@ class QuickpayService
         return null;
     }
 
+    /**
+     * @param string $orderId
+     * @param array<string, mixed> $customFields
+     * @return void
+     */
     public function setOrderCustomFields(string $orderId, array $customFields): void
     {
         try {
@@ -222,7 +268,7 @@ class QuickpayService
                         'customFields' => $customFields
                     ]
                 ],
-                Context::createDefaultContext()
+                Context::createCLIContext()
             );
         } catch (\Exception $e) {
             $this->logEntryRepository->create(
@@ -238,7 +284,7 @@ class QuickpayService
                         'channel' => 'quickpay'
                     ]
                 ],
-                Context::createDefaultContext()
+                Context::createCLIContext()
             );
         }
     }

@@ -4,7 +4,9 @@ namespace Wexo\Quickpay\Service;
 
 use Exception;
 use GuzzleHttp\Exception\GuzzleException;
+use Monolog\Level;
 use Monolog\Logger;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
 use Shopware\Core\Checkout\Order\OrderEntity;
@@ -27,10 +29,17 @@ class QuickpayPayment extends AbstractPaymentHandler
     public static string $quickpayName = 'creditcard';
     protected QuickpayInterface $currentService;
 
+    /**
+     * @param EntityRepository<OrderTransactionCollection> $orderTransactionRepository
+     * @param QuickpayInterface $paymentService
+     * @param QuickpayInterface $subscriptionService
+     * @param ShopwareStateService $shopwareStateService
+     */
     public function __construct(
         private readonly EntityRepository $orderTransactionRepository,
         protected QuickpayInterface $paymentService,
         protected QuickpayInterface $subscriptionService,
+        protected QuickpayService $quickpayService,
         protected ShopwareStateService $shopwareStateService
     ) {
     }
@@ -64,7 +73,6 @@ class QuickpayPayment extends AbstractPaymentHandler
         Context $context,
         ?Struct $validateStruct
     ): RedirectResponse {
-        // Method that sends the return URL to the external gateway and gets a redirect URL back
             $extraParams = $request->request->all('extraParams');
             $orderTransactionId = $transaction->getOrderTransactionId();
             $tx    = $this->loadTransaction($orderTransactionId, $context);
@@ -117,6 +125,9 @@ class QuickpayPayment extends AbstractPaymentHandler
         $tx = $this->loadTransaction($transactionId, $context);
         $order = $tx->getOrder();
 
+        if ($order === null) {
+            throw new \RuntimeException('Transaction has no associated Order.');
+        }
 
         $status = $request->get('status');
         if ($status === "cancel") {
@@ -129,18 +140,18 @@ class QuickpayPayment extends AbstractPaymentHandler
 
             $this->setCurrentService($order);
 
-            $this->currentService->paymentLogger(
+            $this->quickpayService->paymentLogger(
                 'quickpay_callback_data_response',
                 [
                     'orderId' => $order->getId(),
                     'data'    => $response
                 ],
-                Logger::INFO
+                Level::Info->value
             );
 
             // Validate the checksum being sent from QuickPay
             $submittedChecksum = $request->server->get('HTTP_QUICKPAY_CHECKSUM_SHA256') ?? '';
-            $valid = $this->paymentService->checkPrivateKey($order->getSalesChannelId(), $content, $submittedChecksum);
+            $valid = $this->quickpayService->checkPrivateKey($order->getSalesChannelId(), $content, $submittedChecksum);
             if (! $valid) {
                 throw new \Exception('Checksum check failed for orderId: ' . $order->getId());
             }
@@ -158,7 +169,12 @@ class QuickpayPayment extends AbstractPaymentHandler
 
             $accepted = $response['accepted'] ?? false;
             if ($accepted) {
-                $paymentHandler = $tx->getPaymentMethod()->getHandlerIdentifier();
+                $paymentHandler = $tx->getPaymentMethod()?->getHandlerIdentifier();
+
+                if ($paymentHandler === null) {
+                    return;
+                }
+
                 if ($paymentHandler === SwishPayment::class) {
                     // Since Swish is a banktransfer, capture happens at the same time as Authorized.
                     // So we set payment status to Paid instead of Authorized.
@@ -178,13 +194,13 @@ class QuickpayPayment extends AbstractPaymentHandler
                 // status codes for rejected/aborted transactions, where we'll then cancel the order in Shopware.
                 foreach ($response['operations'] as $operation) {
                     if ($operation['type'] === 'authorize' &&
-                        in_array($operation['qp_status_code'], ['40000', '40001', '40002', '40003', '50000', '50300'])
+                        in_array($operation['qp_status_code'], ['40000', '40001', '40002', '40003', '50000', '50300'], true)
                     ) {
                         $cancel = true;
                     }
                 }
 
-                if ($cancel) {
+                if ($cancel && $order === null) {
                     $this->shopwareStateService->cancel($transactionId, $order->getId(), $paymentState, $orderState);
                 }
             }

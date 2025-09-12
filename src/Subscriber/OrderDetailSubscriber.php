@@ -2,6 +2,7 @@
 
 namespace Wexo\Quickpay\Subscriber;
 
+use Shopware\Core\Checkout\Order\OrderCollection;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use GuzzleHttp\Exception\GuzzleException;
 use Shopware\Core\Checkout\Cart\Order\OrderConvertedEvent;
@@ -10,25 +11,35 @@ use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\ContainsFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
+use Shopware\Core\Framework\Struct\ArrayStruct;
 use Shopware\Core\System\StateMachine\Event\StateMachineTransitionEvent;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Wexo\Quickpay\Service\SubscriptionQuickpayService;
 use Wexo\Quickpay\Service\SwishPayment;
 use Wexo\Quickpay\ServiceInterface\QuickpayInterface;
+use Wexo\Quickpay\ServiceInterface\QuickpayOperationsInterface;
 
 class OrderDetailSubscriber implements EventSubscriberInterface
 {
+    /**
+     * @param EntityRepository<OrderCollection> $orderRepository
+     * @param SystemConfigService $systemConfigService
+     * @param QuickpayInterface $paymentService
+     * @param QuickpayOperationsInterface $quickpayOperations
+     * @param SubscriptionQuickpayService $subscriptionQuickpayService
+     */
     public function __construct(
         protected EntityRepository $orderRepository,
         protected SystemConfigService $systemConfigService,
         protected QuickpayInterface $paymentService,
+        protected QuickpayOperationsInterface $quickpayOperations,
         protected SubscriptionQuickpayService $subscriptionQuickpayService
     ) {
     }
 
     /**
-     * @return array|string[]
+     * @return array<string, string|list<array{0: string, 1?: int}|int|string>>
      */
     public static function getSubscribedEvents(): array
     {
@@ -41,7 +52,7 @@ class OrderDetailSubscriber implements EventSubscriberInterface
     /**
      * @throws GuzzleException
      */
-    public function onStateMachineTransitionEvent(StateMachineTransitionEvent $event)
+    public function onStateMachineTransitionEvent(StateMachineTransitionEvent $event): void
     {
         $eventName = $event->getToPlace()->getTechnicalName();
         $relevantEvent = in_array(
@@ -50,7 +61,8 @@ class OrderDetailSubscriber implements EventSubscriberInterface
                 OrderTransactionStates::STATE_CANCELLED,
                 OrderTransactionStates::STATE_PARTIALLY_PAID,
                 OrderTransactionStates::STATE_PAID
-            ]
+            ],
+            true
         );
         // Do not waste compute time fetching config or orders if the event should not be handled anyway
         if (!$relevantEvent) {
@@ -87,11 +99,12 @@ class OrderDetailSubscriber implements EventSubscriberInterface
             $event->getContext()
         )->first();
 
+        /** @var ArrayStruct|null $capture */
         $capture = $event->getContext()->getExtension('capture');
 
         if ($order) {
             if ($eventName === OrderTransactionStates::STATE_CANCELLED) {
-                $this->paymentService->cancel($order);
+                $this->quickpayOperations->cancel($order);
             }
 
             if ($capture && ! $capture->get('amount')) {
@@ -99,12 +112,18 @@ class OrderDetailSubscriber implements EventSubscriberInterface
             }
             
             if ($eventName === OrderTransactionStates::STATE_PAID) {
-                $paymentHandler = $order->getTransactions()->first()->getPaymentMethod()->getHandlerIdentifier();
+                $transaction = $order->getTransactions()?->first();
+                $paymentHandler = $transaction?->getPaymentMethod()?->getHandlerIdentifier();
+
+                if ($paymentHandler === null){
+                    return;
+                }
+
                 // We don't want to try and capture on a swishpayment as Swish orders
                 // are set as Paid as soon as Quickpay response is accepted.
                 // When using Capture API on Swish payments, it is then set to order Status: Done and Delivery: Shipped
                 if ($paymentHandler !== SwishPayment::class) {
-                    $this->paymentService->capture(
+                    $this->quickpayOperations->capture(
                         $order->getId(),
                         $event->getContext(),
                     );
@@ -114,7 +133,7 @@ class OrderDetailSubscriber implements EventSubscriberInterface
             if ($eventName === OrderTransactionStates::STATE_PARTIALLY_PAID &&
                 $capture && $capture->get('amount')
             ) {
-                $this->paymentService->capture(
+                $this->quickpayOperations->capture(
                     $order->getId(),
                     $event->getContext(),
                     (float) $capture->get('amount')
