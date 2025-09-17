@@ -110,7 +110,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
 
         if ($paymentResponse->getStatusCode() !== 201) {
             $errorMessage = $paymentResponse->getBody()->getContents();
-            if (empty($errorMessage)) {
+            if ($errorMessage === '') {
                 $errorMessage = 'Failed to create payment for order ' . ($formParams['order_id'] ?? 'unknown');
             }
             throw new Exception($errorMessage);
@@ -175,7 +175,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
 
         if ($linkResponse->getStatusCode() !== 200) {
             $errorMessage = $linkResponse->getBody()->getContents();
-            if (empty($errorMessage)) {
+            if ($errorMessage === '') {
                 $errorMessage = 'Failed to link payment for order ' . $order->getOrderNumber();
             }
             throw new Exception($errorMessage);
@@ -185,7 +185,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
 
         if (!isset($linkResponseContent['url'])) {
             $errorMessage = $linkResponse->getBody()->getContents();
-            if (empty($errorMessage)) {
+            if ($errorMessage === '') {
                 $errorMessage = 'Failed to link payment for order ' . $order->getOrderNumber();
             }
             throw new Exception($errorMessage);
@@ -245,10 +245,15 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             OrderTransactionStates::STATE_AUTHORIZED
         ];
 
-        foreach ($states as $state) {
-            $transaction = $order->getTransactions()->filterByState($state)->first();
-            if ($transaction !== null) {
-                break;
+        $transaction = null;
+        $transactions = $order->getTransactions();
+        
+        if ($transactions !== null) {
+            foreach ($states as $state) {
+                $transaction = $transactions->filterByState($state)->first();
+                if ($transaction !== null) {
+                    break;
+                }
             }
         }
 
