@@ -109,11 +109,11 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             ]);
 
         if ($paymentResponse->getStatusCode() !== 201) {
-            throw new Exception(
-                $paymentResponse->getBody()->getContents()
-                ?? 'Failed to create payment for order '
-                . $formParams['order_id'] ?? null
-            );
+            $errorMessage = $paymentResponse->getBody()->getContents();
+            if (empty($errorMessage)) {
+                $errorMessage = 'Failed to create payment for order ' . ($formParams['order_id'] ?? 'unknown');
+            }
+            throw new Exception($errorMessage);
         }
 
         $content = $paymentResponse->getBody()->getContents();
@@ -159,7 +159,12 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         }
 
         $identifier = $tx->getPaymentMethod()?->getHandlerIdentifier();
-        $updateFormParams['payment_methods'] = $identifier::$quickpayName;
+        if ($identifier === null) {
+            throw new Exception('Payment method or handler identifier not found');
+        }
+
+        $quickpayName = constant($identifier . '::quickpayName');
+        $updateFormParams['payment_methods'] = $quickpayName;
         $customFields     = $order->getCustomFields() ?? [];
         $paymentResponse  = \json_decode((string) ($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] ?? ''), true);
 
@@ -169,21 +174,21 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             ]);
 
         if ($linkResponse->getStatusCode() !== 200) {
-            throw new Exception(
-                $linkResponse->getBody()->getContents()
-                ?? 'Failed to link payment for order '
-                . $order->getOrderNumber()
-            );
+            $errorMessage = $linkResponse->getBody()->getContents();
+            if (empty($errorMessage)) {
+                $errorMessage = 'Failed to link payment for order ' . $order->getOrderNumber();
+            }
+            throw new Exception($errorMessage);
         }
 
         $linkResponseContent = json_decode($linkResponse->getBody()->getContents(), true);
 
         if (!isset($linkResponseContent['url'])) {
-            throw new Exception(
-                $linkResponse->getBody()->getContents()
-                ?? 'Failed to link payment for order '
-                . $order->getOrderNumber()
-            );
+            $errorMessage = $linkResponse->getBody()->getContents();
+            if (empty($errorMessage)) {
+                $errorMessage = 'Failed to link payment for order ' . $order->getOrderNumber();
+            }
+            throw new Exception($errorMessage);
         }
 
         $this->paymentLogger(
