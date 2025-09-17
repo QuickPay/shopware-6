@@ -73,15 +73,15 @@ class OrderDetailSubscriber implements EventSubscriberInterface
         $cancelPayments = $this->systemConfigService->get('WexoQuickpay.config.quickpayCancelPaymentOnOrderCancel');
 
         // If we shouldn't modify payment status in QuickPay at all, no need to waste computing time
-        if (!$capturePayments && !$cancelPayments) {
+        if ($capturePayments !== true && $cancelPayments !== true) {
             return;
         }
-        if ($eventName === OrderTransactionStates::STATE_CANCELLED && !$cancelPayments) {
+        if ($eventName === OrderTransactionStates::STATE_CANCELLED && $cancelPayments !== true) {
             return;
         }
         if (($eventName === OrderTransactionStates::STATE_PAID
                 || $eventName === OrderTransactionStates::STATE_PARTIALLY_PAID)
-            && !$capturePayments
+            && $capturePayments !== true
         ) {
             return;
         }
@@ -102,12 +102,12 @@ class OrderDetailSubscriber implements EventSubscriberInterface
         /** @var ArrayStruct|null $capture */
         $capture = $event->getContext()->getExtension('capture');
 
-        if ($order) {
+        if ($order !== null) {
             if ($eventName === OrderTransactionStates::STATE_CANCELLED) {
                 $this->quickpayOperations->cancel($order);
             }
 
-            if ($capture && ! $capture->get('amount')) {
+            if ($capture !== null && $capture->get('amount') === null) {
                 return;
             }
             
@@ -131,7 +131,7 @@ class OrderDetailSubscriber implements EventSubscriberInterface
             }
 
             if ($eventName === OrderTransactionStates::STATE_PARTIALLY_PAID &&
-                $capture && $capture->get('amount')
+                $capture !== null && $capture->get('amount') !== null
             ) {
                 $this->quickpayOperations->capture(
                     $order->getId(),
@@ -149,7 +149,7 @@ class OrderDetailSubscriber implements EventSubscriberInterface
     public function orderConvertedEvent(OrderConvertedEvent $event)
     {
         $subscription = $event->getContext()->getExtension('subscriptionOrder');
-        if ($subscription) {
+        if ($subscription !== null) {
             $this->subscriptionQuickpayService->recurring($event->getOrder()->getId());
         }
     }

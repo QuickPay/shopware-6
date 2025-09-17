@@ -111,7 +111,7 @@ class WexoQuickpay extends Plugin
             $installContext->getContext()
         )->first();
 
-        if (! $customFieldSet) {
+        if ($customFieldSet === null) {
             $customFieldSetRepository->upsert([[
                 'name' => self::QUICKPAY_FIELD_SET,
                 'customFields' => [
@@ -171,7 +171,7 @@ class WexoQuickpay extends Plugin
 
         if (version_compare($context->getCurrentPluginVersion(), '3.0.3', '<')) {
             $oldMobilePayId = $this->getPaymentMethodIdByName(QuickpayPayment::class, 'MobilePay');
-            if ($oldMobilePayId) {
+            if ($oldMobilePayId !== null) {
                 $paymentRepository = $container->get('payment_method.repository');
                 $paymentMethod = [
                     'id' => $oldMobilePayId,
@@ -193,7 +193,7 @@ class WexoQuickpay extends Plugin
                 $context->getContext()
             )->first();
 
-            if ($customFieldSet) {
+            if ($customFieldSet !== null) {
                 $customFieldSetRepository->upsert([
                     [
                         'id' => $customFieldSet->getId(),
@@ -270,7 +270,7 @@ class WexoQuickpay extends Plugin
             $technical = $this->toTechnical($name);
             $paymentMethodExists = $this->getPaymentMethodId($props['handler']);
             // Payment method exists already, no need to continue here
-            if ($paymentMethodExists) {
+            if ($paymentMethodExists !== null) {
                 continue;
             }
 
@@ -301,7 +301,7 @@ class WexoQuickpay extends Plugin
         /** @var EntityRepository<PaymentMethodCollection> $paymentRepository */
         $paymentRepository = $container->get('payment_method.repository');
         // Payment does not even exist, so nothing to (de-)activate here
-        if (!$paymentMethodId) {
+        if ($paymentMethodId === '') {
             return;
         }
         $paymentMethod = [

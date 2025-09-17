@@ -58,10 +58,6 @@ class RefundService
         float $amount,
         Context $context
     ): bool {
-        if (!$amount) {
-            throw RefundExceptions::invalidAmount($amount);
-        }
-
         if ($amount <= 0.0) {
             throw RefundExceptions::invalidAmount($amount);
         }
@@ -84,7 +80,7 @@ class RefundService
             $context
         )->get($orderId);
 
-        if (!$order || !isset($order->getCustomFields()[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
+        if ($order === null || !isset($order->getCustomFields()[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
             throw RefundExceptions::orderNotFound($order);
         }
 
@@ -93,7 +89,7 @@ class RefundService
             true
         );
 
-        if (!$response) {
+        if ($response === null) {
             throw RefundExceptions::invalidResponse();
         }
 
@@ -141,7 +137,7 @@ class RefundService
         $this->verifyResponse($refundResponse, $orderId, $context);
         if (in_array($refundResponse->getStatusCode(), [200, 202], true)) {
             $source = $context->getSource();
-            if ($source instanceof AdminApiSource && $source->getUserId()) {
+            if ($source instanceof AdminApiSource && $source->getUserId() !== null) {
                 $this->logEntryRepository->create([
                     [
                         'message' => 'quickpay.order.refund.info',
@@ -178,7 +174,7 @@ class RefundService
     protected function verifyResponse(ResponseInterface $response, string $orderId, Context $context): void
     {
         $content = $response->getBody()->getContents();
-        if (in_array($response->getStatusCode(), [200, 202], true) && $content) {
+        if (in_array($response->getStatusCode(), [200, 202], true) && $content !== '') {
             $this->orderRepository->upsert([
                 [
                     'id' => $orderId,

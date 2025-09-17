@@ -152,14 +152,14 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         /** @var OrderEntity $originalOrder */
         $originalOrder = $this->orderRepository->search($criteria, $context)->first();
 
-        if (!$originalOrder) {
+        if ($originalOrder === null) {
             throw new \Exception('Order not found');
         }
 
         $lineItems = array_map(function ($item) {
             $price = $item->getPrice();
 
-            if (!$price) {
+            if ($price === null) {
                 throw new \Exception('Price information is missing for an item');
             }
 
@@ -248,7 +248,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         $criteria->addAssociations(['lineItems', 'deliveries', 'transactions']);
         $newOrder = $this->orderRepository->search($criteria, $context)->first();
 
-        if (!$newOrder) {
+        if ($newOrder === null) {
             throw new \Exception('Failed to create a new order');
         }
 
@@ -358,8 +358,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                 'updateFormParams' => $updateFormParams,
                 'subscriptionResponse' => $subscriptionResponse,
                 'linkResponse' => $linkResponseContent
-            ],
-            Level::Info->value
+            ]
         );
 
         return $linkResponseContent['url'];
@@ -387,7 +386,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         )->first();
 
         // TODO: Send emails to shop admin on payment error
-        if (!$order) {
+        if ($order === null) {
             $this->paymentLogger(
                 WexoQuickpay::ORDER_COMPLETE_ERROR,
                 [
@@ -420,7 +419,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         }
 
         $customFields = $order->getCustomFields();
-        if (!$customFields || !isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
+        if ($customFields === null || !isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
             $this->paymentLogger(
                 WexoQuickpay::ORDER_COMPLETE_ERROR,
                 [
@@ -456,7 +455,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             ->format(DateTimeInterface::ATOM);
 
         // We're adding a -S to the orderId for the subscription, as the recurring payment will use the orderId.
-        if ($initial) {
+        if ($initial === true) {
             $recurringOrderNumber = $order->getOrderNumber() . '-S-Initial';
         } else {
             $recurringOrderNumber = $order->getOrderNumber() . '-S';
@@ -512,7 +511,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         $orderState = $order->getStateMachineState()?->getTechnicalName();
         $responseBody = $response->getBody()->getContents();
         if ($statusCode === 202 || $statusCode === 200) {
-            if (!$responseBody) {
+            if ($responseBody === '') {
                 $location = explode("/", $response->getHeader('Location')[0]);
                 $quickpayPaymentId = $location[4];
 

@@ -62,7 +62,7 @@ class QuickpayService
         // add more associations only if you need them later
 
         $tx = $this->orderTransactionRepository->search($criteria, $context)->first();
-        if (!$tx) {
+        if ($tx === null) {
             throw new \RuntimeException('Order transaction not found: ' . $orderTransactionId);
             // or PaymentException::invalidOrderTransaction($orderTransactionId)
         }
@@ -73,7 +73,7 @@ class QuickpayService
     public function getClient(?string $salesChannelId): Client
     {
         //If no string is supplied to system config service, it uses '_global_' under the hood.
-        if (!$salesChannelId) {
+        if ($salesChannelId === null || $salesChannelId === '') {
             $salesChannelId = '_global_';
         }
 
@@ -111,7 +111,10 @@ class QuickpayService
         string $content,
         ?string $submittedChecksum
     ): bool {
-        $key = (string) $this->systemConfigService->get('WexoQuickpay.config.quickpayPrivateKey', $salesChannelId);
+        $key = $this->systemConfigService->get('WexoQuickpay.config.quickpayPrivateKey', $salesChannelId);
+        if (!is_string($key)) {
+            $key = '';
+        }
 
         $checksum = hash_hmac('sha256', $content, $key);
 
@@ -119,7 +122,7 @@ class QuickpayService
     }
 
     /**
-     * @param array<array<string, array|int|object|string> $config
+     * @param array<string, array<mixed>|int|object|string> $config
      * @return bool
      * @throws GuzzleException
      */
@@ -175,7 +178,7 @@ class QuickpayService
         $criteria = new Criteria([$languageId]);
         $criteria->addAssociation('locale');
 
-        /** @var LanguageEntity|null $lang */
+        /** @var LanguageEntity|null $language */
         $language = $this->languageRepository->search($criteria, $context)->first();
 
         $localeCode = $language?->getLocale()?->getCode();
@@ -198,17 +201,17 @@ class QuickpayService
         mixed $paymentId = null,
         ?SalesChannelContext $context = null
     ): ?string {
-        $context = $context ? $context->getContext() : Context::createCLIContext();
+        $context = $context !== null ? $context->getContext() : Context::createCLIContext();
 
         /** @var OrderEntity|null $order */
         $order = $this->orderRepository->search(new Criteria([$orderId]), $context)->get($orderId);
-        if (! $order) {
+        if ($order === null) {
             return null;
         }
 
         if (! $paymentId) {
             $customFields = $order->getCustomFields();
-            if ($customFields && isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
+            if ($customFields !== null && isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
                 $data = json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
 
                 if (\is_array($data) && isset($data['id'])) {
