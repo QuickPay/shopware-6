@@ -12,11 +12,11 @@ class ServiceHelper
         $customFields = $order->getCustomFields() ?? [];
         if (isset($customFields[WexoQuickpay::QUICKPAY_SUBSCRIPTION_ID])) {
             return true;
-        } elseif ($order->getLineItems()) {
+        } elseif ($order->getLineItems() !== null) {
             foreach ($order->getLineItems() as $lineItem) {
                 $payload = $lineItem->getPayload();
                 $subscription = $payload['subscription'] ?? [];
-                if ($subscription) {
+                if (count($subscription) > 0) {
                     return true;
                 }
             }

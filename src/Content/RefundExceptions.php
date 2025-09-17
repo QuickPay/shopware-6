@@ -20,7 +20,7 @@ class RefundExceptions extends HttpException
 
     public static function orderNotFound(?OrderEntity $order): self
     {
-        if (!$order) {
+        if ($order === null) {
             return new self(
                 Response::HTTP_BAD_REQUEST,
                 'QUICKPAY__REFUND_ORDER_NOT_FOUND',

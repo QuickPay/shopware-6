@@ -90,10 +90,10 @@ class CartOrderRouteDecorator extends AbstractCartOrderRoute
             ->addFilter(new EqualsFilter('orderId', $orderEntity->getId()))
             ->addAssociation('paymentMethod');
 
-        /** @var OrderTransactionEntity $orderTransaction */
+        /** @var OrderTransactionEntity|null $orderTransaction */
         $orderTransaction = $this->orderTransactionRepository->search($criteria, $context->getContext())->first();
 
-        if ($orderTransaction) {
+        if ($orderTransaction !== null) {
             /** @var PaymentMethodEntity $paymentMethod */
             $paymentMethod = $orderTransaction->getPaymentMethod();
 
