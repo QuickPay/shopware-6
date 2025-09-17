@@ -53,7 +53,7 @@ class QuickpayPayment extends AbstractPaymentHandler
             ->addAssociation('stateMachineState');
 
         $tx = $this->orderTransactionRepository->search($criteria, $context)->first();
-        if (!$tx) {
+        if ($tx === null) {
             throw PaymentException::invalidTransaction($orderTransactionId);
         }
 
@@ -77,7 +77,9 @@ class QuickpayPayment extends AbstractPaymentHandler
             $orderTransactionId = $transaction->getOrderTransactionId();
             $tx    = $this->loadTransaction($orderTransactionId, $context);
             $order = $tx->getOrder();
-
+            if ($order === null) {
+                throw new \Exception('Order not found for transaction: ' . $orderTransactionId);
+            }
             $this->setCurrentService($order);
 
             $customFields = $order->getCustomFields() ?? [];
@@ -135,7 +137,7 @@ class QuickpayPayment extends AbstractPaymentHandler
                 $transactionId,
                 'Customer canceled the payment on the payment page'
             );
-        } elseif ($content) {
+        } elseif ($content !== '') {
             $response = json_decode($content, true);
 
             $this->setCurrentService($order);
@@ -145,8 +147,7 @@ class QuickpayPayment extends AbstractPaymentHandler
                 [
                     'orderId' => $order->getId(),
                     'data'    => $response
-                ],
-                Level::Info->value
+                ]
             );
 
             // Validate the checksum being sent from QuickPay
@@ -160,7 +161,7 @@ class QuickpayPayment extends AbstractPaymentHandler
             $orderTransactionStateMachineState = $orderTransaction->getStateMachineState();
             $orderStateMachineState = $order->getStateMachineState();
 
-            if (!$orderTransactionStateMachineState || !$orderStateMachineState) {
+            if ($orderTransactionStateMachineState === null || $orderStateMachineState === null) {
                 throw new \Exception('State machine state not loaded for transaction ID: ' . $transactionId);
             }
 
@@ -168,7 +169,7 @@ class QuickpayPayment extends AbstractPaymentHandler
             $orderState = $orderStateMachineState->getTechnicalName();
 
             $accepted = $response['accepted'] ?? false;
-            if ($accepted) {
+            if ($accepted === true) {
                 $paymentHandler = $tx->getPaymentMethod()?->getHandlerIdentifier();
 
                 if ($paymentHandler === null) {
@@ -200,7 +201,7 @@ class QuickpayPayment extends AbstractPaymentHandler
                     }
                 }
 
-                if ($cancel && $order === null) {
+                if ($cancel === true) {
                     $this->shopwareStateService->cancel($transactionId, $order->getId(), $paymentState, $orderState);
                 }
             }

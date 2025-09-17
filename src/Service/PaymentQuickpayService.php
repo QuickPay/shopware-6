@@ -46,7 +46,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
 
         foreach ($lineItems as $orderLineItem) {
             $payload = $orderLineItem->getPayload() ?? [];
-            $itemNo = ($payload && isset($payload['productNumber']))
+            $itemNo = (count($payload) > 0 && isset($payload['productNumber']))
                 ? $payload['productNumber']
                 : $orderLineItem->getLabel();
 
@@ -76,11 +76,12 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
 
         $shippingTaxRate = 0;
         $taxRules = $order->getShippingCosts()->getTaxRules();
-        if ($taxRules && $taxRules->first() && $taxRules->first()->getTaxRate()) {
-            $shippingTaxRate = $taxRules->first()->getTaxRate() / 100;
+        $firstRule = $taxRules->first();
+        if ($firstRule !== null && $firstRule->getTaxRate() > 0) {
+            $shippingTaxRate = $firstRule->getTaxRate() / 100;
         }
 
-        if ($shippingTotal) {
+        if ($shippingTotal > 0) {
             $basket[] = [
                 'qty' => 1,
                 'item_no' => 'Shipping',
@@ -90,7 +91,11 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             ];
         }
 
-        $currency = $order->getCurrency()->getIsoCode();
+        $currencyEntity = $order->getCurrency();
+        if ($currencyEntity === null) {
+            throw new Exception('Currency not found for order');
+        }
+        $currency = $currencyEntity->getIsoCode();
 
         $formParams = [
             'currency' => $currency,
@@ -113,6 +118,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
 
         $content = $paymentResponse->getBody()->getContents();
 
+        $customFields = [];
         $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $content;
         $this->setOrderCustomFields($order->getId(), $customFields);
         $order->setCustomFields($customFields);
@@ -121,7 +127,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
     /**
      * @param PaymentTransactionStruct $transaction
      * @param Context $context
-     * @param array $extraParams
+     * @param array<string, mixed> $extraParams
      * @return string
      * @throws GuzzleException
      */
@@ -130,12 +136,15 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         Context $context,
         array $extraParams = []
     ): string {
-        $returnUrl = $transaction->getReturnUrl();
+        $returnUrl = $transaction->getReturnUrl() ?? '';
 
         $callbackUrl = str_replace('finalize-transaction', 'quickpay-finalize-transaction', $returnUrl);
 
         $tx    = $this->loadTransaction($transaction->getOrderTransactionId(), $context);
         $order = $tx->getOrder();
+        if ($order === null) {
+            throw new Exception('Order not found');
+        }
 
         $updateFormParams = [
             'amount' => (int) \round($order->getAmountTotal() * 100),
@@ -145,7 +154,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             'language' => $this->getLanguage($order->getLanguageId(), $context),
         ];
 
-        if (!empty($extraParams)) {
+        if (count($extraParams) > 0) {
             $updateFormParams = array_merge($updateFormParams, $extraParams);
         }
 
@@ -184,8 +193,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
                 'updateFormParams' => $updateFormParams,
                 'paymentResponse' => $paymentResponse,
                 'linkResponse' => $linkResponseContent
-            ],
-            Logger::INFO
+            ]
         );
 
         return $linkResponseContent['url'];
@@ -215,7 +223,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         )->first();
 
         // TODO: Send emails to shop admin on payment error
-        if (! $order) {
+        if ($order === null) {
             $this->paymentLogger(
                 WexoQuickpay::ORDER_COMPLETE_ERROR,
                 [
@@ -234,18 +242,21 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
 
         foreach ($states as $state) {
             $transaction = $order->getTransactions()->filterByState($state)->first();
-            if ($transaction) {
+            if ($transaction !== null) {
                 break;
             }
         }
 
-        if (! $transaction) {
+        if ($transaction === null) {
             return false;
         }
 
         $paymentResponse = $this->updateResponse($orderId);
-        $paymentResponse = $paymentResponse ? json_decode($paymentResponse) : null;
-        if (!$paymentResponse
+        $paymentResponse = $paymentResponse !== '' && $paymentResponse !== null
+            ? json_decode($paymentResponse)
+            : null;
+        if ($paymentResponse === null
+            || $paymentResponse === false
             || !property_exists($paymentResponse, 'id')
             || !property_exists($paymentResponse, 'order_id')
         ) {
@@ -263,7 +274,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         }
 
         // Ensure it's the correct order we're trying to capture
-        if ($paymentResponse->order_id != $order->getOrderNumber()) {
+        if ($paymentResponse->order_id !== $order->getOrderNumber()) {
             return null;
         }
 
@@ -275,7 +286,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         }
 
         $availableAmount = $this->getAvailableAmount($paymentResponse);
-        if (! $amount) {
+        if ($amount === null || $amount === 0.0) {
             $amount = $availableAmount;
         } elseif ($amount > $availableAmount) {
             $this->paymentLogger(
@@ -317,20 +328,20 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         if ($statusCode === 202) {
             $this->paymentLogger(
                 WexoQuickpay::ORDER_COMPLETE_SUCCESS,
-                $logEntry,
-                Logger::INFO
+                $logEntry
             );
 
-            if (! $responseBody) {
+            if ($responseBody === '') {
                 $responseBody = $this->updateResponse($orderId, $paymentResponse->id);
             } else {
+                $customFields = [];
                 $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $responseBody;
                 $this->setOrderCustomFields($orderId, $customFields);
             }
 
             $availableAmount = $this->getAvailableAmount(json_decode($responseBody)) - (float) $amount;
             $stateName = $transaction->getStateMachineState()->getTechnicalName();
-            if ($availableAmount == 0.0 && $stateName !== OrderTransactionStates::STATE_PAID) {
+            if ($availableAmount === 0.0 && $stateName !== OrderTransactionStates::STATE_PAID) {
                 if ($stateName !== OrderTransactionStates::STATE_AUTHORIZED) {
                     $this->transactionStateHandler->process(
                         $transaction->getId(),
