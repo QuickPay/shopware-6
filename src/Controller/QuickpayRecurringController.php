@@ -102,6 +102,10 @@ class QuickpayRecurringController extends AbstractController
             }
         }
 
+        if (!$transaction instanceof OrderTransactionEntity) {
+            return new JsonResponse(['error' => 'No valid transaction found'], Response::HTTP_BAD_REQUEST);
+        }
+
         $submittedChecksum = $request->server->get('HTTP_QUICKPAY_CHECKSUM_SHA256') ?? null;
 
         $valid = $this->quickpayService->checkPrivateKey(
@@ -122,28 +126,39 @@ class QuickpayRecurringController extends AbstractController
         $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $request->getContent();
         $this->quickpayService->setOrderCustomFields($order->getId(), $customFields);
 
-        $paymentState = $transaction->getStateMachineState()->getTechnicalName();
-        $orderState = $order->getStateMachineState()->getTechnicalName();
+        $paymentState = $transaction->getStateMachineState()?->getTechnicalName() ?? '';
+        $orderState = $order->getStateMachineState()?->getTechnicalName() ?? '';
 
         $client = $this->quickpayService->getClient($order->getSalesChannelId());
 
         $customFields = $order->getCustomFields();
-        $quickpayPaymentId = $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]['id'];
-        $paymentResponse = $client->request(
-            'GET',
-            'payments/' . $quickpayPaymentId
-        )?->getBody();
+        $quickpayPaymentId = $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]['id'] ?? null;
+        
+        if ($quickpayPaymentId === null || $quickpayPaymentId === '') {
+            return new JsonResponse(['error' => 'No payment ID found'], Response::HTTP_BAD_REQUEST);
+        }
+        
+        try {
+            $paymentResponse = $client->request(
+                'GET',
+                'payments/' . $quickpayPaymentId
+            )->getBody();
+            
+            $paymentResponseData = json_decode($paymentResponse->getContents(), true);
+        } catch (\Exception $e) {
+            return new JsonResponse(['error' => 'Payment lookup failed'], Response::HTTP_BAD_REQUEST);
+        }
 
-        if ($response['accepted'] ?? false) {
+        if ((bool)($response['accepted'] ?? false) === true && is_array($paymentResponseData)) {
             try {
-                if ($paymentResponse['state'] === 'processed') {
+                if ($paymentResponseData['state'] === 'processed') {
                     $this->shopwareStateService->success(
                         $transaction->getId(),
                         $order->getId(),
                         $paymentState,
                         $orderState
                     );
-                } elseif ($paymentResponse['state'] === 'rejected') {
+                } elseif ($paymentResponseData['state'] === 'rejected') {
                     $this->shopwareStateService->cancel(
                         $transaction->getId(),
                         $order->getId(),
@@ -159,7 +174,7 @@ class QuickpayRecurringController extends AbstractController
             // status codes for rejected/aborted transactions, where we'll then cancel the order in Shopware.
             foreach ($response['operations'] as $operation) {
                 if ($operation['type'] === 'authorize' &&
-                    in_array($operation['qp_status_code'], ['40000', '40001', '40002', '40003', '50000', '50300'])
+                    in_array($operation['qp_status_code'], ['40000', '40001', '40002', '40003', '50000', '50300'], true)
                 ) {
                     try {
                         $this->shopwareStateService->cancel(
