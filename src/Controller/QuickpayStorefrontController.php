@@ -47,13 +47,13 @@ class QuickpayStorefrontController
         $forbiddenStatuses = [30100, 30101,40000, 40001, 50000, 50300];
 
         $operations = $request->get('operations');
-        if (!empty($operations)) {
+        if ($operations !== null && count($operations) > 0) {
             $operation = end($operations);
             /*
              * 30100 and 30101 indicate errors based on rejected 3D Secure
              * https://learn.quickpay.net/tech-talk/appendixes/errors/
              */
-            if (!isset($operation['qp_status_code']) || in_array($operation['qp_status_code'], $forbiddenStatuses)) {
+            if (!isset($operation['qp_status_code']) || in_array($operation['qp_status_code'], $forbiddenStatuses, true)) {
                 $finalizeAllowed = false;
             }
         }
@@ -77,10 +77,10 @@ class QuickpayStorefrontController
             $this->cartPersister->delete($context->getToken(), $context);
         }
 
-        if (in_array($status, ['accepted', 'cancel'])) {
+        if (in_array($status, ['accepted', 'cancel'], true)) {
             $paymentToken = $request->get('_sw_payment_token');
             $token = $this->tokenFactory->parseToken($paymentToken);
-            $url = ($status == 'accepted' ? $token->getFinishUrl() :
+            $url = ($status === 'accepted' ? $token->getFinishUrl() :
                 ($token->getErrorUrl() ?:
                     $this->urlGenerator->generate(
                         'frontend.checkout.confirm.page',
@@ -105,7 +105,7 @@ class QuickpayStorefrontController
                 );
 
                 $exception = $result->getException();
-                if ($exception) {
+                if ($exception !== null) {
                     $data = [
                         'error' => 'payment_finalize_exception',
                         'errorMessage' => $exception->getMessage(),
@@ -127,13 +127,13 @@ class QuickpayStorefrontController
             }
         }
 
-        if ($data) {
-            if ($request->getContent()) {
+        if (count($data) > 0) {
+            if ($request->getContent() !== null && $request->getContent() !== '') {
                 $data['content'] = json_decode((string) $request->getContent(), true);
             }
             $errorLevel = Level::Error;
             $logMessage = 'quickpay_finalize_transaction_error';
-            if (isset($data['sw_status_code']) && $data['sw_status_code'] == 400002) {
+            if ($data['sw_status_code'] === 400002) {
                 $errorLevel = Level::Warning;
                 $logMessage = 'quickpay_finalize_transaction_token_invalidated';
             }
@@ -153,6 +153,6 @@ class QuickpayStorefrontController
             }
         }
 
-        return new JsonResponse($data, !empty($data) ? Response::HTTP_BAD_REQUEST : Response::HTTP_OK);
+        return new JsonResponse($data, count($data) > 1? Response::HTTP_BAD_REQUEST : Response::HTTP_OK);
     }
 }
