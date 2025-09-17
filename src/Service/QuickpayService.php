@@ -145,7 +145,7 @@ class QuickpayService
 
             return false;
         } catch (\Exception $exception) {
-            $this->paymentLogger($exception->getMessage(), $exception->getTrace());
+            $this->paymentLogger($exception->getMessage(), ['trace' => $exception->getTrace()]);
 
             return false;
         }
@@ -209,7 +209,7 @@ class QuickpayService
             return null;
         }
 
-        if (! $paymentId) {
+        if ($paymentId === null || $paymentId === false || $paymentId === '') {
             $customFields = $order->getCustomFields();
             if ($customFields !== null && isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
                 $data = json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
