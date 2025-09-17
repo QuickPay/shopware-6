@@ -2,16 +2,14 @@
 
 namespace Wexo\Quickpay\Controller;
 
-use Monolog\Logger;
 use Shopware\Core\Checkout\Cart\AbstractCartPersister;
-use Shopware\Core\Checkout\Payment\Controller\PaymentController;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Monolog\Level;
 use Shopware\Core\Checkout\Payment\Cart\Token\TokenFactoryInterfaceV2;
 use Shopware\Core\Checkout\Payment\PaymentProcessor;
-use Shopware\Core\Checkout\Cart\CartPersister;
 use Shopware\Core\Checkout\Payment\PaymentException;
 use Shopware\Core\Framework\Context;
+use Shopware\Core\Framework\Log\LogEntryCollection;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -24,6 +22,9 @@ use Wexo\Quickpay\WexoQuickpay;
 #[Route(defaults: ['_routeScope' => ['storefront']])]
 class QuickpayStorefrontController
 {
+    /**
+     * @param EntityRepository<LogEntryCollection> $logEntryRepository
+     */
     public function __construct(
         protected EntityRepository $logEntryRepository,
         protected PaymentProcessor $paymentProcessor,
@@ -80,8 +81,13 @@ class QuickpayStorefrontController
         if (in_array($status, ['accepted', 'cancel'], true)) {
             $paymentToken = $request->get('_sw_payment_token');
             $token = $this->tokenFactory->parseToken($paymentToken);
-            $url = ($status === 'accepted' ? $token->getFinishUrl() :
-                ($token->getErrorUrl() ?:
+            $url = ($status === 'accepted' ? 
+                ($token->getFinishUrl() ?? $this->urlGenerator->generate(
+                    'frontend.checkout.confirm.page',
+                    [],
+                    UrlGeneratorInterface::ABSOLUTE_URL
+                )) :
+                ($token->getErrorUrl() ??
                     $this->urlGenerator->generate(
                         'frontend.checkout.confirm.page',
                         [],
@@ -148,9 +154,7 @@ class QuickpayStorefrontController
                 ],
                 Context::createDefaultContext()
             );
-            if (isset($data['errorMessage'])) {
-                unset($data['errorMessage']);
-            }
+            unset($data['errorMessage']);
         }
 
         return new JsonResponse($data, count($data) > 1? Response::HTTP_BAD_REQUEST : Response::HTTP_OK);
