@@ -196,7 +196,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             [
                 'orderId' => $order->getOrderNumber(),
                 'updateFormParams' => $updateFormParams,
-                'paymentResponse' => $paymentResponse,
+                'paymentResponse' => $paymentResponseData,
                 'linkResponse' => $linkResponseContent
             ]
         );
@@ -304,8 +304,8 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
                 [
                     'error'           => 'The amount: "' . $amount . '", is not available to capture.',
                     'orderId'         => $orderId,
-                    'orderNumber'     => $order->getOrderNumber() ?? null,
-                    'paymentResponse' => $paymentResponse
+                    'orderNumber'     => $order->getOrderNumber(),
+                    'paymentResponse' => $paymentResponseData
                 ]
             );
 
@@ -329,7 +329,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         $responseBody = $response->getBody()->getContents();
         $logEntry = [
             'orderId'            => $orderId,
-            'orderNumber'        => $order->getOrderNumber() ?? null,
+            'orderNumber'        => $order->getOrderNumber(),
             'paymentId'          => $paymentResponseData['id'],
             'responseStatusCode' => $statusCode,
             'response'           => json_decode($response->getBody()->getContents(), true)
@@ -349,9 +349,10 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
                 $this->setOrderCustomFields($orderId, $customFields);
             }
 
-            $responseData = json_decode($responseBody, true);
-            $availableAmount = $this->getAvailableAmount($responseData) - (float) $amount;
-            $stateName = $transaction->getStateMachineState()->getTechnicalName();
+            $responseData = json_decode($responseBody ?? '', true);
+            $availableAmount = $this->getAvailableAmount($responseData) - $amount;
+            $stateMachineState = $transaction->getStateMachineState();
+            $stateName = $stateMachineState !== null ? $stateMachineState->getTechnicalName() : null;
             if ($availableAmount === 0.0 && $stateName !== OrderTransactionStates::STATE_PAID) {
                 if ($stateName !== OrderTransactionStates::STATE_AUTHORIZED) {
                     $this->transactionStateHandler->process(
@@ -366,7 +367,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
                 );
             } elseif ($stateName !== OrderTransactionStates::STATE_PAID &&
                 $stateName !== OrderTransactionStates::STATE_PARTIALLY_PAID) {
-                $this->transactionStateHandler->payPartially(
+                $this->transactionStateHandler->paidPartially(
                     $transaction->getId(),
                     $context
                 );
@@ -386,7 +387,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
 
             $quickPayResponse = json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
             $availableAmount = $this->getAvailableAmount($quickPayResponse);
-            if ($availableAmount != 0) {
+            if ($availableAmount !== 0.0) {
                 $this->transactionStateHandler->reopen(
                     $transaction->getId(),
                     $context
