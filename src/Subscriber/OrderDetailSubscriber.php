@@ -15,25 +15,22 @@ use Shopware\Core\Framework\Struct\ArrayStruct;
 use Shopware\Core\System\StateMachine\Event\StateMachineTransitionEvent;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Wexo\Quickpay\Service\PaymentQuickpayService;
 use Wexo\Quickpay\Service\SubscriptionQuickpayService;
 use Wexo\Quickpay\Service\SwishPayment;
-use Wexo\Quickpay\ServiceInterface\QuickpayInterface;
-use Wexo\Quickpay\ServiceInterface\QuickpayOperationsInterface;
 
 class OrderDetailSubscriber implements EventSubscriberInterface
 {
     /**
      * @param EntityRepository<OrderCollection> $orderRepository
      * @param SystemConfigService $systemConfigService
-     * @param QuickpayInterface $paymentService
-     * @param QuickpayOperationsInterface $quickpayOperations
+     * @param PaymentQuickpayService $paymentService
      * @param SubscriptionQuickpayService $subscriptionQuickpayService
      */
     public function __construct(
         protected EntityRepository $orderRepository,
         protected SystemConfigService $systemConfigService,
-        protected QuickpayInterface $paymentService,
-        protected QuickpayOperationsInterface $quickpayOperations,
+        protected PaymentQuickpayService $paymentService,
         protected SubscriptionQuickpayService $subscriptionQuickpayService
     ) {
     }
@@ -104,7 +101,7 @@ class OrderDetailSubscriber implements EventSubscriberInterface
 
         if ($order !== null) {
             if ($eventName === OrderTransactionStates::STATE_CANCELLED) {
-                $this->quickpayOperations->cancel($order);
+                $this->paymentService->cancel($order);
             }
 
             if ($capture !== null && $capture->get('amount') === null) {
@@ -123,7 +120,7 @@ class OrderDetailSubscriber implements EventSubscriberInterface
                 // are set as Paid as soon as Quickpay response is accepted.
                 // When using Capture API on Swish payments, it is then set to order Status: Done and Delivery: Shipped
                 if ($paymentHandler !== SwishPayment::class) {
-                    $this->quickpayOperations->capture(
+                    $this->paymentService->capture(
                         $order->getId(),
                         $event->getContext(),
                     );
@@ -133,7 +130,7 @@ class OrderDetailSubscriber implements EventSubscriberInterface
             if ($eventName === OrderTransactionStates::STATE_PARTIALLY_PAID &&
                 $capture !== null && $capture->get('amount') !== null
             ) {
-                $this->quickpayOperations->capture(
+                $this->paymentService->capture(
                     $order->getId(),
                     $event->getContext(),
                     (float) $capture->get('amount')
