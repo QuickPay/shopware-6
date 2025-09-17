@@ -89,7 +89,7 @@ class QuickpayPayment extends AbstractPaymentHandler
             }
             $link = $this->currentService->getLink($transaction, $context, $extraParams);
         } catch (Exception $e) {
-            $this->currentService->paymentLogger(
+            $this->quickpayService->paymentLogger(
                 WexoQuickpay::ORDER_CREATE_ERROR,
                 [
                     'error' => $e->getMessage(),

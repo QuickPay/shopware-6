@@ -78,7 +78,7 @@ class QuickpayRecurringController extends AbstractController
 
         /** @var OrderEntity $order */
         $order = $this->orderRepository->search($criteria, Context::createCLIContext())->first();
-        if (! $order) {
+        if ($order === null) {
             return new JsonResponse([], Response::HTTP_BAD_REQUEST);
         }
 
