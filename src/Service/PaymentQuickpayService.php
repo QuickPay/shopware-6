@@ -414,9 +414,12 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             );
 
             $updateShipping = $this->systemConfigService->get('WexoQuickpay.config.quickpayUpdateShipping');
-            $delivery = $order->getDeliveries()->first();
-            if ($updateShipping &&
-                $delivery &&
+            $deliveries = $order->getDeliveries();
+            $delivery = $deliveries !== null ? $deliveries->first() : null;
+            
+            if ($updateShipping === true && 
+                $delivery !== null &&
+                $delivery->getStateMachineState() !== null &&
                 $delivery->getStateMachineState()->getTechnicalName() !== OrderDeliveryStates::STATE_SHIPPED
             ) {
                 $this->stateMachineRegistry->transition(
@@ -440,15 +443,19 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
     public function cancel(OrderEntity $order): void
     {
         $customFields = $order->getCustomFields();
+        if (!is_array($customFields) || !isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
+            return;
+        }
+        
         $paymentResponse = \json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
         $id = $paymentResponse['id'] ?? null;
-        if ($id) {
+        if (is_string($id) || is_numeric($id)) {
             $this->getClient($order->getSalesChannelId())->request('POST', 'payments/' . $id . "/cancel");
         }
     }
 
     /**
-     * @param array $quickpayResponse
+     * @param array<string, mixed> $quickpayResponse
      * @return float
      */
     private function getAvailableAmount(array $quickpayResponse): float
