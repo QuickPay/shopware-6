@@ -166,10 +166,10 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         $quickpayName = constant($identifier . '::quickpayName');
         $updateFormParams['payment_methods'] = $quickpayName;
         $customFields     = $order->getCustomFields() ?? [];
-        $paymentResponse  = \json_decode((string) ($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] ?? ''), true);
+        $paymentResponseData  = \json_decode((string) ($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] ?? ''), true);
 
         $linkResponse = $this->getClient($order->getSalesChannelId())
-            ->request('PUT', 'payments/' . $paymentResponse['id'] . '/link', [
+            ->request('PUT', 'payments/' . $paymentResponseData['id'] . '/link', [
                 'form_params' => $updateFormParams,
             ]);
 
@@ -262,13 +262,13 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         }
 
         $paymentResponse = $this->updateResponse($orderId);
-        $paymentResponse = $paymentResponse !== '' && $paymentResponse !== null
-            ? json_decode($paymentResponse)
+        $paymentResponseData = $paymentResponse !== '' && $paymentResponse !== null
+            ? json_decode($paymentResponse, true)
             : null;
-        if ($paymentResponse === null
-            || $paymentResponse === false
-            || !property_exists($paymentResponse, 'id')
-            || !property_exists($paymentResponse, 'order_id')
+        if ($paymentResponseData === null
+            || $paymentResponseData === false
+            || !isset($paymentResponseData['id'])
+            || !isset($paymentResponseData['order_id'])
         ) {
             $this->paymentLogger(
                 WexoQuickpay::ORDER_COMPLETE_ERROR,
@@ -284,18 +284,18 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         }
 
         // Ensure it's the correct order we're trying to capture
-        if ($paymentResponse->order_id !== $order->getOrderNumber()) {
+        if ($paymentResponseData['order_id'] !== $order->getOrderNumber()) {
             return null;
         }
 
         // On swish payment, skip trying to capture and update Shopware states for Shipping and Order
-        if ($paymentResponse->acquirer === 'swish') {
+        if (isset($paymentResponseData['acquirer']) && $paymentResponseData['acquirer'] === 'swish') {
             $this->swishPaymentUpdateOrderStates($order, $context);
 
             return true;
         }
 
-        $availableAmount = $this->getAvailableAmount($paymentResponse);
+        $availableAmount = $this->getAvailableAmount($paymentResponseData);
         if ($amount === null || $amount === 0.0) {
             $amount = $availableAmount;
         } elseif ($amount > $availableAmount) {
@@ -317,7 +317,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
 
         $response = $this->getClient($order->getSalesChannelId())->request(
             'POST',
-            'payments/' . $paymentResponse->id . '/capture',
+            'payments/' . $paymentResponseData['id'] . '/capture',
             [
                 'form_params' => [
                     'amount' => $amount
@@ -330,9 +330,9 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         $logEntry = [
             'orderId'            => $orderId,
             'orderNumber'        => $order->getOrderNumber() ?? null,
-            'paymentId'          => $paymentResponse->id,
+            'paymentId'          => $paymentResponseData['id'],
             'responseStatusCode' => $statusCode,
-            'response'           => json_decode($response->getBody()->getContents())
+            'response'           => json_decode($response->getBody()->getContents(), true)
         ];
 
         if ($statusCode === 202) {
@@ -342,14 +342,15 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             );
 
             if ($responseBody === '') {
-                $responseBody = $this->updateResponse($orderId, $paymentResponse->id);
+                $responseBody = $this->updateResponse($orderId, $paymentResponseData['id']);
             } else {
                 $customFields = [];
                 $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $responseBody;
                 $this->setOrderCustomFields($orderId, $customFields);
             }
 
-            $availableAmount = $this->getAvailableAmount(json_decode($responseBody)) - (float) $amount;
+            $responseData = json_decode($responseBody, true);
+            $availableAmount = $this->getAvailableAmount($responseData) - (float) $amount;
             $stateName = $transaction->getStateMachineState()->getTechnicalName();
             if ($availableAmount === 0.0 && $stateName !== OrderTransactionStates::STATE_PAID) {
                 if ($stateName !== OrderTransactionStates::STATE_AUTHORIZED) {
@@ -383,7 +384,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             );
             $customFields = $order->getCustomFields() ?? [];
 
-            $quickPayResponse = json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
+            $quickPayResponse = json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
             $availableAmount = $this->getAvailableAmount($quickPayResponse);
             if ($availableAmount != 0) {
                 $this->transactionStateHandler->reopen(
@@ -446,33 +447,32 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
     }
 
     /**
-     * @param stdClass $quickpayResponse
+     * @param array $quickpayResponse
      * @return float
      */
-    private function getAvailableAmount(stdClass $quickpayResponse): float
+    private function getAvailableAmount(array $quickpayResponse): float
     {
         $capturedAmount   = 0.0;
         $authorizedAmount = 0.0;
 
-        $ops = $quickpayResponse->operations ?? null;
+        $ops = $quickpayResponse['operations'] ?? null;
         if (!is_iterable($ops)) {
             return 0.0;
         }
 
-        /** @var object{type:string, amount:int|float, qp_status_msg?:string, aq_status_msg?:string} $operation */
         foreach ($ops as $operation) {
-            if (!is_object($operation)) {
+            if (!is_array($operation)) {
                 continue;
             }
 
-            $approved = (($operation->qp_status_msg ?? null) === 'Approved')
-                || (($operation->aq_status_msg ?? null) === 'Approved');
-            if (!$approved || !isset($operation->type, $operation->amount)) {
+            $approved = (($operation['qp_status_msg'] ?? null) === 'Approved')
+                || (($operation['aq_status_msg'] ?? null) === 'Approved');
+            if (!$approved || !isset($operation['type'], $operation['amount'])) {
                 continue;
             }
 
-            $type   = (string) $operation->type;
-            $amount = (float) $operation->amount;
+            $type   = (string) $operation['type'];
+            $amount = (float) $operation['amount'];
 
             switch ($type) {
                 case 'capture':
