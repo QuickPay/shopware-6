@@ -86,7 +86,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
                 'qty' => 1,
                 'item_no' => 'Shipping',
                 'item_name' => 'Shipping',
-                'item_price' => $shippingTotal * 100,
+                'item_price' => (int) round($shippingTotal * 100),
                 'vat_rate' => $shippingTaxRate,
             ];
         }
@@ -97,9 +97,11 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         }
         $currency = $currencyEntity->getIsoCode();
 
+        $orderNumber = $order->getOrderNumber();
+
         $formParams = [
             'currency' => $currency,
-            'order_id' => $order->getOrderNumber(),
+            'order_id' => $orderNumber,
             'basket' => $basket
         ];
 
@@ -163,7 +165,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             throw new Exception('Payment method or handler identifier not found');
         }
 
-        $quickpayName = constant($identifier . '::quickpayName');
+        $quickpayName = $identifier::$quickpayName;
         $updateFormParams['payment_methods'] = $quickpayName;
         $customFields     = $order->getCustomFields() ?? [];
         $paymentResponseData  = \json_decode((string) ($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] ?? ''), true);
