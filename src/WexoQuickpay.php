@@ -94,7 +94,7 @@ class WexoQuickpay extends Plugin
     public function install(InstallContext $installContext): void
     {
         $container = $this->container ?? null;
-        if(!$container instanceof ContainerInterface) {
+        if (!$container instanceof ContainerInterface) {
             return;
         }
 
@@ -156,7 +156,7 @@ class WexoQuickpay extends Plugin
         parent::uninstall($context);
         foreach (self::DEFAULT_PAYMENT_METHODS as $props) {
             $paymentMethodId = $this->getPaymentMethodId($props['handler']);
-            if($paymentMethodId !== null) {
+            if ($paymentMethodId !== null) {
                 $this->setPaymentMethodIsActive(false, $context->getContext(), $paymentMethodId);
             }
         }
@@ -224,7 +224,7 @@ class WexoQuickpay extends Plugin
     {
         foreach (self::DEFAULT_PAYMENT_METHODS as $props) {
             $paymentMethodId = $this->getPaymentMethodId($props['handler']);
-            if($paymentMethodId !== null) {
+            if ($paymentMethodId !== null) {
                 $this->setPaymentMethodIsActive(true, $context->getContext(), $paymentMethodId);
             }
         }
@@ -238,7 +238,7 @@ class WexoQuickpay extends Plugin
     {
         foreach (self::DEFAULT_PAYMENT_METHODS as $props) {
             $paymentMethodId = $this->getPaymentMethodId($props['handler']);
-            if($paymentMethodId !== null) {
+            if ($paymentMethodId !== null) {
                 $this->setPaymentMethodIsActive(false, $context->getContext(), $paymentMethodId);
             }
         }

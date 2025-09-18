@@ -139,7 +139,10 @@ class QuickpayService
             /** @var array<string, mixed>|null $pKey */
             $pKey = json_decode($response->getBody()->getContents(), true);
 
-            if (is_array($pKey) && isset($pKey['private_key']) && $pKey['private_key'] === $config['quickpayPrivateKey']) {
+            if (is_array($pKey)
+                && isset($pKey['private_key'])
+                && $pKey['private_key'] === $config['quickpayPrivateKey']
+            ) {
                 return $response->getStatusCode() === 200;
             }
 

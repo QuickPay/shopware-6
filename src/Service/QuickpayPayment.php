@@ -4,8 +4,6 @@ namespace Wexo\Quickpay\Service;
 
 use Exception;
 use GuzzleHttp\Exception\GuzzleException;
-use Monolog\Level;
-use Monolog\Logger;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
@@ -73,14 +71,14 @@ class QuickpayPayment extends AbstractPaymentHandler
         Context $context,
         ?Struct $validateStruct
     ): RedirectResponse {
-            $extraParams = $request->request->all('extraParams');
-            $orderTransactionId = $transaction->getOrderTransactionId();
-            $tx    = $this->loadTransaction($orderTransactionId, $context);
-            $order = $tx->getOrder();
-            if ($order === null) {
-                throw new \Exception('Order not found for transaction: ' . $orderTransactionId);
-            }
-            $this->setCurrentService($order);
+        $extraParams = $request->request->all('extraParams');
+        $orderTransactionId = $transaction->getOrderTransactionId();
+        $tx    = $this->loadTransaction($orderTransactionId, $context);
+        $order = $tx->getOrder();
+        if ($order === null) {
+            throw new \Exception('Order not found for transaction: ' . $orderTransactionId);
+        }
+        $this->setCurrentService($order);
 
             $customFields = $order->getCustomFields() ?? [];
         try {
@@ -193,9 +191,10 @@ class QuickpayPayment extends AbstractPaymentHandler
             } elseif (isset($response['operations']) && $paymentState !== OrderTransactionStates::STATE_AUTHORIZED) {
                 $cancel = false;
                 // status codes for rejected/aborted transactions, where we'll then cancel the order in Shopware.
+                $errorCodes = ['40000', '40001', '40002', '40003', '50000', '50300'];
                 foreach ($response['operations'] as $operation) {
                     if ($operation['type'] === 'authorize' &&
-                        in_array($operation['qp_status_code'], ['40000', '40001', '40002', '40003', '50000', '50300'], true)
+                        in_array($operation['qp_status_code'], $errorCodes, true)
                     ) {
                         $cancel = true;
                     }

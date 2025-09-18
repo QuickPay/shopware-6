@@ -4,7 +4,6 @@ namespace Wexo\Quickpay\Service;
 
 use Exception;
 use GuzzleHttp\Exception\GuzzleException;
-use Monolog\Logger;
 use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryStates;
 use Shopware\Core\Checkout\Order\Aggregate\OrderLineItem\OrderLineItemCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
@@ -18,7 +17,6 @@ use Shopware\Core\Framework\Struct\ArrayStruct;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineTransition\StateMachineTransitionActions;
 use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryDefinition;
 use Shopware\Core\System\StateMachine\Transition;
-use stdClass;
 use Wexo\Quickpay\ServiceInterface\QuickpayInterface;
 use Wexo\Quickpay\WexoQuickpay;
 
@@ -165,10 +163,14 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             throw new Exception('Payment method or handler identifier not found');
         }
 
+        /** @phpstan-ignore-next-line */
         $quickpayName = $identifier::$quickpayName;
         $updateFormParams['payment_methods'] = $quickpayName;
         $customFields     = $order->getCustomFields() ?? [];
-        $paymentResponseData  = \json_decode((string) ($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] ?? ''), true);
+        $paymentResponseData  = \json_decode(
+            (string) ($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] ?? ''),
+            true
+        );
 
         $linkResponse = $this->getClient($order->getSalesChannelId())
             ->request('PUT', 'payments/' . $paymentResponseData['id'] . '/link', [
@@ -419,7 +421,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             $deliveries = $order->getDeliveries();
             $delivery = $deliveries !== null ? $deliveries->first() : null;
             
-            if ($updateShipping === true && 
+            if ($updateShipping === true &&
                 $delivery !== null &&
                 $delivery->getStateMachineState() !== null &&
                 $delivery->getStateMachineState()->getTechnicalName() !== OrderDeliveryStates::STATE_SHIPPED

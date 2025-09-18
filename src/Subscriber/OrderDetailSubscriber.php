@@ -112,7 +112,7 @@ class OrderDetailSubscriber implements EventSubscriberInterface
                 $transaction = $order->getTransactions()?->first();
                 $paymentHandler = $transaction?->getPaymentMethod()?->getHandlerIdentifier();
 
-                if ($paymentHandler === null){
+                if ($paymentHandler === null) {
                     return;
                 }
 

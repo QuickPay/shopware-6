@@ -54,7 +54,9 @@ class QuickpayStorefrontController
              * 30100 and 30101 indicate errors based on rejected 3D Secure
              * https://learn.quickpay.net/tech-talk/appendixes/errors/
              */
-            if (!isset($operation['qp_status_code']) || in_array($operation['qp_status_code'], $forbiddenStatuses, true)) {
+            if (!isset($operation['qp_status_code'])
+                || in_array($operation['qp_status_code'], $forbiddenStatuses, true)
+            ) {
                 $finalizeAllowed = false;
             }
         }
@@ -81,7 +83,7 @@ class QuickpayStorefrontController
         if (in_array($status, ['accepted', 'cancel'], true)) {
             $paymentToken = $request->get('_sw_payment_token');
             $token = $this->tokenFactory->parseToken($paymentToken);
-            $url = ($status === 'accepted' ? 
+            $url = ($status === 'accepted' ?
                 ($token->getFinishUrl() ?? $this->urlGenerator->generate(
                     'frontend.checkout.confirm.page',
                     [],

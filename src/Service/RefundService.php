@@ -28,11 +28,7 @@ class RefundService
     /**
      * @var array<string, mixed>|null
      */
-    protected ?array $response = null {
-        get {
-            return $this->response;
-        }
-    }
+    protected ?array $response = null;
 
     /**
      * @param EntityRepository<OrderCollection> $orderRepository
@@ -187,5 +183,4 @@ class RefundService
 
         $this->response = json_decode($content, true);
     }
-
 }

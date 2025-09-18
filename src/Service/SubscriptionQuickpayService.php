@@ -2,12 +2,9 @@
 
 namespace Wexo\Quickpay\Service;
 
-use DateTime;
 use DateTimeInterface;
 use Exception;
 use GuzzleHttp\Exception\GuzzleException;
-use Monolog\Level;
-use Monolog\Logger;
 use Random\RandomException;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
 use Shopware\Core\Checkout\Order\OrderDefinition;
@@ -583,8 +580,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
     public function checkSubscriptionStatusByOrderId(
         string $orderId,
         SalesChannelContext $salesChannelContext
-    ): array
-    {
+    ): array {
         $subscriptionResponse = $this->getClient($salesChannelContext->getSalesChannelId())
             ->request('GET', 'subscriptions', [
                 'query' => [
