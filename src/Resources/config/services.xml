@@ -22,6 +22,7 @@
             <argument type="service" id="order_transaction.repository" />
             <argument type="service" id="Wexo\Quickpay\Service\PaymentQuickpayService" />
             <argument type="service" id="Wexo\Quickpay\Service\SubscriptionQuickpayService" />
+            <argument type="service" id="Wexo\Quickpay\Service\QuickpayService"/>
             <argument type="service" id="Wexo\Quickpay\Service\ShopwareStateService"/>
             <tag name="shopware.payment.method" />
         </service>
