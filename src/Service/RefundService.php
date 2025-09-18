@@ -62,7 +62,7 @@ class RefundService
 
         /** @var OrderEntity|null $order */
         $order = $this->orderRepository->search(
-            new Criteria([$orderId])
+            (new Criteria([$orderId]))
                 ->addFilter(
                     new EqualsAnyFilter('transactions.stateMachineState.technicalName', [
                         OrderTransactionStates::STATE_PAID,

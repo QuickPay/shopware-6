@@ -53,7 +53,7 @@ class QuickpayService
      */
     protected function loadTransaction(string $orderTransactionId, Context $context): OrderTransactionEntity
     {
-        $criteria = new Criteria([$orderTransactionId])
+        $criteria = (new Criteria([$orderTransactionId]))
             ->addAssociation('order.lineItems')
             ->addAssociation('order.currency')
             ->addAssociation('order.stateMachineState')

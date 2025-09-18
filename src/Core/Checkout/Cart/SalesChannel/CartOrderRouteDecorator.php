@@ -86,7 +86,7 @@ class CartOrderRouteDecorator extends AbstractCartOrderRoute
      */
     protected function restoreCartIfQuickpay(Cart $cart, OrderEntity $orderEntity, SalesChannelContext $context): void
     {
-        $criteria = new Criteria()
+        $criteria = (new Criteria())
             ->addFilter(new EqualsFilter('orderId', $orderEntity->getId()))
             ->addAssociation('paymentMethod');
 

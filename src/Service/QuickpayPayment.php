@@ -44,7 +44,7 @@ class QuickpayPayment extends AbstractPaymentHandler
 
     private function loadTransaction(string $orderTransactionId, Context $context): OrderTransactionEntity
     {
-        $criteria = new Criteria([$orderTransactionId])
+        $criteria = (new Criteria([$orderTransactionId]))
             ->addAssociation('order')
             ->addAssociation('order.stateMachineState')
             ->addAssociation('paymentMethod')

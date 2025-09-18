@@ -46,7 +46,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             ));
         }
 
-        $autoCaptureAt = new \DateTime()
+        $autoCaptureAt = (new \DateTime())
             ->modify('+2 days')
             ->setTime(0, 0)
             ->format(DateTimeInterface::ATOM);
@@ -446,7 +446,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             return;
         }
 
-        $autoCaptureAt = new \DateTime()
+        $autoCaptureAt = (new \DateTime())
             ->modify('+2 days')
             ->setTime(0, 0)
             ->format(DateTimeInterface::ATOM);
