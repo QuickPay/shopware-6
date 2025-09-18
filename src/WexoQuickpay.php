@@ -325,7 +325,7 @@ class WexoQuickpay extends Plugin
         /** @var EntityRepository<PaymentMethodCollection> $paymentRepository */
         $paymentRepository = $container->get('payment_method.repository');
         // Fetch ID for update
-        $paymentCriteria = new Criteria()
+        $paymentCriteria = (new Criteria())
             ->addFilter(new EqualsFilter('handlerIdentifier', $identifier));
 
         return $paymentRepository->searchIds($paymentCriteria, Context::createCLIContext())->firstId();
@@ -341,7 +341,7 @@ class WexoQuickpay extends Plugin
         /** @var EntityRepository<PaymentMethodCollection> $paymentRepository */
         $paymentRepository = $container->get('payment_method.repository');
         // Fetch ID for update
-        $paymentCriteria = new Criteria()
+        $paymentCriteria = (new Criteria())
             ->addFilter(new EqualsFilter('handlerIdentifier', $identifier))
             ->addFilter(new ContainsFilter('name', $name));
 
