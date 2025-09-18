@@ -1,49 +1,47 @@
 {% block quickpay_order_payment_details %}
-  <mt-card
-    v-if="orderId"
-    position-identifier="quickpay-order-payment-details"
-    class="quickpay-order-payment-details"
-    :title="'Payment Details'"
-    :is-loading="isLoading"
-    :is-editing="isEditing"
-  >
-    {% block quickpay_order_payment_details_payment_data_title %}
-      <strong>QuickPay | Payment solution</strong><br><br>
-    {% endblock %}
+    <sw-card
+            v-if="orderId"
+            position-identifier="quickpay-order-payment-details"
+            class="quickpay-order-payment-details"
+            :title="'Payment Details'"
+            :is-loading="isLoading"
+            :is-editing="isEditing"
+    >
+        {% block quickpay_order_payment_details_payment_data_title %}
+            <strong>QuickPay | Payment solution</strong><br><br>
+        {% endblock %}
 
-    {% block quickpay_order_payment_details_payment_data %}
-      <sw-data-grid
-        v-if="order"
-        :data-source="dataSource"
-        :columns="orderColumns"
-        :show-actions="false"
-        :show-selection="false"
-        :show-header="false"
-        :is-loading="isLoading || isQuickpayLoading"
-        :skeleton-amount="11"
-      ></sw-data-grid>
+        {% block quickpay_order_payment_details_payment_data %}
+            <sw-data-grid
+                    v-if="quickpayResponse"
+                    :data-source="dataSource"
+                    :columns="orderColumns"
+                    :show-actions="false"
+                    :show-selection="false"
+                    :show-header="false"
+            ></sw-data-grid>
 
-      <br>
+            <br>
 
-      <sw-number-field
-        v-model="amount"
-        allow-empty
-        number-type="float"
-        :disabled="isCapturing || !available"
-        :label="$t('quickpay.label.capture')"
-        :min="0"
-        :max="available"
-      ></sw-number-field>
+            <sw-number-field
+                    v-model="amount"
+                    allow-empty
+                    number-type="float"
+                    :disabled="isCapturing || !available"
+                    :label="$t('quickpay.label.capture')"
+                    :min="0"
+                    :max="available"
+            ></sw-number-field>
 
-      <sw-button-process
-        v-model="captureSuccessful"
-        size="small"
-        :is-loading="isCapturing"
-        :disabled="isCapturing || !available"
-        @click="capture"
-      >
-        {{ $tc('quickpay.label.capture') }}
-      </sw-button-process>
-    {% endblock %}
-  </mt-card>
+            <sw-button-process
+                    v-model="captureSuccessful"
+                    size="small"
+                    :is-loading="isCapturing"
+                    :disabled="isCapturing || !available"
+                    @click="capture"
+            >
+                {{ $tc('quickpay.label.capture') }}
+            </sw-button-process>
+        {% endblock %}
+    </sw-card>
 {% endblock %}

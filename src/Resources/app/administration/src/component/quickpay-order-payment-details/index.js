@@ -1,11 +1,12 @@
 import template from './quickpay-order-payment-details.html.twig';
 
-const {Component, Mixin, Store} = Shopware;
+const {Component, Mixin} = Shopware;
 
 Component.register('quickpay-order-payment-details', {
     template,
 
     inject: [
+        'repositoryFactory',
         'quickpayApiService'
     ],
 
@@ -34,7 +35,7 @@ Component.register('quickpay-order-payment-details', {
     },
     data() {
         return {
-            isQuickpayLoading: false,
+            order: null,
             quickpayResponse: null,
             repository: null,
             amount: null,
@@ -46,48 +47,32 @@ Component.register('quickpay-order-payment-details', {
             captureSuccessful: false,
         };
     },
-    created() {
-        this.isQuickpayLoading = true;
-        this.quickpayApiService.updateResponse({
+    async created() {
+        this.$emit('loading-change', true);
+        this.repository = this.repositoryFactory.create('order');
+
+        await this.quickpayApiService.updateResponse({
             'orderId': this.orderId
-        })
-            .then(data => {
-                this.quickpayResponse = data;
-                if (!this.quickpayResponse) {
-                    return data;
-                }
+        });
 
-                const isValid = (operation) => (operation['qp_status_msg'] || null) === 'Approved' ||
-                    (operation['aq_status_msg'] || null) === 'Approved';
+        const criteria = new Shopware.Data.Criteria();
+        criteria.addAssociation('stateMachineState');
 
-                this.quickpayResponse.operations.forEach((operation) => {
-                    if (!isValid(operation)) {
-                        return;
-                    }
+        this.repository.get(this.orderId, Shopware.Context.api, criteria).then(entity => {
+            this.order = entity;
+            const orderResponse = this.order?.customFields?.quickpay_response;
 
-                    if (operation.type === "authorize" || operation.type === "recurring") {
-                        this.authorized = operation.amount;
-                    }
+            if (orderResponse) {
+                this.quickpayResponse = JSON.parse(orderResponse);
+                this.$emit('loading-change', false);
 
-                    if (operation.type === "capture") {
-                        this.captured += operation.amount;
-                    }
-
-                    if (operation.type === 'refund') {
-                        this.refundedTotal += operation.amount;
-                    }
-                });
-
-                this.available = (this.authorized - this.captured) / 100;
-                return data
-            })
-            .finally(() => {
-                this.isQuickpayLoading = false;
-            });
-
+                return Promise.resolve();
+            } else {
+                this.$emit('loading-change', false);
+            }
+        });
     },
     computed: {
-        order: () => Store.get('swOrderDetail').order,
         orderColumns() {
             return this.getOrderColumns();
         },
@@ -108,7 +93,7 @@ Component.register('quickpay-order-payment-details', {
             }];
         },
         getDataSource() {
-            if (!this.order?.id || !this.quickpayResponse) {
+            if (!this.order || !this.quickpayResponse) {
                 return [];
             }
 
@@ -137,6 +122,28 @@ Component.register('quickpay-order-payment-details', {
                 amount = this.quickpayResponse.link.amount ? this.quickpayResponse.link.amount : amount
             }
 
+            const isValid = (operation) => (operation['qp_status_msg'] || null) === 'Approved' ||
+                (operation['aq_status_msg'] || null) === 'Approved';
+
+            this.quickpayResponse.operations.forEach((operation) => {
+                if(!isValid(operation)){
+                    return;
+                }
+
+                if (operation.type === "authorize" || operation.type === "recurring") {
+                    this.authorized = operation.amount;
+                }
+
+                if (operation.type === "capture") {
+                    this.captured += operation.amount;
+                }
+
+                if (operation.type === 'refund') {
+                    this.refundedTotal += operation.amount;
+                }
+            });
+
+            this.available = (this.authorized - this.captured) / 100;
 
             return [{
                 attribute: 'Transaction Status',
