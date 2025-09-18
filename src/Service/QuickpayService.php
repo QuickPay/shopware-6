@@ -215,7 +215,7 @@ class QuickpayService
         if ($paymentId === null || $paymentId === false || $paymentId === '') {
             $customFields = $order->getCustomFields();
             if ($customFields !== null && isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
-                $data = json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
+                $data = json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
 
                 if (\is_array($data) && isset($data['id'])) {
                     $paymentId = (string) $data['id'];
