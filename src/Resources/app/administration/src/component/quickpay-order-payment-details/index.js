@@ -125,6 +125,10 @@ Component.register('quickpay-order-payment-details', {
             const isValid = (operation) => (operation['qp_status_msg'] || null) === 'Approved' ||
                 (operation['aq_status_msg'] || null) === 'Approved';
 
+            this.authorized = 0;
+            this.captured = 0;
+            this.refundedTotal = 0;
+
             this.quickpayResponse.operations.forEach((operation) => {
                 if(!isValid(operation)){
                     return;
