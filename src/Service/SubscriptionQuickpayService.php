@@ -528,7 +528,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
 
     /**
      * @throws GuzzleException
-     * Based on @see Wexo\Quickpay\Service\PaymentQuickpayService::capture(),
+     * Based on @see PaymentQuickpayService::capture,
      * separated to preserve the main payment flow and adjusted for subscription payment.
      **/
     public function subscriptionCapture(
