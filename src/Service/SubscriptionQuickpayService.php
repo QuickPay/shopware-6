@@ -50,7 +50,6 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             ->format(DateTime::ATOM);
         $salesChannelName = $salesChannelContext->getSalesChannel()->getName();
 
-        // We're adding a -S to the orderId for the subscription, as the recurring payment will use the orderId.
         $formParams = [
             'currency' => $currency,
             'order_id' => $order->getOrderNumber(),
@@ -529,9 +528,9 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
 
     /**
      * @throws GuzzleException
-     */
-    // Taken from PaymentQucikpayService
-    // only changed different comparing method for subscriptionCapture
+     * Based on @see Wexo\Quickpay\Service\PaymentQuickpayService::capture(),
+     * separated to preserve the main payment flow and adjusted for subscription payment.
+     **/
     public function subscriptionCapture(
         string $orderId,
         ?float $amount = null
