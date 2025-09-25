@@ -1,3 +1,6 @@
+# 7.1.2
+* Added seperate capture for subscription orders only
+
 # 7.1.0
 * Fixed an issue that prevented orders from being cancelled in Quickpay.
 

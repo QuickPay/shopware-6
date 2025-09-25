@@ -1,3 +1,6 @@
+# 7.1.2
+* Separates Capture ausschließlich für Abonnementbestellungen hinzugefügt.
+
 # 7.1.0
 * Behebt ein Problem, das das Stornieren von Bestellungen in Quickpay verhinderte.
 
