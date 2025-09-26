@@ -66,19 +66,19 @@ class OrderDetailSubscriber implements EventSubscriberInterface
             return;
         }
 
-        $capturePayments = $this->systemConfigService->get('WexoQuickpay.config.quickpayCaptureOnOrderPayment');
-        $cancelPayments = $this->systemConfigService->get('WexoQuickpay.config.quickpayCancelPaymentOnOrderCancel');
+        $capturePayments = $this->systemConfigService->getBool('WexoQuickpay.config.quickpayCaptureOnOrderPayment');
+        $cancelPayments = $this->systemConfigService->getBool('WexoQuickpay.config.quickpayCancelPaymentOnOrderCancel');
 
         // If we shouldn't modify payment status in QuickPay at all, no need to waste computing time
-        if ($capturePayments !== true && $cancelPayments !== true) {
+        if (!$capturePayments && !$cancelPayments) {
             return;
         }
-        if ($eventName === OrderTransactionStates::STATE_CANCELLED && $cancelPayments !== true) {
+        if ($eventName === OrderTransactionStates::STATE_CANCELLED && !$cancelPayments) {
             return;
         }
         if (($eventName === OrderTransactionStates::STATE_PAID
                 || $eventName === OrderTransactionStates::STATE_PARTIALLY_PAID)
-            && $capturePayments !== true
+            && !$capturePayments
         ) {
             return;
         }

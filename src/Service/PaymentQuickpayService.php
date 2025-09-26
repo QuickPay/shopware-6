@@ -417,11 +417,11 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
                 $context
             );
 
-            $updateShipping = $this->systemConfigService->get('WexoQuickpay.config.quickpayUpdateShipping');
+            $updateShipping = $this->systemConfigService->getBool('WexoQuickpay.config.quickpayUpdateShipping');
             $deliveries = $order->getDeliveries();
             $delivery = $deliveries !== null ? $deliveries->first() : null;
             
-            if ($updateShipping === true &&
+            if ($updateShipping &&
                 $delivery !== null &&
                 $delivery->getStateMachineState() !== null &&
                 $delivery->getStateMachineState()->getTechnicalName() !== OrderDeliveryStates::STATE_SHIPPED

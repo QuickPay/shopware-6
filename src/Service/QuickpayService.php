@@ -78,7 +78,7 @@ class QuickpayService
         }
 
         if (!isset($this->apiClients[$salesChannelId])) {
-            $apiKey = $this->systemConfigService->get('WexoQuickpay.config.quickpayApiKey', $salesChannelId);
+            $apiKey = $this->systemConfigService->getString('WexoQuickpay.config.quickpayApiKey', $salesChannelId);
 
             $this->apiClients[$salesChannelId] = new Client([
                 'base_uri' => 'https://api.quickpay.net/',
@@ -111,10 +111,7 @@ class QuickpayService
         string $content,
         ?string $submittedChecksum
     ): bool {
-        $key = $this->systemConfigService->get('WexoQuickpay.config.quickpayPrivateKey', $salesChannelId);
-        if (!is_string($key)) {
-            $key = '';
-        }
+        $key = $this->systemConfigService->getString('WexoQuickpay.config.quickpayPrivateKey', $salesChannelId);
 
         $checksum = hash_hmac('sha256', $content, $key);
 
