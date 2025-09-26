@@ -2,7 +2,6 @@
 
 namespace Wexo\Quickpay\Service;
 
-
 class KlarnaPayment extends QuickpayPayment
 {
     public static string $quickpayName = 'klarna-payments';
