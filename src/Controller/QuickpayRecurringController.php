@@ -76,7 +76,7 @@ class QuickpayRecurringController extends AbstractController
         $criteria->addAssociation('transactions.stateMachineState');
         $criteria->addAssociation('stateMachineState');
 
-        /** @var OrderEntity $order */
+        /** @var OrderEntity|null $order */
         $order = $this->orderRepository->search($criteria, $context)->first();
         if ($order === null) {
             return new JsonResponse([], Response::HTTP_BAD_REQUEST);

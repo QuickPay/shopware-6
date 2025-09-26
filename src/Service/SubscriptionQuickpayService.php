@@ -146,7 +146,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         $criteria = new Criteria([$orderId]);
         $criteria->addAssociations(['lineItems', 'deliveries.shippingOrderAddress', 'transactions']);
 
-        /** @var OrderEntity $originalOrder */
+        /** @var OrderEntity|null $originalOrder */
         $originalOrder = $this->orderRepository->search($criteria, $context)->first();
 
         if ($originalOrder === null) {
@@ -376,7 +376,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         $criteria->addAssociation('deliveries');
         $criteria->addAssociation('salesChannel.domains');
 
-        /** @var OrderEntity $order */
+        /** @var OrderEntity|null $order */
         $order = $this->orderRepository->search(
             $criteria,
             $context

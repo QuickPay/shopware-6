@@ -105,7 +105,7 @@ class WexoQuickpay extends Plugin
         $criteria = new Criteria();
         $criteria->addFilter(new EqualsFilter('name', self::QUICKPAY_FIELD_SET));
 
-        /** @var CustomFieldSetEntity $customFieldSet */
+        /** @var CustomFieldSetEntity|null $customFieldSet */
         $customFieldSet = $customFieldSetRepository->search(
             $criteria,
             $installContext->getContext()
@@ -187,7 +187,7 @@ class WexoQuickpay extends Plugin
             $criteria = new Criteria();
             $criteria->addFilter(new EqualsFilter('name', self::QUICKPAY_FIELD_SET));
 
-            /** @var CustomFieldSetEntity $customFieldSet */
+            /** @var CustomFieldSetEntity|null $customFieldSet */
             $customFieldSet = $customFieldSetRepository->search(
                 $criteria,
                 $context->getContext()

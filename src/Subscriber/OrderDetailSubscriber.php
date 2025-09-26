@@ -90,7 +90,7 @@ class OrderDetailSubscriber implements EventSubscriberInterface
         $criteria->addFilter(new EqualsFilter('transactions.id', $transactionId));
         $criteria->addFilter(new ContainsFilter('transactions.paymentMethod.handlerIdentifier', 'Quickpay'));
 
-        /** @var OrderEntity $order */
+        /** @var OrderEntity|null $order */
         $order = $this->orderRepository->search(
             $criteria,
             $event->getContext()
