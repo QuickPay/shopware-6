@@ -45,7 +45,7 @@ class QuickpayRecurringController extends AbstractController
         defaults: ['auth_required' => false, 'csrf_protected' => false],
         methods: ['POST', 'GET']
     )]
-    public function callback(Request $request): JsonResponse|RedirectResponse
+    public function callback(Request $request, Context $context): JsonResponse|RedirectResponse
     {
         try {
             $this->logEntryRepository->create(
@@ -60,7 +60,7 @@ class QuickpayRecurringController extends AbstractController
                         'channel' => 'quickpay'
                     ]
                 ],
-                Context::createCLIContext()
+                $context
             );
         } catch (\Exception $e) {
             // do nothing
@@ -77,7 +77,7 @@ class QuickpayRecurringController extends AbstractController
         $criteria->addAssociation('stateMachineState');
 
         /** @var OrderEntity $order */
-        $order = $this->orderRepository->search($criteria, Context::createCLIContext())->first();
+        $order = $this->orderRepository->search($criteria, $context)->first();
         if ($order === null) {
             return new JsonResponse([], Response::HTTP_BAD_REQUEST);
         }
@@ -168,7 +168,7 @@ class QuickpayRecurringController extends AbstractController
                 }
             } catch (\Exception $e) {
                 $message = 'Could not update order state authorized ';
-                $this->logError($message, $order, $request, $e);
+                $this->logError($message, $order, $request, $context, $e);
             }
         } else {
             // status codes for rejected/aborted transactions, where we'll then cancel the order in Shopware.
@@ -185,7 +185,7 @@ class QuickpayRecurringController extends AbstractController
                         );
                     } catch (\Exception $e) {
                         $message = 'Could not update order state to cancel';
-                        $this->logError($message, $order, $request, $e);
+                        $this->logError($message, $order, $request, $context, $e);
                     }
                 }
             }
@@ -194,7 +194,7 @@ class QuickpayRecurringController extends AbstractController
         return new JsonResponse([], Response::HTTP_OK);
     }
 
-    public function logError(String $message, OrderEntity $order, Request $request, \Exception $e): void
+    public function logError(String $message, OrderEntity $order, Request $request, Context $context, \Exception $e): void
     {
         $this->logEntryRepository->create(
             [
@@ -211,7 +211,7 @@ class QuickpayRecurringController extends AbstractController
                     'channel' => 'quickpay'
                 ]
             ],
-            Context::createCLIContext()
+            $context
         );
     }
 }

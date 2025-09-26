@@ -8,7 +8,6 @@ use Monolog\Level;
 use Shopware\Core\Checkout\Payment\Cart\Token\TokenFactoryInterfaceV2;
 use Shopware\Core\Checkout\Payment\PaymentProcessor;
 use Shopware\Core\Checkout\Payment\PaymentException;
-use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\Log\LogEntryCollection;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -154,7 +153,7 @@ class QuickpayStorefrontController
                         'channel' => WexoQuickpay::LOG_CHANNEL
                     ]
                 ],
-                Context::createDefaultContext()
+                $context->getContext()
             );
             unset($data['errorMessage']);
         }
