@@ -314,7 +314,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             $language = $this->getLanguage($languageId, $shopContext);
         }
 
-        $amountCents = (int) \round($order->getAmountTotal() * 100);
+        $amountCents = (int) ($order->getAmountTotal() * 100);
 
         $updateFormParams = [
             'amount'       => $amountCents,
