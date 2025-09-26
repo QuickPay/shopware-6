@@ -120,22 +120,25 @@ class QuickpayPayment extends AbstractPaymentHandler
         PaymentTransactionStruct $transaction,
         Context $context
     ): void {
-        $content = $request->getContent();
-        $transactionId = $transaction->getOrderTransactionId();
-        $orderTransaction = $this->loadTransaction($transactionId, $context);
-        $order = $orderTransaction->getOrder();
-
-        if ($order === null) {
-            throw new \RuntimeException('Transaction has no associated Order.');
-        }
-
+        // Check for cancel status first to avoid unnecessary database calls
         $status = $request->get('status');
+        $transactionId = $transaction->getOrderTransactionId();
+        
         if ($status === "cancel") {
             throw PaymentException::customerCanceled(
                 $transactionId,
                 'Customer canceled the payment on the payment page'
             );
-        } elseif ($content !== '') {
+        }
+        
+        $content = $request->getContent();
+        if ($content !== '') {
+            $orderTransaction = $this->loadTransaction($transactionId, $context);
+            $order = $orderTransaction->getOrder();
+
+            if ($order === null) {
+                throw new \RuntimeException('Transaction has no associated Order.');
+            }
             $response = json_decode($content, true);
 
             $this->setCurrentService($order);
