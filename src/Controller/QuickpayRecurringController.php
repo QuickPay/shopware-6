@@ -124,7 +124,7 @@ class QuickpayRecurringController extends AbstractController
         }
 
         $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $request->getContent();
-        $this->quickpayService->setOrderCustomFields($order->getId(), $customFields);
+        $this->quickpayService->setOrderCustomFields($order->getId(), $customFields, $context);
 
         $paymentState = $transaction->getStateMachineState()?->getTechnicalName() ?? '';
         $orderState = $order->getStateMachineState()?->getTechnicalName() ?? '';

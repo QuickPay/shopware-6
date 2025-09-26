@@ -235,7 +235,7 @@ class QuickpayService
                 }
 
                 $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $content;
-                $this->setOrderCustomFields($orderId, $customFields);
+                $this->setOrderCustomFields($orderId, $customFields, $context);
 
                 return $content;
             }
@@ -257,9 +257,10 @@ class QuickpayService
     /**
      * @param string $orderId
      * @param array<string, mixed> $customFields
+     * @param Context $context
      * @return void
      */
-    public function setOrderCustomFields(string $orderId, array $customFields): void
+    public function setOrderCustomFields(string $orderId, array $customFields, Context $context): void
     {
         try {
             $this->orderRepository->update(
@@ -269,7 +270,7 @@ class QuickpayService
                         'customFields' => $customFields
                     ]
                 ],
-                Context::createCLIContext()
+                $context
             );
         } catch (\Exception $e) {
             $this->logEntryRepository->create(
@@ -285,7 +286,7 @@ class QuickpayService
                         'channel' => 'quickpay'
                     ]
                 ],
-                Context::createCLIContext()
+                $context
             );
         }
     }

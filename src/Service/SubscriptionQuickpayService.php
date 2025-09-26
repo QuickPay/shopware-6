@@ -93,7 +93,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             WexoQuickpay::QUICKPAY_RESPONSE_FIELD => $content
         ];
 
-        $this->setOrderCustomFields($order->getId(), $customFields);
+        $this->setOrderCustomFields($order->getId(), $customFields, $context);
         $order->setCustomFields($customFields);
     }
 
@@ -532,7 +532,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                 $responseBody = $response->getBody()->getContents();
             }
             $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $responseBody;
-            $this->setOrderCustomFields($order->getId(), $customFields);
+            $this->setOrderCustomFields($order->getId(), $customFields, $context);
 
             $responseBodyData = json_decode($responseBody, true);
             if ($responseBodyData['state'] === 'processed') {

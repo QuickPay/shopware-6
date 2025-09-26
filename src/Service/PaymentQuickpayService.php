@@ -120,7 +120,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
 
         $customFields = [];
         $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $content;
-        $this->setOrderCustomFields($order->getId(), $customFields);
+        $this->setOrderCustomFields($order->getId(), $customFields, $context);
         $order->setCustomFields($customFields);
     }
 
@@ -350,7 +350,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             } else {
                 $customFields = [];
                 $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $responseBody;
-                $this->setOrderCustomFields($orderId, $customFields);
+                $this->setOrderCustomFields($orderId, $customFields, $context);
             }
 
             $responseData = json_decode($responseBody ?? '', true);
