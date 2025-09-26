@@ -139,10 +139,10 @@ class QuickpayStorefrontController
             if ($request->getContent() !== null && $request->getContent() !== '') {
                 $data['content'] = json_decode((string) $request->getContent(), true);
             }
-            $errorLevel = Level::Error;
+            $errorLevel = Level::Error->value;
             $logMessage = 'quickpay_finalize_transaction_error';
             if ($data['sw_status_code'] === 400002) {
-                $errorLevel = Level::Warning;
+                $errorLevel = Level::Warning->value;
                 $logMessage = 'quickpay_finalize_transaction_token_invalidated';
             }
             $this->logEntryRepository->create(

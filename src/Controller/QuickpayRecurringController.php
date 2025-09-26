@@ -56,7 +56,7 @@ class QuickpayRecurringController extends AbstractController
                             'contentType' => $request->getContentTypeFormat(),
                             'content'     => $request->getContent()
                         ],
-                        'level'   => Level::Info,
+                        'level'   => Level::Info->value,
                         'channel' => 'quickpay'
                     ]
                 ],
@@ -207,7 +207,7 @@ class QuickpayRecurringController extends AbstractController
                         'contentType' => $request->getContentTypeFormat(),
                         'content'     => $request->getContent()
                     ],
-                    'level'   => Level::Critical,
+                    'level'   => Level::Critical->value,
                     'channel' => 'quickpay'
                 ]
             ],
