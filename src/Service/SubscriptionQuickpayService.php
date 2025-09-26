@@ -379,9 +379,9 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
      */
     public function recurring(
         string $orderId,
+        Context $context,
         ?bool $initial = false
     ): void {
-        $context = Context::createCLIContext();
 
         $criteria = new Criteria([$orderId]);
         $criteria->addAssociation('transactions');

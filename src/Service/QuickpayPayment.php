@@ -186,7 +186,7 @@ class QuickpayPayment extends AbstractPaymentHandler
 
                 // if it's a subscription, we'll create a recurring payment, that then still needs to be captured.
                 if ($this->currentService instanceof SubscriptionQuickpayService) {
-                    $this->currentService->recurring($order->getId());
+                    $this->currentService->recurring($order->getId(), $context);
                 }
             } elseif (isset($response['operations']) && $paymentState !== OrderTransactionStates::STATE_AUTHORIZED) {
                 $cancel = false;

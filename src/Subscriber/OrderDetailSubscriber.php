@@ -147,7 +147,7 @@ class OrderDetailSubscriber implements EventSubscriberInterface
     {
         $subscription = $event->getContext()->getExtension('subscriptionOrder');
         if ($subscription !== null) {
-            $this->subscriptionQuickpayService->recurring($event->getOrder()->getId());
+            $this->subscriptionQuickpayService->recurring($event->getOrder()->getId(), $event->getContext());
         }
     }
 }
