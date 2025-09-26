@@ -85,7 +85,7 @@ class QuickpayPayment extends AbstractPaymentHandler
             if (! isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
                 $this->currentService->create($transaction, $context);
             }
-            $link = $this->currentService->getLink($transaction, $context, $extraParams);
+            $link = $this->currentService->getLink($transaction, $context, $extraParams, $tx, $order);
         } catch (Exception $e) {
             $this->quickpayService->paymentLogger(
                 WexoQuickpay::ORDER_CREATE_ERROR,

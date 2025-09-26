@@ -6,6 +6,7 @@ use DateTimeInterface;
 use Exception;
 use GuzzleHttp\Exception\GuzzleException;
 use Random\RandomException;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
 use Shopware\Core\Checkout\Order\OrderDefinition;
 use Shopware\Core\Checkout\Order\OrderEntity;
@@ -270,6 +271,8 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
      * @param PaymentTransactionStruct $transaction
      * @param Context $context
      * @param array<string, mixed> $extraParams
+     * @param OrderTransactionEntity|null $tx
+     * @param OrderEntity|null $order
      * @return string
      * @throws GuzzleException
      * @throws Exception
@@ -277,14 +280,21 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
     public function getLink(
         PaymentTransactionStruct $transaction,
         Context $context,
-        array $extraParams = []
+        array $extraParams = [],
+        ?OrderTransactionEntity $tx = null,
+        ?OrderEntity $order = null
     ): string {
         $returnUrl = $transaction->getReturnUrl();
 
         $callbackUrl = str_replace('finalize-transaction', 'quickpay-finalize-transaction', (string)$returnUrl);
-
-        $tx = $this->loadTransaction($transaction->getOrderTransactionId(), $context);
-        $order = $tx->getOrder();
+        
+        if ($tx === null) {
+            $tx = $this->loadTransaction($transaction->getOrderTransactionId(), $context);
+        }
+        
+        if ($order === null) {
+            $order = $tx->getOrder();
+        }
 
         if ($order === null) {
             throw new \RuntimeException('Order not found for transaction ' . $transaction->getOrderTransactionId());
