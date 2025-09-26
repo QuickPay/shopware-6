@@ -176,6 +176,12 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
 
         $deliveries = array_map(function ($delivery) {
             $shippingCosts = $delivery->getShippingCosts();
+            $shippingOrderAddress = $delivery->getShippingOrderAddress();
+            
+            if ($shippingOrderAddress === null) {
+                throw new \RuntimeException('Shipping order address is required for delivery');
+            }
+            
             return [
                 'shippingCosts' => [
                     'unitPrice' => $shippingCosts->getUnitPrice(),
@@ -188,12 +194,12 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                     'regulationPrice' => $shippingCosts->getRegulationPrice()?->jsonSerialize(),
                 ],
                 'shippingOrderAddress' => [
-                    'firstName' => $delivery->getShippingOrderAddress()?->getFirstName() ?? null,
-                    'lastName' => $delivery->getShippingOrderAddress()?->getLastName() ?? null,
-                    'street' => $delivery->getShippingOrderAddress()?->getStreet() ?? null,
-                    'zipcode' => $delivery->getShippingOrderAddress()?->getZipcode() ?? null,
-                    'city' => $delivery->getShippingOrderAddress()?->getCity() ?? null,
-                    'countryId' => $delivery->getShippingOrderAddress()?->getCountryId() ?? null,
+                    'firstName' => $shippingOrderAddress->getFirstName(),
+                    'lastName' => $shippingOrderAddress->getLastName(),
+                    'street' => $shippingOrderAddress->getStreet(),
+                    'zipcode' => $shippingOrderAddress->getZipcode(),
+                    'city' => $shippingOrderAddress->getCity(),
+                    'countryId' => $shippingOrderAddress->getCountryId(),
                 ],
                 'shippingMethodId' => $delivery->getShippingMethodId(),
                 'shippingDateEarliest' => $delivery->getShippingDateEarliest(),
@@ -210,6 +216,12 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             ];
         }, $originalOrder->getTransactions()?->getElements() ?? []);
 
+        $orderCustomer = $originalOrder->getOrderCustomer();
+        
+        if ($orderCustomer === null) {
+            throw new \RuntimeException('Order customer is required for creating a new order');
+        }
+
         $newOrderData = [
             'salesChannelId' => $originalOrder->getSalesChannelId(),
             'orderNumber' => $newOrderNumber,
@@ -219,11 +231,11 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             'shippingCosts' => $originalOrder->getShippingCosts(),
             'orderDateTime' => new \DateTime(),
             'orderCustomer' => [
-                'customerId' => $originalOrder->getOrderCustomer()?->getCustomerId() ?? '',
-                'email' => $originalOrder->getOrderCustomer()?->getEmail() ?? '',
-                'firstName' => $originalOrder->getOrderCustomer()?->getFirstName() ?? '',
-                'lastName' => $originalOrder->getOrderCustomer()?->getLastName() ?? '',
-                'salutationId' => $originalOrder->getOrderCustomer()?->getSalutationId() ?? '',
+                'customerId' => $orderCustomer->getCustomerId(),
+                'email' => $orderCustomer->getEmail(),
+                'firstName' => $orderCustomer->getFirstName(),
+                'lastName' => $orderCustomer->getLastName(),
+                'salutationId' => $orderCustomer->getSalutationId(),
             ],
             'deepLinkCode' => bin2hex(random_bytes(16)),
             'ruleIds' => $originalOrder->getRuleIds(),

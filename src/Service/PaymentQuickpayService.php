@@ -536,7 +536,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
 
         $deliveryId = $order->getDeliveries()?->first()?->getId();
 
-        if ($deliveryId !== null && $deliveryId !== '') {
+        if ($deliveryId) {
             $this->stateMachineRegistry->transition(
                 new Transition(
                     OrderDeliveryDefinition::ENTITY_NAME,
