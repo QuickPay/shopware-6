@@ -155,7 +155,7 @@ class WexoQuickpay extends Plugin
     {
         parent::uninstall($context);
         foreach (self::DEFAULT_PAYMENT_METHODS as $props) {
-            $paymentMethodId = $this->getPaymentMethodId($props['handler']);
+            $paymentMethodId = $this->getPaymentMethodId($props['handler'], $context->getContext());
             if ($paymentMethodId !== null) {
                 $this->setPaymentMethodIsActive(false, $context->getContext(), $paymentMethodId);
             }
@@ -170,14 +170,14 @@ class WexoQuickpay extends Plugin
         }
 
         if (version_compare($context->getCurrentPluginVersion(), '3.0.3', '<')) {
-            $oldMobilePayId = $this->getPaymentMethodIdByName(QuickpayPayment::class, 'MobilePay');
+            $oldMobilePayId = $this->getPaymentMethodIdByName(QuickpayPayment::class, 'MobilePay', $context->getContext());
             if ($oldMobilePayId !== null) {
                 $paymentRepository = $container->get('payment_method.repository');
                 $paymentMethod = [
                     'id' => $oldMobilePayId,
                     'handlerIdentifier' => MobilepayPayment::class,
                 ];
-                $paymentRepository->update([$paymentMethod], Context::createCLIContext());
+                $paymentRepository->update([$paymentMethod], $context->getContext());
             }
         }
 
@@ -214,7 +214,7 @@ class WexoQuickpay extends Plugin
             }
         }
 
-        $this->addPaymentMethods(Context::createCLIContext());
+        $this->addPaymentMethods($context->getContext());
     }
 
     /**
@@ -223,7 +223,7 @@ class WexoQuickpay extends Plugin
     public function activate(ActivateContext $context): void
     {
         foreach (self::DEFAULT_PAYMENT_METHODS as $props) {
-            $paymentMethodId = $this->getPaymentMethodId($props['handler']);
+            $paymentMethodId = $this->getPaymentMethodId($props['handler'], $context->getContext());
             if ($paymentMethodId !== null) {
                 $this->setPaymentMethodIsActive(true, $context->getContext(), $paymentMethodId);
             }
@@ -237,7 +237,7 @@ class WexoQuickpay extends Plugin
     public function deactivate(DeactivateContext $context): void
     {
         foreach (self::DEFAULT_PAYMENT_METHODS as $props) {
-            $paymentMethodId = $this->getPaymentMethodId($props['handler']);
+            $paymentMethodId = $this->getPaymentMethodId($props['handler'], $context->getContext());
             if ($paymentMethodId !== null) {
                 $this->setPaymentMethodIsActive(false, $context->getContext(), $paymentMethodId);
             }
@@ -268,7 +268,7 @@ class WexoQuickpay extends Plugin
         foreach (self::DEFAULT_PAYMENT_METHODS as $name => $props) {
             // technicalName value required for plugin installation in Shopware v. 6.7
             $technical = $this->toTechnical($name);
-            $paymentMethodExists = $this->getPaymentMethodId($props['handler']);
+            $paymentMethodExists = $this->getPaymentMethodId($props['handler'], $context);
             // Payment method exists already, no need to continue here
             if ($paymentMethodExists !== null) {
                 continue;
@@ -313,9 +313,10 @@ class WexoQuickpay extends Plugin
 
     /**
      * @param string $identifier
+     * @param Context $context
      * @return string|null
      */
-    private function getPaymentMethodId(string $identifier): ?string
+    private function getPaymentMethodId(string $identifier, Context $context): ?string
     {
         $container = $this->container ?? null;
         if (!$container instanceof ContainerInterface) {
@@ -328,10 +329,10 @@ class WexoQuickpay extends Plugin
         $paymentCriteria = (new Criteria())
             ->addFilter(new EqualsFilter('handlerIdentifier', $identifier));
 
-        return $paymentRepository->searchIds($paymentCriteria, Context::createCLIContext())->firstId();
+        return $paymentRepository->searchIds($paymentCriteria, $context)->firstId();
     }
 
-    private function getPaymentMethodIdByName(string $identifier, string $name): ?string
+    private function getPaymentMethodIdByName(string $identifier, string $name, Context $context): ?string
     {
         $container = $this->container ?? null;
         if (!$container instanceof ContainerInterface) {
@@ -345,6 +346,6 @@ class WexoQuickpay extends Plugin
             ->addFilter(new EqualsFilter('handlerIdentifier', $identifier))
             ->addFilter(new ContainsFilter('name', $name));
 
-        return $paymentRepository->searchIds($paymentCriteria, Context::createCLIContext())->firstId();
+        return $paymentRepository->searchIds($paymentCriteria, $context)->firstId();
     }
 }
