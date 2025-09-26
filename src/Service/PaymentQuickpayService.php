@@ -265,7 +265,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             return false;
         }
 
-        $paymentResponse = $this->updateResponse($orderId);
+        $paymentResponse = $this->updateResponse($orderId, $context);
         $paymentResponseData = $paymentResponse !== '' && $paymentResponse !== null
             ? json_decode($paymentResponse, true)
             : null;
@@ -346,7 +346,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             );
 
             if ($responseBody === '') {
-                $responseBody = $this->updateResponse($orderId, $paymentResponseData['id']);
+                $responseBody = $this->updateResponse($orderId, $context, $paymentResponseData['id']);
             } else {
                 $customFields = [];
                 $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $responseBody;

@@ -54,11 +54,11 @@ class QuickpayApiController
      * @throws GuzzleException
      */
     #[Route(path: '/api/_action/quickpay-api/update', defaults: ['auth_required' => false], methods: ['POST'])]
-    public function update(RequestDataBag $dataBag): JsonResponse
+    public function update(RequestDataBag $dataBag, Context $context): JsonResponse
     {
         $orderId = $dataBag->get('orderId');
 
-        $content = $this->paymentQuickpayService->updateResponse($orderId);
+        $content = $this->paymentQuickpayService->updateResponse($orderId, $context);
 
         $response = new JsonResponse([]);
         $response->setContent($content);

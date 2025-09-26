@@ -16,7 +16,6 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\Log\LogEntryCollection;
 use Shopware\Core\System\Language\LanguageCollection;
 use Shopware\Core\System\Language\LanguageEntity;
-use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\StateMachine\StateMachineRegistry;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Wexo\Quickpay\WexoQuickpay;
@@ -198,10 +197,9 @@ class QuickpayService
      */
     public function updateResponse(
         string $orderId,
-        mixed $paymentId = null,
-        ?SalesChannelContext $context = null
+        Context $context,
+        mixed $paymentId = null
     ): ?string {
-        $context = $context !== null ? $context->getContext() : Context::createCLIContext();
 
         /** @var OrderEntity|null $order */
         $order = $this->orderRepository->search(new Criteria([$orderId]), $context)->get($orderId);
