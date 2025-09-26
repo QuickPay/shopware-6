@@ -307,11 +307,10 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
 
         $salesChannel   = $order->getSalesChannel();
         $languageId     = $salesChannel?->getLanguageId();
-        $shopContext    = method_exists($order, 'getContext') ? $order->getContext() : $context; // fallback
 
         $language = 'en';
         if (\is_string($languageId) && $languageId !== '') {
-            $language = $this->getLanguage($languageId, $shopContext);
+            $language = $this->getLanguage($languageId, $context);
         }
 
         $amountCents = (int) ($order->getAmountTotal() * 100);
