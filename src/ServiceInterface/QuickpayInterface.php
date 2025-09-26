@@ -21,7 +21,7 @@ interface QuickpayInterface
         PaymentTransactionStruct $transaction,
         Context $context,
         Array $extraParams = [],
-        ?OrderTransactionEntity $tx = null,
+        ?OrderTransactionEntity $orderTransaction = null,
         ?OrderEntity $order = null
     ): string;
 }

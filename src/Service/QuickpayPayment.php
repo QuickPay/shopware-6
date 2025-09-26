@@ -73,8 +73,8 @@ class QuickpayPayment extends AbstractPaymentHandler
     ): RedirectResponse {
         $extraParams = $request->request->all('extraParams');
         $orderTransactionId = $transaction->getOrderTransactionId();
-        $tx    = $this->loadTransaction($orderTransactionId, $context);
-        $order = $tx->getOrder();
+        $orderTransaction = $this->loadTransaction($orderTransactionId, $context);
+        $order = $orderTransaction->getOrder();
         if ($order === null) {
             throw new \Exception('Order not found for transaction: ' . $orderTransactionId);
         }
@@ -85,7 +85,7 @@ class QuickpayPayment extends AbstractPaymentHandler
             if (! isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
                 $this->currentService->create($transaction, $context);
             }
-            $link = $this->currentService->getLink($transaction, $context, $extraParams, $tx, $order);
+            $link = $this->currentService->getLink($transaction, $context, $extraParams, $orderTransaction, $order);
         } catch (Exception $e) {
             $this->quickpayService->paymentLogger(
                 WexoQuickpay::ORDER_CREATE_ERROR,
@@ -122,8 +122,8 @@ class QuickpayPayment extends AbstractPaymentHandler
     ): void {
         $content = $request->getContent();
         $transactionId = $transaction->getOrderTransactionId();
-        $tx = $this->loadTransaction($transactionId, $context);
-        $order = $tx->getOrder();
+        $orderTransaction = $this->loadTransaction($transactionId, $context);
+        $order = $orderTransaction->getOrder();
 
         if ($order === null) {
             throw new \RuntimeException('Transaction has no associated Order.');
@@ -155,7 +155,6 @@ class QuickpayPayment extends AbstractPaymentHandler
                 throw new \Exception('Checksum check failed for orderId: ' . $order->getId());
             }
 
-            $orderTransaction = $tx;
             $orderTransactionStateMachineState = $orderTransaction->getStateMachineState();
             $orderStateMachineState = $order->getStateMachineState();
 
@@ -168,7 +167,7 @@ class QuickpayPayment extends AbstractPaymentHandler
 
             $accepted = $response['accepted'] ?? false;
             if ($accepted === true) {
-                $paymentHandler = $tx->getPaymentMethod()?->getHandlerIdentifier();
+                $paymentHandler = $orderTransaction->getPaymentMethod()?->getHandlerIdentifier();
 
                 if ($paymentHandler === null) {
                     return;

@@ -271,7 +271,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
      * @param PaymentTransactionStruct $transaction
      * @param Context $context
      * @param array<string, mixed> $extraParams
-     * @param OrderTransactionEntity|null $tx
+     * @param OrderTransactionEntity|null $orderTransaction
      * @param OrderEntity|null $order
      * @return string
      * @throws GuzzleException
@@ -281,19 +281,19 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         PaymentTransactionStruct $transaction,
         Context $context,
         array $extraParams = [],
-        ?OrderTransactionEntity $tx = null,
+        ?OrderTransactionEntity $orderTransaction = null,
         ?OrderEntity $order = null
     ): string {
         $returnUrl = $transaction->getReturnUrl();
 
         $callbackUrl = str_replace('finalize-transaction', 'quickpay-finalize-transaction', (string)$returnUrl);
         
-        if ($tx === null) {
-            $tx = $this->loadTransaction($transaction->getOrderTransactionId(), $context);
+        if ($orderTransaction === null) {
+            $orderTransaction = $this->loadTransaction($transaction->getOrderTransactionId(), $context);
         }
         
         if ($order === null) {
-            $order = $tx->getOrder();
+            $order = $orderTransaction->getOrder();
         }
 
         if ($order === null) {
