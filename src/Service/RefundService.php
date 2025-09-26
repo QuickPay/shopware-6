@@ -184,6 +184,9 @@ class RefundService
         $this->response = json_decode($content, true);
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
     public function getResponse(): ?array
     {
         return $this->response;
