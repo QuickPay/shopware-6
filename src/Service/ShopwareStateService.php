@@ -26,9 +26,9 @@ class ShopwareStateService
         string $transactionId,
         string $orderId,
         string $paymentState,
-        string $orderState
+        string $orderState,
+        Context $context
     ) {
-        $context = Context::createDefaultContext();
         if ($paymentState !== OrderTransactionStates::STATE_CANCELLED) {
             $this->transactionStateHandler->cancel(
                 $transactionId,
@@ -53,9 +53,9 @@ class ShopwareStateService
         string $transactionId,
         string $orderId,
         string $paymentState,
-        string $orderState
+        string $orderState,
+        Context $context
     ): void {
-        $context = Context::createDefaultContext();
         if ($paymentState !== OrderTransactionStates::STATE_AUTHORIZED) {
             if ($paymentState === OrderTransactionStates::STATE_CANCELLED) {
                 $this->transactionStateHandler->reopen(
@@ -99,9 +99,9 @@ class ShopwareStateService
         string $transactionId,
         string $orderId,
         string $paymentState,
-        string $orderState
+        string $orderState,
+        Context $context
     ): void {
-        $context = Context::createDefaultContext();
         if ($paymentState !== OrderTransactionStates::STATE_PAID) {
             if ($paymentState === OrderTransactionStates::STATE_CANCELLED) {
                 $this->transactionStateHandler->reopen(

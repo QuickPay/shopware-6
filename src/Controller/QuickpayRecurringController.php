@@ -156,14 +156,16 @@ class QuickpayRecurringController extends AbstractController
                         $transaction->getId(),
                         $order->getId(),
                         $paymentState,
-                        $orderState
+                        $orderState,
+                        $context
                     );
                 } elseif ($paymentResponseData['state'] === 'rejected') {
                     $this->shopwareStateService->cancel(
                         $transaction->getId(),
                         $order->getId(),
                         $paymentState,
-                        $orderState
+                        $orderState,
+                        $context
                     );
                 }
             } catch (\Exception $e) {
@@ -181,7 +183,8 @@ class QuickpayRecurringController extends AbstractController
                             $transaction->getId(),
                             $order->getId(),
                             $paymentState,
-                            $orderState
+                            $orderState,
+                            $context
                         );
                     } catch (\Exception $e) {
                         $message = 'Could not update order state to cancel';

@@ -46,7 +46,7 @@ class RefundCommand extends Command
 
         $amount = (float) $rawAmount;
 
-        $status = $this->refundService->refund($orderId, $amount, Context::createDefaultContext());
+        $status = $this->refundService->refund($orderId, $amount, Context::createCLIContext());
 
         $output->writeln(
             $status ?
