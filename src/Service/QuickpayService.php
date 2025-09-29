@@ -72,7 +72,7 @@ class QuickpayService
     public function getClient(?string $salesChannelId): Client
     {
         //If no string is supplied to system config service, it uses '_global_' under the hood.
-        if ($salesChannelId === null || $salesChannelId === '') {
+        if (!$salesChannelId) {
             $salesChannelId = '_global_';
         }
 
