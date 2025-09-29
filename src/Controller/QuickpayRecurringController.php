@@ -197,8 +197,13 @@ class QuickpayRecurringController extends AbstractController
         return new JsonResponse([], Response::HTTP_OK);
     }
 
-    public function logError(String $message, OrderEntity $order, Request $request, Context $context, \Exception $e): void
-    {
+    public function logError(
+        String $message,
+        OrderEntity $order,
+        Request $request,
+        Context $context,
+        \Exception $e
+    ): void {
         $this->logEntryRepository->create(
             [
                 [

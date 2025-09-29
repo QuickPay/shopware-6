@@ -170,7 +170,11 @@ class WexoQuickpay extends Plugin
         }
 
         if (version_compare($context->getCurrentPluginVersion(), '3.0.3', '<')) {
-            $oldMobilePayId = $this->getPaymentMethodIdByName(QuickpayPayment::class, 'MobilePay', $context->getContext());
+            $oldMobilePayId = $this->getPaymentMethodIdByName(
+                QuickpayPayment::class,
+                'MobilePay',
+                $context->getContext()
+            );
             if ($oldMobilePayId !== null) {
                 $paymentRepository = $container->get('payment_method.repository');
                 $paymentMethod = [

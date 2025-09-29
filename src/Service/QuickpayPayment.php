@@ -181,11 +181,23 @@ class QuickpayPayment extends AbstractPaymentHandler
                 if ($paymentHandler === SwishPayment::class) {
                     // Since Swish is a banktransfer, capture happens at the same time as Authorized.
                     // So we set payment status to Paid instead of Authorized.
-                    $this->shopwareStateService->paid($transactionId, $order->getId(), $paymentState, $orderState, $context);
+                    $this->shopwareStateService->paid(
+                        $transactionId,
+                        $order->getId(),
+                        $paymentState,
+                        $orderState,
+                        $context
+                    );
                 } else {
                     // if the payment has been accepted in quickpay, we'll set the Shopware payment status to authorized
                     // and the order status to in progress.
-                    $this->shopwareStateService->success($transactionId, $order->getId(), $paymentState, $orderState, $context);
+                    $this->shopwareStateService->success(
+                        $transactionId,
+                        $order->getId(),
+                        $paymentState,
+                        $orderState,
+                        $context
+                    );
                 }
 
                 // if it's a subscription, we'll create a recurring payment, that then still needs to be captured.
@@ -205,7 +217,13 @@ class QuickpayPayment extends AbstractPaymentHandler
                 }
 
                 if ($cancel === true) {
-                    $this->shopwareStateService->cancel($transactionId, $order->getId(), $paymentState, $orderState, $context);
+                    $this->shopwareStateService->cancel(
+                        $transactionId,
+                        $order->getId(),
+                        $paymentState,
+                        $orderState,
+                        $context
+                    );
                 }
             }
         }
