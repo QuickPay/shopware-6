@@ -1,5 +1,5 @@
 {% block quickpay_order_payment_details %}
-    <sw-card
+    <mt-card
             v-if="orderId"
             position-identifier="quickpay-order-payment-details"
             class="quickpay-order-payment-details"
@@ -13,12 +13,14 @@
 
         {% block quickpay_order_payment_details_payment_data %}
             <sw-data-grid
-                    v-if="quickpayResponse"
+                    v-if="order"
                     :data-source="dataSource"
                     :columns="orderColumns"
                     :show-actions="false"
                     :show-selection="false"
                     :show-header="false"
+                    :is-loading="isLoading || isQuickpayLoading"
+                    :skeleton-amount="11"
             ></sw-data-grid>
 
             <br>
@@ -43,5 +45,5 @@
                 {{ $tc('quickpay.label.capture') }}
             </sw-button-process>
         {% endblock %}
-    </sw-card>
+    </mt-card>
 {% endblock %}
