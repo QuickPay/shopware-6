@@ -15,8 +15,7 @@ class ServiceHelper
         } elseif ($order->getLineItems() !== null) {
             foreach ($order->getLineItems() as $lineItem) {
                 $payload = $lineItem->getPayload();
-                $subscription = $payload['subscription'] ?? [];
-                if (count($subscription) > 0) {
+                if (isset($payload['subscription'])) {
                     return true;
                 }
             }
