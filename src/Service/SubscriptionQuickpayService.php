@@ -15,6 +15,7 @@ use Shopware\Core\Checkout\Cart\Tax\Struct\TaxRule;
 use Shopware\Core\Checkout\Cart\Tax\Struct\TaxRuleCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryDefinition;
 use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryStates;
+use Shopware\Core\Checkout\Order\Aggregate\OrderLineItem\OrderLineItemEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
 use Shopware\Core\Checkout\Order\OrderDefinition;
 use Shopware\Core\Checkout\Order\OrderEntity;
@@ -143,8 +144,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             throw new \Exception('Order not found');
         }
 
-        $lineItems = [];
-        foreach ($originalOrder->getLineItems()->getElements() as $item) {
+        $lineItems = array_map(function ($item) use ($salesChannelContext) {
             $price = $item->getPrice();
 
             if (!$price) {
@@ -154,19 +154,19 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             $quantity = $item->getQuantity();
             $newPrice = $this->calculateLineItemPriceForQuantity($price, $quantity, $salesChannelContext);
 
-            $lineItems[] = [
-                'identifier'   => $item->getIdentifier(),
-                'productId'    => $item->getProductId(),
+            return [
+                'identifier' => $item->getIdentifier(),
+                'productId' => $item->getProductId(),
                 'referencedId' => $item->getReferencedId(),
-                'label'        => $item->getLabel(),
-                'quantity'     => $quantity,
-                'unitPrice'    => $newPrice->getUnitPrice(),
-                'totalPrice'   => $newPrice->getTotalPrice(),
-                'price'        => $newPrice,
-                'type'         => $item->getType(),
-                'payload'      => $item->getPayload(),
+                'label' => $item->getLabel(),
+                'quantity' => $quantity,
+                'unitPrice' => $newPrice->getUnitPrice(),
+                'totalPrice' => $newPrice->getTotalPrice(),
+                'price' => $newPrice,
+                'type' => $item->getType(),
+                'payload' => $item->getPayload(),
             ];
-        }
+        }, $originalOrder->getLineItems()->getElements());
 
         $deliveries = array_map(function ($delivery) {
             $shippingCosts = $delivery->getShippingCosts();
@@ -205,7 +205,6 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         }, $originalOrder->getTransactions()->getElements());
 
         $newOrderPrice = $this->calculateOrderPriceFromLines($originalOrder, $lineItems, $salesChannelContext);
-
 
         $newOrderData = [
             'salesChannelId' => $originalOrder->getSalesChannelId(),
