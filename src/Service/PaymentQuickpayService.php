@@ -15,6 +15,7 @@ use Shopware\Core\Checkout\Payment\Cart\PaymentTransactionStruct;
 use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\Struct\ArrayStruct;
+use Shopware\Core\Framework\Util\FloatComparator;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineTransition\StateMachineTransitionActions;
 use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryDefinition;
 use Shopware\Core\System\StateMachine\Transition;
@@ -390,7 +391,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
 
             $quickPayResponse = json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
             $availableAmount = $this->getAvailableAmount($quickPayResponse);
-            if ($availableAmount !== 0.0) {
+            if (FloatComparator::notEquals($availableAmount, 0)) {
                 $this->transactionStateHandler->reopen(
                     $transaction->getId(),
                     $context

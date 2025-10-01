@@ -54,7 +54,7 @@ class RefundService
         float $amount,
         Context $context
     ): bool {
-        if ($amount <= 0.0) {
+        if (FloatComparator::lessThanOrEquals($amount, 0)) {
             throw RefundExceptions::invalidAmount($amount);
         }
 
