@@ -20,14 +20,14 @@ class QuickpayApiController
      * @throws GuzzleException
      */
     #[Route(path: '/api/_action/quickpay-api/verify')]
-    public function check(RequestDataBag $dataBag): JsonResponse
+    public function check(RequestDataBag $dataBag, Context $context): JsonResponse
     {
         $config = [
             'quickpayApiKey' => $dataBag->get('WexoQuickpay.config.quickpayApiKey'),
             'quickpayPrivateKey' => $dataBag->get('WexoQuickpay.config.quickpayPrivateKey')
         ];
 
-        if ($this->paymentQuickpayService->isConfigValid($config)) {
+        if ($this->paymentQuickpayService->isConfigValid($config, $context)) {
             return new JsonResponse(['isValid' => true]);
         }
 

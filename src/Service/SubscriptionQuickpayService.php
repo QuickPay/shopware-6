@@ -359,7 +359,8 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                 'updateFormParams' => $updateFormParams,
                 'subscriptionResponse' => $subscriptionResponse,
                 'linkResponse' => $linkResponseContent
-            ]
+            ],
+            $context
         );
 
         return $linkResponseContent['url'];
@@ -392,7 +393,8 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                 WexoQuickpay::ORDER_COMPLETE_ERROR,
                 [
                     'error' => 'Order with ID ' . $orderId . ' could no be found'
-                ]
+                ],
+                $context
             );
 
             return;
@@ -428,7 +430,8 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                     'orderId' => $orderId,
                     'orderNumber' => $order->getOrderNumber() ?? null,
                     'customFields' => $customFields
-                ]
+                ],
+                $context
             );
 
             return;
@@ -444,7 +447,8 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                     'orderId' => $orderId,
                     'orderNumber' => $order->getOrderNumber() ?? null,
                     'paymentResponse' => $quickPayResponse ?? null
-                ]
+                ],
+                $context
             );
 
             return;
@@ -494,7 +498,8 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'errorType' => $e::class
-                ]
+                ],
+                $context
             );
             return;
         }
@@ -529,7 +534,8 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                             'error' => $e->getMessage(),
                             'trace' => $e->getTraceAsString(),
                             'errorType' => $e::class
-                        ]
+                        ],
+                        $context
                     );
                 }
 
@@ -572,7 +578,8 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
 
             $this->paymentLogger(
                 WexoQuickpay::ORDER_COMPLETE_ERROR,
-                $logEntry
+                $logEntry,
+                $context
             );
         }
     }

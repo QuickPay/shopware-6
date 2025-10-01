@@ -96,7 +96,8 @@ class QuickpayPayment extends AbstractPaymentHandler
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'errorType' => $e::class
-                ]
+                ],
+                $context
             );
 
             throw PaymentException::asyncProcessInterrupted(
@@ -151,7 +152,8 @@ class QuickpayPayment extends AbstractPaymentHandler
                 [
                     'orderId' => $order->getId(),
                     'data'    => $response
-                ]
+                ],
+                $context
             );
 
             // Validate the checksum being sent from QuickPay

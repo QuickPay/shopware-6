@@ -199,7 +199,8 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
                 'updateFormParams' => $updateFormParams,
                 'paymentResponse' => $paymentResponseData,
                 'linkResponse' => $linkResponseContent
-            ]
+            ],
+            $context
         );
 
         return $linkResponseContent['url'];
@@ -234,7 +235,8 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
                 WexoQuickpay::ORDER_COMPLETE_ERROR,
                 [
                     'error' => 'Order with ID ' . $orderId . ' could no be found'
-                ]
+                ],
+                $context
             );
 
             return null;
@@ -278,7 +280,8 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
                     'orderId' => $orderId,
                     'orderNumber' => $order->getOrderNumber() ?? null,
                     'paymentResponse' => $paymentResponse ?? null
-                ]
+                ],
+                $context
             );
 
             return null;
@@ -307,7 +310,8 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
                     'orderId'         => $orderId,
                     'orderNumber'     => $order->getOrderNumber(),
                     'paymentResponse' => $paymentResponseData
-                ]
+                ],
+                $context
             );
 
             return false;
@@ -339,7 +343,8 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         if ($statusCode === 202) {
             $this->paymentLogger(
                 WexoQuickpay::ORDER_COMPLETE_SUCCESS,
-                $logEntry
+                $logEntry,
+                $context
             );
 
             if ($responseBody === '') {
@@ -382,7 +387,8 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         } else {
             $this->paymentLogger(
                 WexoQuickpay::ORDER_COMPLETE_ERROR,
-                $logEntry
+                $logEntry,
+                $context
             );
             $customFields = $order->getCustomFields() ?? [];
 

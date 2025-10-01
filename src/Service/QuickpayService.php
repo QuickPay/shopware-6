@@ -122,7 +122,7 @@ class QuickpayService
      * @return bool
      * @throws GuzzleException
      */
-    public function isConfigValid(array $config): bool
+    public function isConfigValid(array $config, Context $context): bool
     {
         try {
             $response = $this->getClient(null)->request('GET', 'account/private-key', [
@@ -144,7 +144,7 @@ class QuickpayService
 
             return false;
         } catch (\Exception $exception) {
-            $this->paymentLogger($exception->getMessage(), ['trace' => $exception->getTrace()]);
+            $this->paymentLogger($exception->getMessage(), ['trace' => $exception->getTrace()], $context);
 
             return false;
         }
@@ -158,6 +158,7 @@ class QuickpayService
     public function paymentLogger(
         string $event,
         array $context,
+        Context $shopwareContext
     ): void {
         $this->logEntryRepository->create(
             [
@@ -168,7 +169,7 @@ class QuickpayService
                     'channel' => WexoQuickpay::LOG_CHANNEL
                 ]
             ],
-            Context::createCLIContext()
+            $shopwareContext,
         );
     }
 
@@ -247,7 +248,8 @@ class QuickpayService
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'errorType' => $e::class
-                ]
+                ],
+                $context
             );
         }
 
