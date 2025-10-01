@@ -66,7 +66,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
                 'qty' => $orderLineItem->getQuantity(),
                 'item_no' => $itemNo,
                 'item_name' => $orderLineItem->getLabel(),
-                'item_price' => (int) ($unitPrice * 100),
+                'item_price' => ($unitPrice * 100),
                 'vat_rate' => $taxRate,
             ];
         }
@@ -85,7 +85,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
                 'qty' => 1,
                 'item_no' => 'Shipping',
                 'item_name' => 'Shipping',
-                'item_price' => (int) ($shippingTotal * 100),
+                'item_price' => ($shippingTotal * 100),
                 'vat_rate' => $shippingTaxRate,
             ];
         }
@@ -158,7 +158,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         }
 
         $updateFormParams = [
-            'amount' => (int) ($order->getAmountTotal() * 100),
+            'amount' => ($order->getAmountTotal() * 100),
             'continue_url' => $callbackUrl . '&status=accepted',
             'cancel_url' => $callbackUrl . '&status=cancel',
             'callback_url' => $callbackUrl,
