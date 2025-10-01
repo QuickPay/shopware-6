@@ -47,6 +47,9 @@ class QuickpayPayment extends AbstractPaymentHandler
         $criteria = (new Criteria([$orderTransactionId]))
             ->addAssociation('order')
             ->addAssociation('order.stateMachineState')
+            ->addAssociation('order.currency')
+            ->addAssociation('order.lineItems')
+            ->addAssociation('order.salesChannel')
             ->addAssociation('paymentMethod')
             ->addAssociation('stateMachineState');
 
