@@ -271,8 +271,8 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
      * @param PaymentTransactionStruct $transaction
      * @param Context $context
      * @param array<string, mixed> $extraParams
-     * @param OrderTransactionEntity|null $orderTransaction
-     * @param OrderEntity|null $order
+     * @param OrderTransactionEntity $orderTransaction
+     * @param OrderEntity $order
      * @return string
      * @throws GuzzleException
      * @throws Exception
@@ -280,25 +280,13 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
     public function getLink(
         PaymentTransactionStruct $transaction,
         Context $context,
-        array $extraParams = [],
-        ?OrderTransactionEntity $orderTransaction = null,
-        ?OrderEntity $order = null
+        OrderTransactionEntity $orderTransaction,
+        OrderEntity $order,
+        array $extraParams = []
     ): string {
         $returnUrl = $transaction->getReturnUrl();
 
         $callbackUrl = str_replace('finalize-transaction', 'quickpay-finalize-transaction', (string)$returnUrl);
-        
-        if ($orderTransaction === null) {
-            $orderTransaction = $this->loadTransaction($transaction->getOrderTransactionId(), $context);
-        }
-        
-        if ($order === null) {
-            $order = $orderTransaction->getOrder();
-        }
-
-        if ($order === null) {
-            throw new \RuntimeException('Order not found for transaction ' . $transaction->getOrderTransactionId());
-        }
 
         /** @var array<string,mixed>|null $customFields */
         $customFields = $order->getCustomFields();

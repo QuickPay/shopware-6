@@ -129,33 +129,21 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
      * @param PaymentTransactionStruct $transaction
      * @param Context $context
      * @param array<string, mixed> $extraParams
-     * @param OrderTransactionEntity|null $orderTransaction
-     * @param OrderEntity|null $order
+     * @param OrderTransactionEntity $orderTransaction
+     * @param OrderEntity $order
      * @return string
      * @throws GuzzleException
      */
     public function getLink(
         PaymentTransactionStruct $transaction,
         Context $context,
-        array $extraParams = [],
-        ?OrderTransactionEntity $orderTransaction = null,
-        ?OrderEntity $order = null
+        OrderTransactionEntity $orderTransaction,
+        OrderEntity $order,
+        array $extraParams = []
     ): string {
         $returnUrl = $transaction->getReturnUrl() ?? '';
 
         $callbackUrl = str_replace('finalize-transaction', 'quickpay-finalize-transaction', $returnUrl);
-
-        if ($orderTransaction === null) {
-            $orderTransaction = $this->loadTransaction($transaction->getOrderTransactionId(), $context);
-        }
-        
-        if ($order === null) {
-            $order = $orderTransaction->getOrder();
-        }
-        
-        if ($order === null) {
-            throw new Exception('Order not found');
-        }
 
         $updateFormParams = [
             'amount' => ($order->getAmountTotal() * 100),

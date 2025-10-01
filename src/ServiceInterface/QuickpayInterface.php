@@ -20,8 +20,8 @@ interface QuickpayInterface
     public function getLink(
         PaymentTransactionStruct $transaction,
         Context $context,
-        Array $extraParams = [],
-        ?OrderTransactionEntity $orderTransaction = null,
-        ?OrderEntity $order = null
+        OrderTransactionEntity $orderTransaction,
+        OrderEntity $order,
+        Array $extraParams = []
     ): string;
 }
