@@ -26,21 +26,18 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
 {
     /**
      * @param PaymentTransactionStruct $transaction
+     * @param OrderTransactionEntity $orderTransaction
+     * @param OrderEntity $order
      * @param Context $context
      * @throws GuzzleException
      */
     public function create(
         PaymentTransactionStruct $transaction,
+        OrderTransactionEntity $orderTransaction,
+        OrderEntity $order,
         Context $context
     ): void {
-        $orderTransaction = $this->loadTransaction($transaction->getOrderTransactionId(), $context);
-        $order = $orderTransaction->getOrder();
-
         $basket = [];
-
-        if (!($order instanceof OrderEntity)) {
-            return;
-        }
 
         $lineItems = $order->getLineItems() ?? new OrderLineItemCollection();
 

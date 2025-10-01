@@ -26,6 +26,8 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
 {
     /**
      * @param PaymentTransactionStruct $transaction
+     * @param OrderTransactionEntity $orderTransaction
+     * @param OrderEntity $order
      * @param Context $context
      * @return void
      * @throws GuzzleException
@@ -33,17 +35,16 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
      */
     public function create(
         PaymentTransactionStruct $transaction,
+        OrderTransactionEntity $orderTransaction,
+        OrderEntity $order,
         Context $context
     ): void {
-        $tx = $this->loadTransaction($transaction->getOrderTransactionId(), $context);
-        $order = $tx->getOrder();
-
-        $currency = $order?->getCurrency()?->getIsoCode() ?? '';
+        $currency = $order->getCurrency()?->getIsoCode() ?? '';
 
         if ($currency === '') {
             throw new \RuntimeException(sprintf(
                 'Currency missing for order %s',
-                $order?->getId() ?? '(unknown)'
+                $order->getId()
             ));
         }
 
@@ -51,19 +52,13 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             ->modify('+2 days')
             ->setTime(0, 0)
             ->format(DateTimeInterface::ATOM);
-        $salesChannelName = $order?->getSalesChannel()?->getName();
+        $salesChannelName = $order->getSalesChannel()?->getName();
 
         if ($salesChannelName === '') {
             throw new \RuntimeException(sprintf(
                 'Sales channel missing for order %s',
-                $order?->getId() ?? '(unknown)'
+                $order->getId()
             ));
-        }
-
-        if ($order === null) {
-            throw new \RuntimeException(
-                sprintf('Order not found for transaction %s', $transaction->getOrderTransactionId())
-            );
         }
 
         // We're adding a -S to the orderId for the subscription, as the recurring payment will use the orderId.

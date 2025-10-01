@@ -10,6 +10,8 @@ interface QuickpayInterface
 {
     public function create(
         PaymentTransactionStruct $transaction,
+        OrderTransactionEntity $orderTransaction,
+        OrderEntity $order,
         Context $context
     ): void;
 
