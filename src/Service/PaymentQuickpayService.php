@@ -4,6 +4,7 @@ namespace Wexo\Quickpay\Service;
 
 use Exception;
 use GuzzleHttp\Exception\GuzzleException;
+use Monolog\Level;
 use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryStates;
 use Shopware\Core\Checkout\Order\Aggregate\OrderLineItem\OrderLineItemCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
@@ -200,7 +201,8 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
                 'paymentResponse' => $paymentResponseData,
                 'linkResponse' => $linkResponseContent
             ],
-            $context
+            $context,
+            Level::Info
         );
 
         return $linkResponseContent['url'];
@@ -344,7 +346,8 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             $this->paymentLogger(
                 WexoQuickpay::ORDER_COMPLETE_SUCCESS,
                 $logEntry,
-                $context
+                $context,
+                Level::Info
             );
 
             if ($responseBody === '') {

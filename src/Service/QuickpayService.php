@@ -158,14 +158,15 @@ class QuickpayService
     public function paymentLogger(
         string $event,
         array $context,
-        Context $shopwareContext
+        Context $shopwareContext,
+        Level $level = Level::Error
     ): void {
         $this->logEntryRepository->create(
             [
                 [
                     'message' => $event,
                     'context' => $context,
-                    'level' => Level::Error->value,
+                    'level' => $level->value,
                     'channel' => WexoQuickpay::LOG_CHANNEL
                 ]
             ],

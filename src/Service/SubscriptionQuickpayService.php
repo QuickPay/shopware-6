@@ -5,6 +5,7 @@ namespace Wexo\Quickpay\Service;
 use DateTimeInterface;
 use Exception;
 use GuzzleHttp\Exception\GuzzleException;
+use Monolog\Level;
 use Random\RandomException;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
@@ -360,7 +361,8 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                 'subscriptionResponse' => $subscriptionResponse,
                 'linkResponse' => $linkResponseContent
             ],
-            $context
+            $context,
+            Level::Info
         );
 
         return $linkResponseContent['url'];

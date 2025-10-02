@@ -4,6 +4,7 @@ namespace Wexo\Quickpay\Service;
 
 use Exception;
 use GuzzleHttp\Exception\GuzzleException;
+use Monolog\Level;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
@@ -153,7 +154,8 @@ class QuickpayPayment extends AbstractPaymentHandler
                     'orderId' => $order->getId(),
                     'data'    => $response
                 ],
-                $context
+                $context,
+                Level::Info
             );
 
             // Validate the checksum being sent from QuickPay
