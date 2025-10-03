@@ -22,4 +22,6 @@ sync_to_github:
     - git fetch origin 6.7 6.6 6.5
     - git push github origin/6.7:6.7 origin/6.6:6.6 origin/6.5:6.5 --force
   only:
-    - web
+    - tags
+  except:
+    - branches
