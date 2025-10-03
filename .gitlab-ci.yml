@@ -1,3 +1,7 @@
+stages:
+    - lint
+    - deploy
+    
 include:
   # Centralized CI/CD pipeline
   - project: 'wexo-services/ci-cd-standard-pipelines'
