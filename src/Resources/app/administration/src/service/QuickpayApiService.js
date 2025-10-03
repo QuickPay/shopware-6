@@ -1,4 +1,5 @@
-const ApiService = Shopware.Classes.ApiService;
+const {ApiService} = Shopware.Classes;
+
 const { Application } = Shopware;
 
 class QuickpayApiService extends ApiService {

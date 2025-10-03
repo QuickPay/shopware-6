@@ -1,3 +1,6 @@
+# 9.0.0
+* Shopware 6.7 compatible.
+
 # 8.1.2
 * Added missing shippingOrderAddress association on subscriptionQuickpay service
 

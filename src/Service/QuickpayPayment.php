@@ -4,69 +4,105 @@ namespace Wexo\Quickpay\Service;
 
 use Exception;
 use GuzzleHttp\Exception\GuzzleException;
-use Monolog\Logger;
+use Monolog\Level;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionCollection;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
 use Shopware\Core\Checkout\Order\OrderEntity;
-use Shopware\Core\Checkout\Payment\Cart\AsyncPaymentTransactionStruct;
-use Shopware\Core\Checkout\Payment\Cart\PaymentHandler\AsynchronousPaymentHandlerInterface;
+use Shopware\Core\Checkout\Payment\Cart\PaymentHandler\AbstractPaymentHandler;
+use Shopware\Core\Checkout\Payment\Cart\PaymentHandler\PaymentHandlerType;
+use Shopware\Core\Checkout\Payment\Cart\PaymentTransactionStruct;
 use Shopware\Core\Checkout\Payment\PaymentException;
-use Shopware\Core\Checkout\Payment\Exception\CustomerCanceledAsyncPaymentException;
-use Shopware\Core\Framework\Validation\DataBag\RequestDataBag;
-use Shopware\Core\System\SalesChannel\SalesChannelContext;
+use Shopware\Core\Framework\Context;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
+use Shopware\Core\Framework\Struct\Struct;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Wexo\Quickpay\Helper\ServiceHelper;
 use Wexo\Quickpay\ServiceInterface\QuickpayInterface;
 use Wexo\Quickpay\WexoQuickpay;
 
-class QuickpayPayment implements AsynchronousPaymentHandlerInterface
+class QuickpayPayment extends AbstractPaymentHandler
 {
     public static string $quickpayName = 'creditcard';
     protected QuickpayInterface $currentService;
 
+    /**
+     * @param EntityRepository<OrderTransactionCollection> $orderTransactionRepository
+     * @param QuickpayInterface $paymentService
+     * @param QuickpayInterface $subscriptionService
+     * @param ShopwareStateService $shopwareStateService
+     */
     public function __construct(
+        private readonly EntityRepository $orderTransactionRepository,
         protected QuickpayInterface $paymentService,
         protected QuickpayInterface $subscriptionService,
+        protected QuickpayService $quickpayService,
         protected ShopwareStateService $shopwareStateService
     ) {
     }
 
+    private function loadTransaction(string $orderTransactionId, Context $context): OrderTransactionEntity
+    {
+        $criteria = (new Criteria([$orderTransactionId]))
+            ->addAssociation('order')
+            ->addAssociation('order.stateMachineState')
+            ->addAssociation('order.currency')
+            ->addAssociation('order.lineItems')
+            ->addAssociation('order.salesChannel')
+            ->addAssociation('paymentMethod')
+            ->addAssociation('stateMachineState');
+
+        $tx = $this->orderTransactionRepository->search($criteria, $context)->first();
+        if ($tx === null) {
+            throw PaymentException::invalidTransaction($orderTransactionId);
+        }
+
+        return $tx;
+    }
+
     /**
-     * @param AsyncPaymentTransactionStruct $transaction
-     * @param RequestDataBag $dataBag
-     * @param SalesChannelContext $salesChannelContext
+     * @param Request $request
+     * @param PaymentTransactionStruct $transaction
+     * @param Context $context
+     * @param Struct|null $validateStruct
      * @return RedirectResponse
-     * @throws GuzzleException
      */
     public function pay(
-        AsyncPaymentTransactionStruct $transaction,
-        RequestDataBag $dataBag,
-        SalesChannelContext $salesChannelContext
+        Request $request,
+        PaymentTransactionStruct $transaction,
+        Context $context,
+        ?Struct $validateStruct
     ): RedirectResponse {
-        // Method that sends the return URL to the external gateway and gets a redirect URL back
-            $extraParams = $dataBag->get('extraParams') ?? [];
-            $order = $transaction->getOrder();
-
-            $this->setCurrentService($order);
+        $extraParams = $request->request->all('extraParams');
+        $orderTransactionId = $transaction->getOrderTransactionId();
+        $orderTransaction = $this->loadTransaction($orderTransactionId, $context);
+        $order = $orderTransaction->getOrder();
+        if ($order === null) {
+            throw new \Exception('Order not found for transaction: ' . $orderTransactionId);
+        }
+        $this->setCurrentService($order);
 
             $customFields = $order->getCustomFields() ?? [];
         try {
             if (! isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
-                $this->currentService->create($transaction, $salesChannelContext);
+                $this->currentService->create($transaction, $orderTransaction, $order, $context);
             }
-            $link = $this->currentService->getLink($transaction, $salesChannelContext, $extraParams);
+            $link = $this->currentService->getLink($transaction, $context, $orderTransaction, $order, $extraParams);
         } catch (Exception $e) {
-            $this->currentService->paymentLogger(
+            $this->quickpayService->paymentLogger(
                 WexoQuickpay::ORDER_CREATE_ERROR,
                 [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'errorType' => $e::class
-                ]
+                ],
+                $context
             );
 
             throw PaymentException::asyncProcessInterrupted(
-                $transaction->getOrderTransaction()->getId(),
+                $orderTransactionId,
                 'An error occurred during the communication with external payment gateway' . PHP_EOL .
                 $e->getMessage()
             );
@@ -79,52 +115,60 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
      * Finalize can handle both payments and subscription callbacks as the data required for a success scenario
      * is the same.
      *
-     * @param AsyncPaymentTransactionStruct $transaction
+     * @param PaymentTransactionStruct $transaction
      * @param Request $request
-     * @param SalesChannelContext $salesChannelContext
+     * @param Context $context
      * @throws Exception|GuzzleException
      */
     public function finalize(
-        AsyncPaymentTransactionStruct $transaction,
         Request $request,
-        SalesChannelContext $salesChannelContext
+        PaymentTransactionStruct $transaction,
+        Context $context
     ): void {
-        $content = $request->getContent();
-        $transactionId = $transaction->getOrderTransaction()->getId();
-
+        // Check for cancel status first to avoid unnecessary database calls
         $status = $request->get('status');
+        $transactionId = $transaction->getOrderTransactionId();
+        
         if ($status === "cancel") {
-            throw new CustomerCanceledAsyncPaymentException(
+            throw PaymentException::customerCanceled(
                 $transactionId,
                 'Customer canceled the payment on the payment page'
             );
-        } elseif ($content) {
+        }
+        
+        $content = $request->getContent();
+        if ($content !== '') {
+            $orderTransaction = $this->loadTransaction($transactionId, $context);
+            $order = $orderTransaction->getOrder();
+
+            if ($order === null) {
+                throw new \RuntimeException('Transaction has no associated Order.');
+            }
             $response = json_decode($content, true);
 
-            $order = $transaction->getOrder();
             $this->setCurrentService($order);
 
-            $this->currentService->paymentLogger(
+            $this->quickpayService->paymentLogger(
                 'quickpay_callback_data_response',
                 [
                     'orderId' => $order->getId(),
                     'data'    => $response
                 ],
-                Logger::INFO
+                $context,
+                Level::Info
             );
 
             // Validate the checksum being sent from QuickPay
             $submittedChecksum = $request->server->get('HTTP_QUICKPAY_CHECKSUM_SHA256') ?? '';
-            $valid = $this->paymentService->checkPrivateKey($order->getSalesChannelId(), $content, $submittedChecksum);
+            $valid = $this->quickpayService->checkPrivateKey($order->getSalesChannelId(), $content, $submittedChecksum);
             if (! $valid) {
                 throw new \Exception('Checksum check failed for orderId: ' . $order->getId());
             }
 
-            $orderTransaction = $transaction->getOrderTransaction();
             $orderTransactionStateMachineState = $orderTransaction->getStateMachineState();
             $orderStateMachineState = $order->getStateMachineState();
 
-            if (!$orderTransactionStateMachineState || !$orderStateMachineState) {
+            if ($orderTransactionStateMachineState === null || $orderStateMachineState === null) {
                 throw new \Exception('State machine state not loaded for transaction ID: ' . $transactionId);
             }
 
@@ -132,35 +176,59 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
             $orderState = $orderStateMachineState->getTechnicalName();
 
             $accepted = $response['accepted'] ?? false;
-            if ($accepted) {
-                $paymentHandler = $transaction->getOrderTransaction()->getPaymentMethod()->getHandlerIdentifier();
+            if ($accepted === true) {
+                $paymentHandler = $orderTransaction->getPaymentMethod()?->getHandlerIdentifier();
+
+                if ($paymentHandler === null) {
+                    return;
+                }
+
                 if ($paymentHandler === SwishPayment::class) {
                     // Since Swish is a banktransfer, capture happens at the same time as Authorized.
                     // So we set payment status to Paid instead of Authorized.
-                    $this->shopwareStateService->paid($transactionId, $order->getId(), $paymentState, $orderState);
+                    $this->shopwareStateService->paid(
+                        $transactionId,
+                        $order->getId(),
+                        $paymentState,
+                        $orderState,
+                        $context
+                    );
                 } else {
                     // if the payment has been accepted in quickpay, we'll set the Shopware payment status to authorized
                     // and the order status to in progress.
-                    $this->shopwareStateService->success($transactionId, $order->getId(), $paymentState, $orderState);
+                    $this->shopwareStateService->success(
+                        $transactionId,
+                        $order->getId(),
+                        $paymentState,
+                        $orderState,
+                        $context
+                    );
                 }
 
                 // if it's a subscription, we'll create a recurring payment, that then still needs to be captured.
                 if ($this->currentService instanceof SubscriptionQuickpayService) {
-                    $this->currentService->recurring($order->getId());
+                    $this->currentService->recurring($order->getId(), $context);
                 }
             } elseif (isset($response['operations']) && $paymentState !== OrderTransactionStates::STATE_AUTHORIZED) {
                 $cancel = false;
                 // status codes for rejected/aborted transactions, where we'll then cancel the order in Shopware.
+                $errorCodes = ['40000', '40001', '40002', '40003', '50000', '50300'];
                 foreach ($response['operations'] as $operation) {
                     if ($operation['type'] === 'authorize' &&
-                        in_array($operation['qp_status_code'], ['40000', '40001', '40002', '40003', '50000', '50300'])
+                        in_array($operation['qp_status_code'], $errorCodes, true)
                     ) {
                         $cancel = true;
                     }
                 }
 
-                if ($cancel) {
-                    $this->shopwareStateService->cancel($transactionId, $order->getId(), $paymentState, $orderState);
+                if ($cancel === true) {
+                    $this->shopwareStateService->cancel(
+                        $transactionId,
+                        $order->getId(),
+                        $paymentState,
+                        $orderState,
+                        $context
+                    );
                 }
             }
         }
@@ -174,5 +242,11 @@ class QuickpayPayment implements AsynchronousPaymentHandlerInterface
         if ($subscription) {
             $this->currentService = $this->subscriptionService;
         }
+    }
+
+    public function supports(PaymentHandlerType $type, string $paymentMethodId, Context $context): bool
+    {
+        // TODO: Implement supports() method.
+        return false;
     }
 }

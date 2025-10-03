@@ -7,6 +7,7 @@ use GuzzleHttp\Exception\GuzzleException;
 use Monolog\Level;
 use Psr\Http\Message\ResponseInterface;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
+use Shopware\Core\Checkout\Order\OrderCollection;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Framework\Api\Context\AdminApiSource;
 use Shopware\Core\Framework\Context;
@@ -15,6 +16,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsAnyFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\HttpException;
+use Shopware\Core\Framework\Log\LogEntryCollection;
 use Shopware\Core\Framework\Plugin\Util\PluginIdProvider;
 use Shopware\Core\Framework\Util\FloatComparator;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
@@ -23,8 +25,17 @@ use Wexo\Quickpay\WexoQuickpay;
 
 class RefundService
 {
+    /**
+     * @var array<string, mixed>|null
+     */
     protected ?array $response = null;
 
+    /**
+     * @param EntityRepository<OrderCollection> $orderRepository
+     * @param PluginIdProvider $pluginIdProvider
+     * @param SystemConfigService $configService
+     * @param EntityRepository<LogEntryCollection> $logEntryRepository
+     */
     public function __construct(
         protected EntityRepository $orderRepository,
         protected PluginIdProvider $pluginIdProvider,
@@ -43,7 +54,7 @@ class RefundService
         float $amount,
         Context $context
     ): bool {
-        if (!$amount) {
+        if (FloatComparator::lessThanOrEquals($amount, 0)) {
             throw RefundExceptions::invalidAmount($amount);
         }
 
@@ -65,7 +76,7 @@ class RefundService
             $context
         )->get($orderId);
 
-        if (!$order || !isset($order->getCustomFields()[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
+        if ($order === null || !isset($order->getCustomFields()[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
             throw RefundExceptions::orderNotFound($order);
         }
 
@@ -74,7 +85,7 @@ class RefundService
             true
         );
 
-        if (!$response) {
+        if ($response === null) {
             throw RefundExceptions::invalidResponse();
         }
 
@@ -122,7 +133,7 @@ class RefundService
         $this->verifyResponse($refundResponse, $orderId, $context);
         if (in_array($refundResponse->getStatusCode(), [200, 202], true)) {
             $source = $context->getSource();
-            if ($source instanceof AdminApiSource && $source->getUserId()) {
+            if ($source instanceof AdminApiSource && $source->getUserId() !== null) {
                 $this->logEntryRepository->create([
                     [
                         'message' => 'quickpay.order.refund.info',
@@ -159,7 +170,7 @@ class RefundService
     protected function verifyResponse(ResponseInterface $response, string $orderId, Context $context): void
     {
         $content = $response->getBody()->getContents();
-        if (in_array($response->getStatusCode(), [200, 202], true) && $content) {
+        if (in_array($response->getStatusCode(), [200, 202], true) && $content !== '') {
             $this->orderRepository->upsert([
                 [
                     'id' => $orderId,
@@ -173,6 +184,9 @@ class RefundService
         $this->response = json_decode($content, true);
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
     public function getResponse(): ?array
     {
         return $this->response;

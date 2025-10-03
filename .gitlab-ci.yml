@@ -1,48 +1,25 @@
-image: docker:latest
-
 stages:
-  - syntax
-  - validate-plugin
-  - publish-plugin
+    - lint
+    - deploy
+    
+include:
+  # Centralized CI/CD pipeline
+  - project: 'wexo-services/ci-cd-standard-pipelines'
+    ref: master
+    file:
+      - 'shopware/plugin.yml'
 
 variables:
-  PLUGIN_NAME: WexoQuickpay
-  FROSH_UPLOADER_IMAGE: registry.services.wexo.dk:4567/wexo-services/docker-magento/froshplugin-cli:latest
-  CODESNIFFER_IMAGE: registry.services.wexo.dk:4567/wexo-services/docker-magento/shopware-plugins-quality-php:8.1-fpm
-  SHOPWARE_CLI_ACCOUNT_EMAIL: $SHOPWARE_STORE_USER
-  SHOPWARE_CLI_ACCOUNT_PASSWORD: $SHOPWARE_STORE_PASSWORD
+  BASEBUILD_BRANCH: "master"
+  PLUGIN_NAME: "WexoQuickpay"
+  PLUGIN_COMPOSER_NAME: "wexo/quickpay"
 
-before_script:
-  - source ci/prepare
-
-codesniffer:
-  stage: syntax
-  image: $CODESNIFFER_IMAGE
-  script:
-    - ~/phpcs.sh
-  allow_failure: false
-
-validate-plugin:
-  stage: validate-plugin
-  image:
-    name: $FROSH_UPLOADER_IMAGE
-    entrypoint: ["/usr/local/bin/entrypoint.sh"]
-  script:
-    - shopware-cli extension zip . --disable-git
-    - shopware-cli extension validate $PLUGIN_NAME.zip
-
-upload-plugin:
-  needs: ["validate-plugin"]
-  stage: publish-plugin
-  only:
-    - tags
-  except:
-    - branches
+sync_to_github:
+  stage: deploy
   when: manual
-  image:
-    name: $FROSH_UPLOADER_IMAGE
-    entrypoint: ["/usr/local/bin/entrypoint.sh"]
   script:
-    - shopware-cli extension zip . --disable-git
-    - shopware-cli account producer extension upload $PLUGIN_NAME.zip
-
+    - git remote add github https://oauth2:${GITHUB_TOKEN}@github.com/QuickPay/shopware-6.git || true
+    - git fetch origin 6.7 6.6 6.5
+    - git push github origin/6.7:6.7 origin/6.6:6.6 origin/6.5:6.5 --force
+  only:
+    - web

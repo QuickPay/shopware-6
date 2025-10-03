@@ -19,10 +19,12 @@
         </service>
 
         <service id="Wexo\Quickpay\Service\QuickpayPayment">
+            <argument type="service" id="order_transaction.repository" />
             <argument type="service" id="Wexo\Quickpay\Service\PaymentQuickpayService" />
             <argument type="service" id="Wexo\Quickpay\Service\SubscriptionQuickpayService" />
+            <argument type="service" id="Wexo\Quickpay\Service\QuickpayService"/>
             <argument type="service" id="Wexo\Quickpay\Service\ShopwareStateService"/>
-            <tag name="shopware.payment.method.async" />
+            <tag name="shopware.payment.method" />
         </service>
 
         <service id="Wexo\Quickpay\Service\ShopwareStateService">
@@ -30,69 +32,68 @@
             <argument type="service" id="Shopware\Core\System\StateMachine\StateMachineRegistry"/>
         </service>
 
-        <service id="Wexo\Quickpay\Service\QuickpayService">
-            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
-            <argument type="service" id="log_entry.repository" />
+        <service id="Wexo\Quickpay\Service\QuickpayService"
+                 class="Wexo\Quickpay\Service\QuickpayService">
+            <argument type="service" id="order_transaction.repository"/>
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
+            <argument type="service" id="log_entry.repository"/>
             <argument type="service" id="language.repository"/>
             <argument type="service" id="order.repository"/>
             <argument type="service" id="Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler"/>
             <argument type="service" id="Shopware\Core\System\StateMachine\StateMachineRegistry"/>
-            <argument type="service" id="payment_method.repository" />
         </service>
 
         <service id="Wexo\Quickpay\Service\PaymentQuickpayService"
-                 parent="Wexo\Quickpay\Service\QuickpayService">
-            <tag name="shopware.payment.method.async" />
-        </service>
+                 class="Wexo\Quickpay\Service\PaymentQuickpayService"
+                 parent="Wexo\Quickpay\Service\QuickpayService" />
 
         <service id="Wexo\Quickpay\Service\SubscriptionQuickpayService"
-                 parent="Wexo\Quickpay\Service\QuickpayService">
-            <tag name="shopware.payment.method.async" />
-        </service>
+                 class="Wexo\Quickpay\Service\SubscriptionQuickpayService"
+                 parent="Wexo\Quickpay\Service\QuickpayService" />
 
         <!-- Payment Method(s) -->
         <service id="Wexo\Quickpay\Service\KlarnaPayment"
                  parent="Wexo\Quickpay\Service\QuickpayPayment">
-            <tag name="shopware.payment.method.async" />
+            <tag name="shopware.payment.method" />
         </service>
 
         <service id="Wexo\Quickpay\Service\ViabillPayment"
                  parent="Wexo\Quickpay\Service\QuickpayPayment">
-            <tag name="shopware.payment.method.async" />
+            <tag name="shopware.payment.method" />
         </service>
 
         <service id="Wexo\Quickpay\Service\MobilepayPayment"
                  parent="Wexo\Quickpay\Service\QuickpayPayment">
-            <tag name="shopware.payment.method.async" />
+            <tag name="shopware.payment.method" />
         </service>
 
         <service id="Wexo\Quickpay\Service\SwishPayment"
                  parent="Wexo\Quickpay\Service\QuickpayPayment">
-            <tag name="shopware.payment.method.async" />
+            <tag name="shopware.payment.method" />
         </service>
 
         <service id="Wexo\Quickpay\Service\PaypalPayment"
                  parent="Wexo\Quickpay\Service\QuickpayPayment">
-            <tag name="shopware.payment.method.async" />
+            <tag name="shopware.payment.method" />
         </service>
 
         <service id="Wexo\Quickpay\Service\GooglepayPayment"
                  parent="Wexo\Quickpay\Service\QuickpayPayment">
-            <tag name="shopware.payment.method.async" />
+            <tag name="shopware.payment.method" />
         </service>
 
         <service id="Wexo\Quickpay\Service\ApplepayPayment"
                  parent="Wexo\Quickpay\Service\QuickpayPayment">
-            <tag name="shopware.payment.method.async" />
+            <tag name="shopware.payment.method" />
         </service>
 
         <service id="Wexo\Quickpay\Service\AnydayPayment" parent="Wexo\Quickpay\Service\QuickpayPayment">
-            <tag name="shopware.payment.method.async"/>
+            <tag name="shopware.payment.method"/>
         </service>
 
         <service id="Wexo\Quickpay\Service\VippsPayment"
                  parent="Wexo\Quickpay\Service\QuickpayPayment">
-            <tag name="shopware.payment.method.async" />
+            <tag name="shopware.payment.method" />
         </service>
         <!-- Payment Method(s) end -->
 
@@ -116,7 +117,7 @@
 
         <service id="Wexo\Quickpay\Controller\QuickpayStorefrontController">
             <argument type="service" id="log_entry.repository" />
-            <argument type="service" id="Shopware\Core\Checkout\Payment\PaymentService"/>
+            <argument type="service" id="Shopware\Core\Checkout\Payment\PaymentProcessor" />
             <argument type="service" id="Shopware\Core\Checkout\Payment\Cart\Token\JWTFactoryV2" />
             <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
             <argument type="service" id="Symfony\Component\Routing\Generator\UrlGeneratorInterface" />
@@ -132,20 +133,6 @@
                 <argument type="service" id="service_container"/>
             </call>
             <tag name="controller.service_arguments"/>
-        </service>
-
-        <service id="Shopware\Core\Framework\Api\EventListener\Authentication\ApiAuthenticationListener"
-                 class="Wexo\Quickpay\Authentication\ApiAuthenticationListenerOverride">
-            <tag name="kernel.event_subscriber"/>
-            <tag name="container.hot_path"/>
-            <tag name="container.hot_path"/>
-            <argument type="service" id="League\OAuth2\Server\AuthorizationValidators\BearerTokenValidator"/>
-            <argument type="service" id="Shopware\Core\Framework\Api\OAuth\SymfonyBearerTokenValidator"/>
-            <argument type="service" id="Symfony\Bridge\PsrHttpMessage\Factory\PsrHttpFactory"/>
-            <argument type="service" id="shopware.api.authorization_server"/>
-            <argument type="service" id="Shopware\Core\Framework\Api\OAuth\UserRepository"/>
-            <argument type="service" id="Shopware\Core\Framework\Api\OAuth\RefreshTokenRepository"/>
-            <argument type="service" id="Shopware\Core\Framework\Routing\RouteScopeRegistry"/>
         </service>
 
         <service id="Wexo\Quickpay\Service\RefundService">

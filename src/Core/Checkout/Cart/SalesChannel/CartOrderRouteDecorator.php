@@ -3,6 +3,9 @@
 namespace Wexo\Quickpay\Core\Checkout\Cart\SalesChannel;
 
 use Shopware\Core\Checkout\Cart\AbstractCartPersister;
+use Shopware\Core\Checkout\Order\Aggregate\OrderCustomer\OrderCustomerCollection;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionCollection;
+use Shopware\Core\Checkout\Order\OrderCollection;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Checkout\Cart\Cart;
 use Shopware\Core\Checkout\Cart\CartCalculator;
@@ -22,6 +25,17 @@ use Wexo\Quickpay\WexoQuickpay;
 
 class CartOrderRouteDecorator extends AbstractCartOrderRoute
 {
+    /**
+     * @param AbstractCartOrderRoute $decoratedService
+     * @param CartCalculator $cartCalculator
+     * @param EntityRepository<OrderCollection> $orderRepository
+     * @param EntityRepository<OrderCustomerCollection> $orderCustomerRepository
+     * @param OrderPersisterInterface $orderPersister
+     * @param AbstractCartPersister $cartPersister
+     * @param EventDispatcherInterface $eventDispatcher
+     * @param EntityRepository<OrderTransactionCollection> $orderTransactionRepository
+     * @param PluginIdProvider $pluginIdProvider
+     */
     public function __construct(
         protected AbstractCartOrderRoute $decoratedService,
         protected CartCalculator $cartCalculator,
@@ -46,13 +60,13 @@ class CartOrderRouteDecorator extends AbstractCartOrderRoute
     /**
      * @param Cart $cart
      * @param SalesChannelContext $context
-     * @param RequestDataBag|null $data
+     * @param RequestDataBag $data
      * @return CartOrderRouteResponse
      */
     public function order(
         Cart $cart,
         SalesChannelContext $context,
-        ?RequestDataBag $data = null
+        RequestDataBag $data
     ): CartOrderRouteResponse {
         $originalCart = $this->cartPersister->load($context->getToken(), $context);
 
@@ -64,16 +78,22 @@ class CartOrderRouteDecorator extends AbstractCartOrderRoute
         return $response;
     }
 
-    protected function restoreCartIfQuickpay(Cart $cart, OrderEntity $orderEntity, SalesChannelContext $context)
+    /**
+     * @param Cart $cart
+     * @param OrderEntity $orderEntity
+     * @param SalesChannelContext $context
+     * @return void
+     */
+    protected function restoreCartIfQuickpay(Cart $cart, OrderEntity $orderEntity, SalesChannelContext $context): void
     {
         $criteria = (new Criteria())
             ->addFilter(new EqualsFilter('orderId', $orderEntity->getId()))
             ->addAssociation('paymentMethod');
 
-        /** @var OrderTransactionEntity $orderTransaction */
+        /** @var OrderTransactionEntity|null $orderTransaction */
         $orderTransaction = $this->orderTransactionRepository->search($criteria, $context->getContext())->first();
 
-        if ($orderTransaction) {
+        if ($orderTransaction !== null) {
             /** @var PaymentMethodEntity $paymentMethod */
             $paymentMethod = $orderTransaction->getPaymentMethod();
 
