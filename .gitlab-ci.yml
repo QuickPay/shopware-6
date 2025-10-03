@@ -9,3 +9,13 @@ variables:
   BASEBUILD_BRANCH: "master"
   PLUGIN_NAME: "WexoQuickpay"
   PLUGIN_COMPOSER_NAME: "wexo/quickpay"
+
+sync_to_github:
+  stage: deploy
+  when: manual
+  script:
+    - git remote add github https://oauth2:${GITHUB_TOKEN}@github.com/QuickPay/shopware-6.git || true
+    - git fetch origin 6.7 6.6 6.5
+    - git push github origin/6.7:6.7 origin/6.6:6.6 origin/6.5:6.5 --force
+  only:
+    - web
