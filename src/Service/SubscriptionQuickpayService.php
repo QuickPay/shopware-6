@@ -7,8 +7,15 @@ use DateTimeInterface;
 use Exception;
 use GuzzleHttp\Exception\GuzzleException;
 use Monolog\Logger;
+use Shopware\Core\Checkout\Cart\Price\Struct\CalculatedPrice;
+use Shopware\Core\Checkout\Cart\Price\Struct\CartPrice;
+use Shopware\Core\Checkout\Cart\Tax\Struct\CalculatedTax;
+use Shopware\Core\Checkout\Cart\Tax\Struct\CalculatedTaxCollection;
+use Shopware\Core\Checkout\Cart\Tax\Struct\TaxRule;
+use Shopware\Core\Checkout\Cart\Tax\Struct\TaxRuleCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryDefinition;
 use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryStates;
+use Shopware\Core\Checkout\Order\Aggregate\OrderLineItem\OrderLineItemEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
 use Shopware\Core\Checkout\Order\OrderDefinition;
 use Shopware\Core\Checkout\Order\OrderEntity;
@@ -27,6 +34,7 @@ use Shopware\Core\System\StateMachine\Aggregation\StateMachineTransition\StateMa
 use Shopware\Core\System\StateMachine\Transition;
 use Wexo\Quickpay\ServiceInterface\QuickpayInterface;
 use Wexo\Quickpay\WexoQuickpay;
+use Wexo\Subscription\Service\RecurringOrderService;
 
 class SubscriptionQuickpayService extends QuickpayService implements QuickpayInterface
 {
@@ -136,22 +144,25 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             throw new \Exception('Order not found');
         }
 
-        $lineItems = array_map(function ($item) {
+        $lineItems = array_map(function ($item) use ($salesChannelContext) {
             $price = $item->getPrice();
 
             if (!$price) {
                 throw new \Exception('Price information is missing for an item');
             }
 
+            $quantity = $item->getQuantity();
+            $newPrice = $this->calculateLineItemPriceForQuantity($price, $quantity, $salesChannelContext);
+
             return [
                 'identifier' => $item->getIdentifier(),
                 'productId' => $item->getProductId(),
                 'referencedId' => $item->getReferencedId(),
                 'label' => $item->getLabel(),
-                'quantity' => $item->getQuantity(),
-                'unitPrice' => $price->getUnitPrice(),
-                'totalPrice' => $price->getTotalPrice(),
-                'price' => $price,
+                'quantity' => $quantity,
+                'unitPrice' => $newPrice->getUnitPrice(),
+                'totalPrice' => $newPrice->getTotalPrice(),
+                'price' => $newPrice,
                 'type' => $item->getType(),
                 'payload' => $item->getPayload(),
             ];
@@ -193,12 +204,14 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             ];
         }, $originalOrder->getTransactions()->getElements());
 
+        $newOrderPrice = $this->calculateOrderPriceFromLines($originalOrder, $lineItems, $salesChannelContext);
+
         $newOrderData = [
             'salesChannelId' => $originalOrder->getSalesChannelId(),
             'orderNumber' => $newOrderNumber,
             'billingAddressId' => $originalOrder->getBillingAddressId(),
             'currencyId' => $originalOrder->getCurrencyId(),
-            'price' => $originalOrder->getPrice(),
+            'price' => $newOrderPrice,
             'shippingCosts' => $originalOrder->getShippingCosts(),
             'orderDateTime' => new \DateTime(),
             'orderCustomer' => [
@@ -790,5 +803,100 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         $availableAmount = $authorizedAmount - $capturedAmount;
 
         return (float) $availableAmount;
+    }
+    public function calculateLineItemPriceForQuantity(
+        CalculatedPrice $originalPrice,
+        int $quantity,
+        SalesChannelContext $context
+    ): CalculatedPrice {
+        $unit  = $originalPrice->getUnitPrice();
+        $total = $unit * $quantity;
+
+        $taxes = $this->calculateTax($total, $context);
+        $taxRules = $this->taxRuleCollection($context);
+
+        return new CalculatedPrice(
+            $unit,
+            $total,
+            $taxes,
+            $taxRules,
+            $quantity
+        );
+    }
+
+    /**
+     * Build CartPrice using adjusted line totals + shipping
+     * Modified @see RecurringOrderService::setCartItems for recalculating price
+     */
+    public function calculateOrderPriceFromLines(
+        OrderEntity $originalOrder,
+        array $adjustedLineItems,
+        SalesChannelContext $context
+    ): CartPrice {
+        $itemsTotal = 0.0;
+        foreach ($adjustedLineItems as $lineItemData) {
+            /** @var CalculatedPrice $lineItemPrice */
+            $lineItemPrice = $lineItemData['price'];
+            $itemsTotal += $lineItemPrice->getTotalPrice();
+        }
+
+        $shipping      = $originalOrder->getShippingCosts();
+        $shippingGross = $shipping->getTotalPrice();
+
+        $totalGross = $itemsTotal + $shippingGross;
+
+        $orderTaxes = $this->calculateTax($totalGross, $context);
+        $taxRules   = $this->taxRuleCollection($context);
+
+        $taxRule   = $context->getTaxRules()->first();
+        $netPrice  = $taxRule
+            ? $totalGross / (1 + ($taxRule->getTaxRate() / 100))
+            : $totalGross;
+
+        return new CartPrice(
+            $netPrice,
+            $totalGross,
+            $itemsTotal,
+            $orderTaxes,
+            $taxRules,
+            $context->getTaxState()
+        );
+    }
+
+    /** Taken one-to-one from  @see RecurringOrderService::calculateTax() */
+    protected function calculateTax(
+        float               $totalPrice,
+        SalesChannelContext $salesChannelContext
+    ): CalculatedTaxCollection {
+
+        $taxRule = $salesChannelContext->getTaxRules()->first();
+
+        if (!$taxRule) {
+            throw new \RuntimeException('Invalid tax rule.');
+        }
+
+        $taxRuleRate = $taxRule->getTaxRate();
+        $netPrice = $totalPrice / (1 + ($taxRule->getTaxRate() / 100));
+        $calculatedTax = new CalculatedTax($totalPrice - $netPrice, $taxRuleRate, $totalPrice);
+        $calculatedTaxCollection = new CalculatedTaxCollection();
+        $calculatedTaxCollection->add($calculatedTax);
+        return $calculatedTaxCollection;
+    }
+
+    /** Taken one-to-one from  @see RecurringOrderService::taxRuleCollection(), */
+    protected function taxRuleCollection(SalesChannelContext $salesChannelContext): TaxRuleCollection
+    {
+        $taxRule = $salesChannelContext->getTaxRules()->first();
+
+        if (!$taxRule) {
+            throw new \RuntimeException('Invalid tax rule.');
+        }
+
+        $taxRuleRate = $taxRule->getTaxRate();
+        $taxRule = new TaxRule($taxRuleRate);
+        $taxRulesCollection = new TaxRuleCollection();
+        $taxRulesCollection->add($taxRule);
+
+        return $taxRulesCollection;
     }
 }

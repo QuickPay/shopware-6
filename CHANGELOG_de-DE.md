@@ -1,3 +1,6 @@
+# 7.1.3
+* Fehlerbehebung: renew() berechnet den Preis bei changePayment erneut.
+
 # 7.1.2
 * Separates Capture ausschließlich für Abonnementbestellungen hinzugefügt.
 
