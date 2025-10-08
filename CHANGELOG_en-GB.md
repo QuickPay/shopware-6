@@ -1,4 +1,4 @@
-# 7.1.2
+# 7.1.3
 * Fix renew() to recalculate price on changePayment() in product-subscription plugin
 
 # 7.1.2
