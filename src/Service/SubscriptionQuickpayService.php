@@ -332,8 +332,9 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         $context = Context::createDefaultContext();
 
         $criteria = new Criteria([$orderId]);
-        $criteria->addAssociation('transactions');
-        $criteria->addAssociation('deliveries');
+        $criteria->addAssociation('stateMachineState');
+        $criteria->addAssociation('transactions.stateMachineState');
+        $criteria->addAssociation('deliveries.shippingOrderAddress');
         $criteria->addAssociation('salesChannel.domains');
 
         /** @var OrderEntity $order */
@@ -554,8 +555,9 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         ]));
 
         $criteria = new Criteria([$orderId]);
-        $criteria->addAssociation('transactions');
-        $criteria->addAssociation('deliveries');
+        $criteria->addAssociation('stateMachineState');
+        $criteria->addAssociation('transactions.stateMachineState');
+        $criteria->addAssociation('deliveries.shippingOrderAddress');
 
         /** @var OrderEntity $order */
         $order = $this->orderRepository->search(
