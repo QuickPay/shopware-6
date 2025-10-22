@@ -566,7 +566,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         )->first();
 
         // TODO: Send emails to shop admin on payment error
-        if (! $order) {
+        if (!$order) {
             $this->paymentLogger(
                 WexoQuickpay::ORDER_COMPLETE_ERROR,
                 [
@@ -636,7 +636,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         }
 
         $availableAmount = $this->getAvailableAmount($paymentResponse);
-        if (! $amount) {
+        if (!$amount) {
             $amount = $availableAmount;
         } elseif ($amount > $availableAmount) {
             $this->paymentLogger(
@@ -786,9 +786,9 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                     $approved = true;
                 }
 
-                if (! property_exists($operation, 'type') ||
-                    ! property_exists($operation, 'amount') ||
-                    ! $approved
+                if (!property_exists($operation, 'type') ||
+                    !property_exists($operation, 'amount') ||
+                    !$approved
                 ) {
                     continue;
                 }
