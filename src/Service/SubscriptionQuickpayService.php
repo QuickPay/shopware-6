@@ -372,7 +372,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         }
 
         $customFields = $order->getCustomFields();
-        if (! $customFields || ! isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
+        if (!$customFields || !isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
             $this->paymentLogger(
                 WexoQuickpay::ORDER_COMPLETE_ERROR,
                 [
