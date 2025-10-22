@@ -770,6 +770,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
 
         return $payment;
     }
+    
     private function getAvailableAmount(\stdClass $quickpayResponse): float
     {
         $capturedAmount = 0;
@@ -806,6 +807,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
 
         return (float) $availableAmount;
     }
+
     public function calculateLineItemPriceForQuantity(
         CalculatedPrice $originalPrice,
         int $quantity,
