@@ -92,7 +92,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             throw new Exception(
                 $paymentResponse->getBody()->getContents()
                 ?? 'Failed to create payment for order '
-            . $formParams['order_id'] ?? null
+                . $formParams['order_id'] ?? null
             );
         }
 
@@ -148,7 +148,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             throw new Exception(
                 $linkResponse->getBody()->getContents()
                 ?? 'Failed to link payment for order '
-            . $order->getOrderNumber()
+                . $order->getOrderNumber()
             );
         }
 
@@ -158,7 +158,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             throw new Exception(
                 $linkResponse->getBody()->getContents()
                 ?? 'Failed to link payment for order '
-            . $order->getOrderNumber()
+                . $order->getOrderNumber()
             );
         }
 
@@ -354,10 +354,10 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
                 $logEntry
             );
 
-            $quickPayResponse = json_decode((string)$order->getCustomFieldsValue(WexoQuickpay::QUICKPAY_RESPONSE_FIELD));
+            $quickPayResponse = json_decode((string)$order->getCustomFieldsValue(WexoQuickpay::QUICKPAY_RESPONSE_FIELD)); // phpcs:ignore
             $availableAmount = $this->getAvailableAmount($quickPayResponse);
             if ($availableAmount != 0) {
-                $isFailed = $transaction->getStateMachineState()?->getTechnicalName() === OrderTransactionStates::STATE_FAILED;
+                $isFailed = $transaction->getStateMachineState()?->getTechnicalName() === OrderTransactionStates::STATE_FAILED; // phpcs:ignore
                 if (!$isFailed) {
                     $canReopen = $transaction->getStateMachineState()->getFromStateMachineTransitions()
                         ?->firstWhere(fn (StateMachineTransitionEntity $transition) => $transition->getActionName() === StateMachineTransitionActions::ACTION_REOPEN); // phpcs:ignore
