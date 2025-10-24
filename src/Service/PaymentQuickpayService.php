@@ -215,7 +215,6 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
             OrderTransactionStates::STATE_PAID,
             OrderTransactionStates::STATE_PARTIALLY_PAID,
             OrderTransactionStates::STATE_AUTHORIZED,
-            OrderTransactionStates::STATE_FAILED
         ];
 
         foreach ($states as $state) {
