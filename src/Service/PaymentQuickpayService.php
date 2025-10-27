@@ -20,6 +20,8 @@ use Shopware\Core\System\StateMachine\Aggregation\StateMachineTransition\StateMa
 use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryDefinition;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineTransition\StateMachineTransitionEntity;
 use Shopware\Core\System\StateMachine\Transition;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Routing\RouterInterface;
 use Wexo\Quickpay\ServiceInterface\QuickpayInterface;
 use Wexo\Quickpay\WexoQuickpay;
 
@@ -115,13 +117,18 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         array $extraParams = []
     ): string {
         $returnUrl = $transaction->getReturnUrl();
+        $someUrl = str_replace('finalize-transaction', 'quickpay-finalize-transaction', $returnUrl);
 
-        $callbackUrl = str_replace('finalize-transaction', 'quickpay-finalize-transaction', $returnUrl);
+        $callbackUrl = $this->router->generate(
+            'quickpay.payment.callback',
+            [],
+            UrlGeneratorInterface::ABSOLUTE_URL
+        );
 
         $updateFormParams = [
             'amount' => $transaction->getOrder()->getAmountTotal() * 100,
-            'continue_url' => $callbackUrl . '&status=accepted',
-            'cancel_url' => $callbackUrl . '&status=cancel',
+            'continue_url' => $someUrl . '&status=accepted',
+            'cancel_url' => $someUrl . '&status=cancel',
             'callback_url' => $callbackUrl,
             'language' => $this->getLanguage(
                 $salesChannelContext->getSalesChannel()->getLanguageId(),
@@ -168,7 +175,9 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
                 'orderId' => $order->getOrderNumber(),
                 'updateFormParams' => $updateFormParams,
                 'paymentResponse' => $paymentResponse,
-                'linkResponse' => $linkResponseContent
+                'linkResponse' => $linkResponseContent,
+
+                '$callbackUrl' => $callbackUrl,
             ],
             Logger::INFO
         );

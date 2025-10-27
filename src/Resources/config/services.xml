@@ -37,7 +37,7 @@
             <argument type="service" id="order.repository"/>
             <argument type="service" id="Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler"/>
             <argument type="service" id="Shopware\Core\System\StateMachine\StateMachineRegistry"/>
-            <argument type="service" id="payment_method.repository" />
+            <argument type="service" id="router"/>
         </service>
 
         <service id="Wexo\Quickpay\Service\PaymentQuickpayService"
@@ -120,6 +120,14 @@
             <argument type="service" id="Shopware\Core\Checkout\Payment\Cart\Token\JWTFactoryV2" />
             <argument type="service" id="Shopware\Core\Checkout\Cart\CartPersister"/>
             <argument type="service" id="Symfony\Component\Routing\Generator\UrlGeneratorInterface" />
+
+            <argument type="service" id="order.repository" />
+            <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
+            <argument type="service" id="Shopware\Core\System\StateMachine\StateMachineRegistry" />
+
+            <call method="setContainer">
+                <argument type="service" id="service_container"/>
+            </call>
             <tag name="controller.service_arguments" />
         </service>
 
@@ -158,6 +166,10 @@
         <service id="Wexo\Quickpay\Command\RefundCommand">
             <argument type="service" id="Wexo\Quickpay\Service\RefundService"/>
             <tag name="console.command" command="wexo:quickpay:refund"/>
+        </service>
+
+        <service id="Wexo\Quickpay\Framework\Routing\QuickpayRouteScope">
+            <tag name="shopware.route_scope"/>
         </service>
     </services>
 </container>

@@ -13,6 +13,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\StateMachine\StateMachineRegistry;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
+use Symfony\Component\Routing\RouterInterface;
 use Wexo\Quickpay\WexoQuickpay;
 
 class QuickpayService
@@ -26,7 +27,8 @@ class QuickpayService
         protected EntityRepository $languageRepository,
         protected EntityRepository $orderRepository,
         protected OrderTransactionStateHandler $transactionStateHandler,
-        protected StateMachineRegistry $stateMachineRegistry
+        protected StateMachineRegistry $stateMachineRegistry,
+        protected RouterInterface $router
     ) {
     }
 

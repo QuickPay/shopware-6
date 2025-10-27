@@ -32,6 +32,7 @@ use Shopware\Core\System\NumberRange\ValueGenerator\NumberRangeValueGeneratorInt
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineTransition\StateMachineTransitionActions;
 use Shopware\Core\System\StateMachine\Transition;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Wexo\Quickpay\ServiceInterface\QuickpayInterface;
 use Wexo\Quickpay\WexoQuickpay;
 use Wexo\Subscription\Service\RecurringOrderService;
@@ -262,18 +263,18 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         array                         $extraParams = []
     ): string {
         $returnUrl = $transaction->getReturnUrl();
+        $someUrl = str_replace('finalize-transaction', 'quickpay-finalize-transaction', $returnUrl);
 
-        $callbackUrl = str_replace('finalize-transaction', 'quickpay-finalize-transaction', (string)$returnUrl);
-
-        $order = $transaction->getOrder();
-
-        $customFields = $order->getCustomFields();
-        $subscriptionResponse = \json_decode((string)$customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
+        $callbackUrl = $this->router->generate(
+            'quickpay.payment.callback',
+            [],
+            UrlGeneratorInterface::ABSOLUTE_URL
+        );
 
         $updateFormParams = [
             'amount' => $transaction->getOrder()->getAmountTotal() * 100,
-            'continue_url' => $callbackUrl . '&status=accepted',
-            'cancel_url' => $callbackUrl . '&status=cancel',
+            'continue_url' => $someUrl . '&status=accepted',
+            'cancel_url' => $someUrl . '&status=cancel',
             'callback_url' => $callbackUrl,
             'language' => $this->getLanguage(
                 $salesChannelContext->getSalesChannel()->getLanguageId(),
@@ -284,6 +285,11 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         if (!empty($extraParams)) {
             $updateFormParams = array_merge($updateFormParams, $extraParams);
         }
+
+        $order = $transaction->getOrder();
+
+        $customFields = $order->getCustomFields();
+        $subscriptionResponse = \json_decode((string)$customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
 
         $linkResponse = $this->getClient($salesChannelContext->getSalesChannelId())
             ->request('put', 'subscriptions/' . $subscriptionResponse['id'] . "/link", [
