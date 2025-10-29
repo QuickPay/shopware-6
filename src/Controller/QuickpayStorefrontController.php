@@ -298,7 +298,7 @@ class QuickpayStorefrontController extends AbstractController
             if (!$transaction) {
                 throw HttpException::fromStatusCode(
                     Response::HTTP_BAD_REQUEST,
-                    'Invalid Quickpay transaction'
+                    'Invalid transaction'
                 );
             }
 
