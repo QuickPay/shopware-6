@@ -22,7 +22,6 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Sorting\FieldSorting;
 use Shopware\Core\Framework\Routing\RoutingException;
-use Shopware\Core\Framework\Validation\DataBag\DataBag;
 use Shopware\Core\Profiling\Profiler;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\StateMachine\StateMachineRegistry;
@@ -237,7 +236,10 @@ class QuickpayStorefrontController extends AbstractController
                 );
             }
 
-            // Broaden the scope and use order salesChannelId to ensure correct salesChannelId amongst multiple sales channels
+            /**
+             * Broaden the scope and use order salesChannelId
+             *  to ensure correct salesChannelId amongst multiple sales channels
+             */
             $criteria = (new Criteria())
                 ->addFilter(new EqualsFilter('orderNumber', $orderNumber))
                 ->addAssociation('stateMachineState')
@@ -301,7 +303,11 @@ class QuickpayStorefrontController extends AbstractController
             }
 
             $context->state(function (Context $context) use (
-                $request, $order, $transaction, $currentOperation, $operations
+                $request,
+                $order,
+                $transaction,
+                $currentOperation,
+                $operations
             ): void {
                 $type = $currentOperation['type'] ?? null;
                 if ($type === 'authorize') {
@@ -391,7 +397,8 @@ class QuickpayStorefrontController extends AbstractController
                         context: $context
                     );
                 }
-            }, SetOrderStateAction::FORCE_TRANSITION);
+            },
+                SetOrderStateAction::FORCE_TRANSITION);
 
             return new Response(null, Response::HTTP_NO_CONTENT);
         }, 'Quickpay');
