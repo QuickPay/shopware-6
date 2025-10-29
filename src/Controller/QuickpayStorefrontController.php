@@ -230,10 +230,8 @@ class QuickpayStorefrontController extends AbstractController
             }
 
             if ((int)($currentOperation['qp_status_code'] ?? 0) !== 20000) {
-                throw HttpException::fromStatusCode(
-                    Response::HTTP_UNPROCESSABLE_ENTITY,
-                    'Invalid status code.'
-                );
+                // We only want to process successful transactions
+                return new Response(null, Response::HTTP_NO_CONTENT);
             }
 
             /**
@@ -397,8 +395,7 @@ class QuickpayStorefrontController extends AbstractController
                         context: $context
                     );
                 }
-            },
-                SetOrderStateAction::FORCE_TRANSITION);
+            }, SetOrderStateAction::FORCE_TRANSITION);
 
             return new Response(null, Response::HTTP_NO_CONTENT);
         }, 'Quickpay');
