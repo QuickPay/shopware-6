@@ -16,6 +16,7 @@ use Shopware\Core\Checkout\Payment\PaymentException;
 use Shopware\Core\Checkout\Payment\PaymentService;
 use Shopware\Core\Content\Flow\Dispatching\Action\SetOrderStateAction;
 use Shopware\Core\Framework\Context;
+use Shopware\Core\Framework\DataAbstractionLayer\Entity;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Shopware\Core\Framework\DataAbstractionLayer\PartialEntity;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
@@ -239,6 +240,7 @@ class QuickpayStorefrontController extends AbstractController
              *  to ensure correct salesChannelId amongst multiple sales channels
              */
             $criteria = (new Criteria())
+                ->setTitle('quickpay.callback::order-search')
                 ->addFilter(new EqualsFilter('orderNumber', $orderNumber))
                 ->addAssociation('stateMachineState')
                 ->addFields([
@@ -300,114 +302,119 @@ class QuickpayStorefrontController extends AbstractController
                 );
             }
 
-            $context->state(function (Context $context) use (
-                $request,
-                $order,
-                $transaction,
-                $currentOperation,
-                $operations
-            ): void {
-                $type = $currentOperation['type'] ?? null;
-                if ($type === 'authorize') {
-                    $this->stateTransition(
-                        entity: $transaction,
-                        entityName: OrderTransactionDefinition::ENTITY_NAME,
-                        transitionName: OrderTransactionStates::STATE_AUTHORIZED,
-                        context: $context
-                    );
-                    $this->stateTransition(
-                        entity: $order,
-                        entityName: OrderDefinition::ENTITY_NAME,
-                        transitionName: OrderStates::STATE_IN_PROGRESS,
-                        context: $context
-                    );
-                } elseif ($type === 'capture') {
-                    $authorized = array_reduce($operations, function (int $carry, array $operation) {
-                        if ((int)($operation['qp_status_code'] ?? 0) !== 20000) {
-                            return $carry;
-                        }
-
-                        if (($operation['type'] ?? null) === 'authorize') {
-                            return $carry + (int)($operation['amount'] ?? 0);
-                        }
-
-                        return $carry;
-                    }, 0);
-
-                    $isPaid = $request->request->getInt('balance') === $authorized;
-                    $state = $isPaid ?
-                        OrderTransactionStates::STATE_PAID :
-                        OrderTransactionStates::STATE_PARTIALLY_PAID;
-
-                    $this->stateTransition(
-                        entity: $transaction,
-                        entityName: OrderTransactionDefinition::ENTITY_NAME,
-                        transitionName: $state,
-                        context: $context
-                    );
-
-                    if ($isPaid) {
-                        $this->stateTransition(
-                            entity: $order,
-                            entityName: OrderDefinition::ENTITY_NAME,
-                            transitionName: OrderStates::STATE_COMPLETED,
-                            context: $context
-                        );
-
-                        $updateShipping = $this->configService->get(
-                            'WexoQuickpay.config.quickpayUpdateShipping',
-                            $order->get('salesChannelId')
-                        );
-                        /** @var PartialEntity|null $delivery */
-                        $delivery = $order->get('deliveries')?->first();
-
-                        if ($updateShipping && $delivery) {
+            Profiler::trace(
+                'quickpay-callback-state-transition',
+                function () use ($context, $request, $order, $transaction, $currentOperation, $operations) {
+                    $context->state(function (Context $context) use (
+                        $request,
+                        $order,
+                        $transaction,
+                        $currentOperation,
+                        $operations
+                    ): void {
+                        $type = $currentOperation['type'] ?? null;
+                        if ($type === 'authorize') {
                             $this->stateTransition(
-                                entity: $delivery,
-                                entityName: OrderDeliveryDefinition::ENTITY_NAME,
-                                transitionName: OrderDeliveryStates::STATE_SHIPPED,
+                                entity: $transaction,
+                                entityName: OrderTransactionDefinition::ENTITY_NAME,
+                                transitionName: OrderTransactionStates::STATE_AUTHORIZED,
+                                context: $context
+                            );
+                            $this->stateTransition(
+                                entity: $order,
+                                entityName: OrderDefinition::ENTITY_NAME,
+                                transitionName: OrderStates::STATE_IN_PROGRESS,
+                                context: $context
+                            );
+                        } elseif ($type === 'capture') {
+                            $authorized = array_reduce($operations, function (int $carry, array $operation) {
+                                if ((int)($operation['qp_status_code'] ?? 0) !== 20000) {
+                                    return $carry;
+                                }
+
+                                if (($operation['type'] ?? null) === 'authorize') {
+                                    return $carry + (int)($operation['amount'] ?? 0);
+                                }
+
+                                return $carry;
+                            }, 0);
+
+                            $isPaid = $request->request->getInt('balance') === $authorized;
+                            $state = $isPaid ?
+                                OrderTransactionStates::STATE_PAID :
+                                OrderTransactionStates::STATE_PARTIALLY_PAID;
+
+                            $this->stateTransition(
+                                entity: $transaction,
+                                entityName: OrderTransactionDefinition::ENTITY_NAME,
+                                transitionName: $state,
+                                context: $context
+                            );
+
+                            if ($isPaid) {
+                                $this->stateTransition(
+                                    entity: $order,
+                                    entityName: OrderDefinition::ENTITY_NAME,
+                                    transitionName: OrderStates::STATE_COMPLETED,
+                                    context: $context
+                                );
+
+                                $updateShipping = $this->configService->get(
+                                    'WexoQuickpay.config.quickpayUpdateShipping',
+                                    $order->get('salesChannelId')
+                                );
+                                /** @var PartialEntity|null $delivery */
+                                $delivery = $order->get('deliveries')?->first();
+
+                                if ($updateShipping && $delivery) {
+                                    $this->stateTransition(
+                                        entity: $delivery,
+                                        entityName: OrderDeliveryDefinition::ENTITY_NAME,
+                                        transitionName: OrderDeliveryStates::STATE_SHIPPED,
+                                        context: $context
+                                    );
+                                }
+                            }
+                        } elseif ($type === 'refund') {
+                            $state = $request->request->getInt('balance') === 0 ?
+                                OrderTransactionStates::STATE_REFUNDED :
+                                OrderTransactionStates::STATE_PARTIALLY_REFUNDED;
+
+                            $this->stateTransition(
+                                entity: $transaction,
+                                entityName: OrderTransactionDefinition::ENTITY_NAME,
+                                transitionName: $state,
+                                context: $context
+                            );
+                        } elseif ($type === 'cancel') {
+                            $this->stateTransition(
+                                entity: $transaction,
+                                entityName: OrderTransactionDefinition::ENTITY_NAME,
+                                transitionName: OrderTransactionStates::STATE_CANCELLED,
+                                context: $context
+                            );
+                            $this->stateTransition(
+                                entity: $order,
+                                entityName: OrderDefinition::ENTITY_NAME,
+                                transitionName: OrderStates::STATE_CANCELLED,
                                 context: $context
                             );
                         }
-                    }
-                } elseif ($type === 'refund') {
-                    $state = $request->request->getInt('balance') === 0 ?
-                        OrderTransactionStates::STATE_REFUNDED :
-                        OrderTransactionStates::STATE_PARTIALLY_REFUNDED;
-
-                    $this->stateTransition(
-                        entity: $transaction,
-                        entityName: OrderTransactionDefinition::ENTITY_NAME,
-                        transitionName: $state,
-                        context: $context
-                    );
-                } elseif ($type === 'cancel') {
-                    $this->stateTransition(
-                        entity: $transaction,
-                        entityName: OrderTransactionDefinition::ENTITY_NAME,
-                        transitionName: OrderTransactionStates::STATE_CANCELLED,
-                        context: $context
-                    );
-                    $this->stateTransition(
-                        entity: $order,
-                        entityName: OrderDefinition::ENTITY_NAME,
-                        transitionName: OrderStates::STATE_CANCELLED,
-                        context: $context
-                    );
+                    }, SetOrderStateAction::FORCE_TRANSITION);
                 }
-            }, SetOrderStateAction::FORCE_TRANSITION);
+            );
 
             return new Response(null, Response::HTTP_NO_CONTENT);
         }, 'Quickpay');
     }
 
     protected function stateTransition(
-        PartialEntity $entity,
+        PartialEntity|Entity $entity,
         string $entityName,
         string $transitionName,
         Context $context
     ): void {
-        /** @var PartialEntity|null $state */
+        /** @var PartialEntity|Entity|null $state */
         $state = $entity->get('stateMachineState');
 
         if ($state?->get('technicalName') !== $transitionName) {
