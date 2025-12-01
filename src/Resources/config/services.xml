@@ -124,6 +124,7 @@
             <argument type="service" id="order.repository" />
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService" />
             <argument type="service" id="Shopware\Core\System\StateMachine\StateMachineRegistry" />
+            <argument type="service" id="monolog.logger.quickpay" />
 
             <call method="setContainer">
                 <argument type="service" id="service_container"/>

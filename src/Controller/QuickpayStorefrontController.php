@@ -3,6 +3,7 @@
 namespace Wexo\Quickpay\Controller;
 
 use Monolog\Logger;
+use Psr\Log\LoggerInterface;
 use Shopware\Core\Checkout\Cart\AbstractCartPersister;
 use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryDefinition;
 use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryStates;
@@ -53,7 +54,8 @@ class QuickpayStorefrontController extends AbstractController
         # Callback
         protected EntityRepository $orderRepository,
         protected SystemConfigService $configService,
-        protected StateMachineRegistry $stateMachineRegistry
+        protected StateMachineRegistry $stateMachineRegistry,
+        protected LoggerInterface $logger
     ) {
     }
 
@@ -202,19 +204,43 @@ class QuickpayStorefrontController extends AbstractController
         return Profiler::trace('quickpay-callback', function () use ($context, $request) {
             $orderNumber = $request->request->getString('order_id');
             if (!$orderNumber) {
-                throw RoutingException::missingRequestParameter('order_id');
+                $exception = RoutingException::missingRequestParameter('order_id');
+                $this->logger->error($exception->getMessage(), [
+                    'orderNumber' => $orderNumber,
+                    'QuickPay_id' => $request->request->get('id'),
+                    'QuickPay_merchant_id' => $request->request->get('merchant_id'),
+                ]);
+
+                throw $exception;
             }
 
             $sha256 = $request->headers->get('Quickpay-Checksum-Sha256');
             if (!$sha256) {
-                throw HttpException::fromStatusCode(
+                $exception = HttpException::fromStatusCode(
                     Response::HTTP_BAD_REQUEST,
                     'Missing Quickpay-Checksum-Sha256 header'
                 );
+
+                $this->logger->error($exception->getMessage(), [
+                    'orderNumber' => $orderNumber,
+                    'QuickPay_id' => $request->request->get('id'),
+                    'QuickPay_merchant_id' => $request->request->get('merchant_id'),
+                    'status_code' => $exception->getStatusCode(),
+                ]);
+
+                throw $exception;
             }
 
             $type = strtolower($request->headers->get('QuickPay-Resource-Type', ''));
             if ($type !== 'payment' && $type !== 'subscription') {
+                $this->logger->info('Invalid QuickPay resource type', [
+                    'orderNumber' => $orderNumber,
+                    'type' => $type,
+                    'QuickPay_id' => $request->request->get('id'),
+                    'QuickPay_merchant_id' => $request->request->get('merchant_id'),
+                    'status_code' => Response::HTTP_NOT_IMPLEMENTED,
+                ]);
+
                 return new Response(null, Response::HTTP_NOT_IMPLEMENTED);
             }
 
@@ -224,13 +250,32 @@ class QuickpayStorefrontController extends AbstractController
             /** @var array $currentOperation */
             $currentOperation = end($operations) ?: [];
             if (!$currentOperation) {
-                throw HttpException::fromStatusCode(
+                $exception = HttpException::fromStatusCode(
                     Response::HTTP_BAD_REQUEST,
-                    'Invalid Quickpay operations'
+                    'Invalid QuickPay operations'
                 );
+
+                $this->logger->info($exception->getMessage(), [
+                    'orderNumber' => $orderNumber,
+                    'type' => $type,
+                    'QuickPay_id' => $request->request->get('id'),
+                    'QuickPay_merchant_id' => $request->request->get('merchant_id'),
+                    'status_code' => $exception->getStatusCode(),
+                ]);
+
+                throw $exception;
             }
 
-            if ((int)($currentOperation['qp_status_code'] ?? 0) !== 20000) {
+            $qpStatusCode = (int)($currentOperation['qp_status_code'] ?? 0);
+            if ($qpStatusCode !== 20000) {
+                $this->logger->error('Invalid status code', [
+                    'orderNumber' => $orderNumber,
+                    'type' => $type,
+                    'QuickPay_status_code' => $qpStatusCode,
+                    'QuickPay_id' => $request->request->get('id'),
+                    'QuickPay_merchant_id' => $request->request->get('merchant_id'),
+                ]);
+
                 // We only want to process successful transactions
                 return new Response(null, Response::HTTP_NO_CONTENT);
             }
@@ -271,7 +316,16 @@ class QuickpayStorefrontController extends AbstractController
                 $context
             )->first();
             if (!$order) {
-                throw OrderException::orderNotFound($orderNumber);
+                $exception = OrderException::orderNotFound($orderNumber);
+                $this->logger->error($exception->getMessage(), [
+                    'orderNumber' => $orderNumber,
+                    'type' => $type,
+                    'QuickPay_id' => $request->request->get('id'),
+                    'QuickPay_merchant_id' => $request->request->get('merchant_id'),
+                    'status_code' => $exception->getStatusCode(),
+                ]);
+
+                throw $exception;
             }
             unset($orderNumber);
 
@@ -280,6 +334,13 @@ class QuickpayStorefrontController extends AbstractController
                 $order->get('salesChannelId')
             );
             if (!$privateKey) {
+                $this->logger->info('Invalid or missing private key', [
+                    'orderId' => $order->get('id'),
+                    'type' => $type,
+                    'QuickPay_id' => $request->request->get('id'),
+                    'QuickPay_merchant_id' => $request->request->get('merchant_id'),
+                ]);
+
                 throw HttpException::fromStatusCode(
                     Response::HTTP_BAD_REQUEST,
                     'Invalid or missing private key'
@@ -287,15 +348,33 @@ class QuickpayStorefrontController extends AbstractController
             }
 
             if (hash_hmac('sha256', $request->getContent(), $privateKey) !== $sha256) {
-                throw HttpException::fromStatusCode(
+                $exception = HttpException::fromStatusCode(
                     Response::HTTP_UNPROCESSABLE_ENTITY,
                     'Invalid checksum'
                 );
+
+                $this->logger->error($exception->getMessage(), [
+                    'orderId' => $order->get('id'),
+                    'salesChannelId' => $order->get('salesChannelId'),
+                    'type' => $type,
+                    'QuickPay_id' => $request->request->get('id'),
+                    'QuickPay_merchant_id' => $request->request->get('merchant_id'),
+                    'status_code' => $exception->getStatusCode(),
+                ]);
+
+                throw $exception;
             }
 
             /** @var PartialEntity|null $transaction */
             $transaction = $order->get('transactions')?->first();
             if (!$transaction) {
+                $this->logger->error('Invalid order_transaction', [
+                    'orderId' => $order->get('id'),
+                    'type' => $type,
+                    'QuickPay_id' => $request->request->get('id'),
+                    'QuickPay_merchant_id' => $request->request->get('merchant_id'),
+                ]);
+
                 throw HttpException::fromStatusCode(
                     Response::HTTP_BAD_REQUEST,
                     'Invalid transaction'

@@ -8,10 +8,22 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\ContainsFilter;
 use Shopware\Core\Framework\Plugin;
 use Shopware\Core\Framework\Plugin\Context\UpdateContext;
 use Shopware\Core\Framework\Plugin\Util\PluginIdProvider;
+use Shopware\Core\Kernel;
 use Shopware\Core\System\CustomField\Aggregate\CustomFieldSet\CustomFieldSetEntity;
 use Shopware\Core\System\CustomField\CustomFieldTypes;
 use Shopware\Core\Framework\Plugin\Context\InstallContext;
 use Shopware\Core\Framework\Plugin\Context\UninstallContext;
+use Symfony\Component\Config\FileLocator;
+use Symfony\Component\Config\Loader\DelegatingLoader;
+use Symfony\Component\Config\Loader\LoaderResolver;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Loader\ClosureLoader;
+use Symfony\Component\DependencyInjection\Loader\DirectoryLoader;
+use Symfony\Component\DependencyInjection\Loader\GlobFileLoader;
+use Symfony\Component\DependencyInjection\Loader\IniFileLoader;
+use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
+use Symfony\Component\DependencyInjection\Loader\XmlFileLoader;
+use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Wexo\Quickpay\Service\AnydayPayment;
 use Wexo\Quickpay\Service\ApplepayPayment;
 use Wexo\Quickpay\Service\GooglepayPayment;
@@ -86,6 +98,19 @@ class WexoQuickpay extends Plugin
         return true;
     }
 
+    public function build(ContainerBuilder $container): void
+    {
+        parent::build($container);
+
+        // Shopware >=6.6.8.0
+        /** @phpstan-ignore function.alreadyNarrowedType */
+        if (method_exists($this, 'buildDefaultConfig')) {
+            $this->buildDefaultConfig($container);
+        } else {
+            $this->loadPackages($container);
+        }
+    }
+
     /**
      * @param InstallContext $installContext
      */
@@ -104,35 +129,37 @@ class WexoQuickpay extends Plugin
             $installContext->getContext()
         )->first();
 
-        if (! $customFieldSet) {
-            $customFieldSetRepository->upsert([[
-                'name' => self::QUICKPAY_FIELD_SET,
-                'customFields' => [
-                    [
-                        'name' => self::QUICKPAY_RESPONSE_FIELD,
-                        'type' => CustomFieldTypes::JSON,
-                        'config' => [
-                            'label' => [
-                                'da-DK' => 'QuickPay svar',
-                                'en-GB' => 'QuickPay response',
-                                'de-DE' => 'QuickPay-Antwort',
+        if (!$customFieldSet) {
+            $customFieldSetRepository->upsert([
+                [
+                    'name' => self::QUICKPAY_FIELD_SET,
+                    'customFields' => [
+                        [
+                            'name' => self::QUICKPAY_RESPONSE_FIELD,
+                            'type' => CustomFieldTypes::JSON,
+                            'config' => [
+                                'label' => [
+                                    'da-DK' => 'QuickPay svar',
+                                    'en-GB' => 'QuickPay response',
+                                    'de-DE' => 'QuickPay-Antwort',
+                                ]
                             ]
                         ]
-                    ]
-                ],
-                'config' => [
-                    'label' => [
-                        'da-DK' => 'QuickPay',
-                        'en-GB' => 'QuickPay',
-                        'de-DE' => 'QuickPay',
-                    ]
-                ],
-                'relations' => [
-                    [
-                        'entityName' => 'order',
                     ],
-                ],
-            ]], $installContext->getContext());
+                    'config' => [
+                        'label' => [
+                            'da-DK' => 'QuickPay',
+                            'en-GB' => 'QuickPay',
+                            'de-DE' => 'QuickPay',
+                        ]
+                    ],
+                    'relations' => [
+                        [
+                            'entityName' => 'order',
+                        ],
+                    ],
+                ]
+            ], $installContext->getContext());
         }
 
         $this->addPaymentMethods($installContext->getContext());
@@ -298,5 +325,28 @@ class WexoQuickpay extends Plugin
             return null;
         }
         return $paymentId;
+    }
+
+    private function loadPackages(ContainerBuilder $container): void
+    {
+        $locator = new FileLocator('Resources/config');
+
+        $resolver = new LoaderResolver([
+            new XmlFileLoader($container, $locator),
+            new YamlFileLoader($container, $locator),
+            new IniFileLoader($container, $locator),
+            new PhpFileLoader($container, $locator),
+            new GlobFileLoader($container, $locator),
+            new DirectoryLoader($container, $locator),
+            new ClosureLoader($container),
+        ]);
+
+        $configLoader = new DelegatingLoader($resolver);
+        $confDir = $this->getPath() . '/Resources/config';
+
+        $configLoader->load($confDir . '/{packages}/*' . Kernel::CONFIG_EXTS, 'glob');
+
+        $env = $container->getParameter('kernel.environment');
+        $configLoader->load($confDir . '/{packages}/' . $env . '/*' . Kernel::CONFIG_EXTS, 'glob');
     }
 }
