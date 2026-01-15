@@ -1,3 +1,7 @@
+# 8.1.4
+* Rückruffunktion für QuickPay hinzugefügt.
+* Ausnahmen aktualisiert, die entfernt oder als veraltet markiert wurden.
+
 # 8.1.3
 * SubscriptionQuickpayService für 6.6 aktualisiert
 

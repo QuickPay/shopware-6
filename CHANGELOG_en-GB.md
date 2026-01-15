@@ -1,3 +1,7 @@
+# 8.1.4
+* Added QuickPay callback route.
+* Updated execptions which were either removed or deprecated.
+
 # 8.1.3
 * Updated SubscriptionQuickpayService for 6.6
 
