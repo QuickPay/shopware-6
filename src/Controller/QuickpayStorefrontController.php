@@ -2,31 +2,60 @@
 
 namespace Wexo\Quickpay\Controller;
 
-use Shopware\Core\Checkout\Cart\AbstractCartPersister;
-use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use Monolog\Logger;
+use Psr\Log\LoggerInterface;
+use Shopware\Core\Checkout\Cart\AbstractCartPersister;
+use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryDefinition;
+use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryStates;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionDefinition;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
+use Shopware\Core\Checkout\Order\OrderDefinition;
+use Shopware\Core\Checkout\Order\OrderException;
+use Shopware\Core\Checkout\Order\OrderStates;
 use Shopware\Core\Checkout\Payment\Cart\Token\TokenFactoryInterfaceV2;
+use Shopware\Core\Checkout\Payment\PaymentException;
 use Shopware\Core\Checkout\Payment\PaymentService;
+use Shopware\Core\Content\Flow\Dispatching\Action\SetOrderStateAction;
 use Shopware\Core\Framework\Context;
+use Shopware\Core\Framework\DataAbstractionLayer\Entity;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
+use Shopware\Core\Framework\DataAbstractionLayer\PartialEntity;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
+use Shopware\Core\Framework\DataAbstractionLayer\Search\Sorting\FieldSorting;
+use Shopware\Core\Framework\Routing\RoutingException;
+use Shopware\Core\Profiling\Profiler;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
+use Shopware\Core\System\StateMachine\StateMachineRegistry;
+use Shopware\Core\System\StateMachine\Transition;
+use Shopware\Core\System\SystemConfig\SystemConfigService;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Wexo\Quickpay\Framework\Routing\QuickpayRouteScope;
 use Wexo\Quickpay\WexoQuickpay;
-use Shopware\Core\Checkout\Payment\Exception\TokenInvalidatedException;
 
 #[Route(defaults: ['_routeScope' => ['storefront']])]
-class QuickpayStorefrontController
+class QuickpayStorefrontController extends AbstractController
 {
+    public const CALLBACK = 'quickpay_callback';
+
     public function __construct(
         protected EntityRepository $logEntryRepository,
         protected PaymentService $paymentService,
         protected TokenFactoryInterfaceV2 $tokenFactory,
         protected AbstractCartPersister $cartPersister,
-        protected UrlGeneratorInterface $urlGenerator
+        protected UrlGeneratorInterface $urlGenerator,
+        # Callback
+        protected EntityRepository $orderRepository,
+        protected SystemConfigService $configService,
+        protected StateMachineRegistry $stateMachineRegistry,
+        protected LoggerInterface $logger
     ) {
     }
 
@@ -43,7 +72,7 @@ class QuickpayStorefrontController
         $data = [];
         $paymentToken = $request->get('_sw_payment_token');
         $status = $request->query->get('status');
-        $forbiddenStatuses = [30100, 30101,40000, 40001, 50000, 50300];
+        $forbiddenStatuses = [30100, 30101, 40000, 40001, 50000, 50300];
 
         $operations = $request->get('operations');
         if (!empty($operations)) {
@@ -87,9 +116,8 @@ class QuickpayStorefrontController
                     ))
             );
             return new RedirectResponse($url);
-        } else {
-            sleep(10);
         }
+
         $paymentToken = $request->get('_sw_payment_token');
 
         if ($finalizeAllowed) {
@@ -108,12 +136,20 @@ class QuickpayStorefrontController
                         'sw_status_code' => 400001
                     ];
                 }
-            } catch (TokenInvalidatedException $exception) {
-                $data = [
-                    'error' => 'token_invalidated_exception',
-                    'errorMessage' => $exception->getMessage(),
-                    'sw_status_code' => 400002
-                ];
+            } catch (PaymentException $exception) {
+                if ($exception->is(PaymentException::PAYMENT_TOKEN_INVALIDATED)) {
+                    $data = [
+                        'error' => 'token_invalidated_exception',
+                        'errorMessage' => $exception->getMessage(),
+                        'sw_status_code' => 400002
+                    ];
+                } else {
+                    $data = [
+                        'error' => $exception->getErrorCode(),
+                        'errorMessage' => $exception->getMessage(),
+                        'sw_status_code' => 400002
+                    ];
+                }
             } catch (\Exception $exception) {
                 $data = [
                     'error' => 'quick_pay_finalize_exception',
@@ -125,7 +161,7 @@ class QuickpayStorefrontController
 
         if ($data) {
             if ($request->getContent()) {
-                $data['content'] = json_decode((string) $request->getContent(), true);
+                $data['content'] = json_decode((string)$request->getContent(), true);
             }
             $errorLevel = Logger::ERROR;
             $logMessage = 'quickpay_finalize_transaction_error';
@@ -142,7 +178,7 @@ class QuickpayStorefrontController
                         'channel' => WexoQuickpay::LOG_CHANNEL
                     ]
                 ],
-                Context::createDefaultContext()
+                $context->getContext()
             );
             if (isset($data['errorMessage'])) {
                 unset($data['errorMessage']);
@@ -150,5 +186,326 @@ class QuickpayStorefrontController
         }
 
         return new JsonResponse($data, !empty($data) ? Response::HTTP_BAD_REQUEST : Response::HTTP_OK);
+    }
+
+    #[Route(
+        path: '/quickpay/callback',
+        name: 'quickpay.payment.callback',
+        defaults: [
+            'auth_required' => false,
+            '_routeScope' => [QuickpayRouteScope::ID],
+        ],
+        methods: ['POST']
+    )]
+    public function callback(Context $context, Request $request): Response
+    {
+        $context->addState(self::CALLBACK);
+
+        return Profiler::trace('quickpay-callback', function () use ($context, $request) {
+            $orderNumber = $request->request->getString('order_id');
+            if (!$orderNumber) {
+                $exception = RoutingException::missingRequestParameter('order_id');
+                $this->logger->error($exception->getMessage(), [
+                    'orderNumber' => $orderNumber,
+                    'QuickPay_id' => $request->request->get('id'),
+                    'QuickPay_merchant_id' => $request->request->get('merchant_id'),
+                ]);
+
+                throw $exception;
+            }
+
+            $sha256 = $request->headers->get('Quickpay-Checksum-Sha256');
+            if (!$sha256) {
+                $exception = HttpException::fromStatusCode(
+                    Response::HTTP_BAD_REQUEST,
+                    'Missing Quickpay-Checksum-Sha256 header'
+                );
+
+                $this->logger->error($exception->getMessage(), [
+                    'orderNumber' => $orderNumber,
+                    'QuickPay_id' => $request->request->get('id'),
+                    'QuickPay_merchant_id' => $request->request->get('merchant_id'),
+                    'status_code' => $exception->getStatusCode(),
+                ]);
+
+                throw $exception;
+            }
+
+            $type = strtolower($request->headers->get('QuickPay-Resource-Type', ''));
+            if ($type !== 'payment' && $type !== 'subscription') {
+                $this->logger->info('Invalid QuickPay resource type', [
+                    'orderNumber' => $orderNumber,
+                    'type' => $type,
+                    'QuickPay_id' => $request->request->get('id'),
+                    'QuickPay_merchant_id' => $request->request->get('merchant_id'),
+                    'status_code' => Response::HTTP_NOT_IMPLEMENTED,
+                ]);
+
+                return new Response(null, Response::HTTP_NOT_IMPLEMENTED);
+            }
+
+            /** @var array<int, array> $operations */
+            $operations = $request->request->all()['operations'] ?? [];
+
+            /** @var array $currentOperation */
+            $currentOperation = end($operations) ?: [];
+            if (!$currentOperation) {
+                $exception = HttpException::fromStatusCode(
+                    Response::HTTP_BAD_REQUEST,
+                    'Invalid QuickPay operations'
+                );
+
+                $this->logger->info($exception->getMessage(), [
+                    'orderNumber' => $orderNumber,
+                    'type' => $type,
+                    'QuickPay_id' => $request->request->get('id'),
+                    'QuickPay_merchant_id' => $request->request->get('merchant_id'),
+                    'status_code' => $exception->getStatusCode(),
+                ]);
+
+                throw $exception;
+            }
+
+            $qpStatusCode = (int)($currentOperation['qp_status_code'] ?? 0);
+            if ($qpStatusCode !== 20000) {
+                $this->logger->error('Invalid status code', [
+                    'orderNumber' => $orderNumber,
+                    'type' => $type,
+                    'QuickPay_status_code' => $qpStatusCode,
+                    'QuickPay_id' => $request->request->get('id'),
+                    'QuickPay_merchant_id' => $request->request->get('merchant_id'),
+                ]);
+
+                // We only want to process successful transactions
+                return new Response(null, Response::HTTP_NO_CONTENT);
+            }
+
+            /**
+             * Broaden the scope and use order salesChannelId
+             *  to ensure correct salesChannelId amongst multiple sales channels
+             */
+            $criteria = (new Criteria())
+                ->setTitle('quickpay.callback::order-search')
+                ->addFilter(new EqualsFilter('orderNumber', $orderNumber))
+                ->addAssociation('stateMachineState')
+                ->addFields([
+                    'id',
+                    'salesChannelId',
+                    'transactions.id',
+                    'transactions.paymentMethodId',
+                    'transactions.stateMachineStateId',
+                    'transactions.stateMachineState.id',
+                    'transactions.stateMachineState.technicalName',
+                    'deliveries.id',
+                    'deliveries.stateMachineStateId',
+                    'deliveries.stateMachineState.id',
+                    'deliveries.stateMachineState.technicalName',
+                ]);
+            $criteria->getAssociation('transactions')
+                ->addSorting(new FieldSorting('createdAt', FieldSorting::DESCENDING))
+                ->setLimit(1)
+                ->addAssociation('stateMachineState');
+            $criteria->getAssociation('deliveries')
+                ->addSorting(new FieldSorting('createdAt', FieldSorting::ASCENDING))
+                ->setLimit(1)
+                ->addAssociation('stateMachineState');
+
+            /** @var PartialEntity|null $order */
+            $order = $this->orderRepository->search(
+                $criteria,
+                $context
+            )->first();
+            if (!$order) {
+                $exception = OrderException::orderNotFound($orderNumber);
+                $this->logger->error($exception->getMessage(), [
+                    'orderNumber' => $orderNumber,
+                    'type' => $type,
+                    'QuickPay_id' => $request->request->get('id'),
+                    'QuickPay_merchant_id' => $request->request->get('merchant_id'),
+                    'status_code' => $exception->getStatusCode(),
+                ]);
+
+                throw $exception;
+            }
+            unset($orderNumber);
+
+            $privateKey = $this->configService->getString(
+                'WexoQuickpay.config.quickpayPrivateKey',
+                $order->get('salesChannelId')
+            );
+            if (!$privateKey) {
+                $this->logger->info('Invalid or missing private key', [
+                    'orderId' => $order->get('id'),
+                    'type' => $type,
+                    'QuickPay_id' => $request->request->get('id'),
+                    'QuickPay_merchant_id' => $request->request->get('merchant_id'),
+                ]);
+
+                throw HttpException::fromStatusCode(
+                    Response::HTTP_BAD_REQUEST,
+                    'Invalid or missing private key'
+                );
+            }
+
+            if (hash_hmac('sha256', $request->getContent(), $privateKey) !== $sha256) {
+                $exception = HttpException::fromStatusCode(
+                    Response::HTTP_UNPROCESSABLE_ENTITY,
+                    'Invalid checksum'
+                );
+
+                $this->logger->error($exception->getMessage(), [
+                    'orderId' => $order->get('id'),
+                    'salesChannelId' => $order->get('salesChannelId'),
+                    'type' => $type,
+                    'QuickPay_id' => $request->request->get('id'),
+                    'QuickPay_merchant_id' => $request->request->get('merchant_id'),
+                    'status_code' => $exception->getStatusCode(),
+                ]);
+
+                throw $exception;
+            }
+
+            /** @var PartialEntity|null $transaction */
+            $transaction = $order->get('transactions')?->first();
+            if (!$transaction) {
+                $this->logger->error('Invalid order_transaction', [
+                    'orderId' => $order->get('id'),
+                    'type' => $type,
+                    'QuickPay_id' => $request->request->get('id'),
+                    'QuickPay_merchant_id' => $request->request->get('merchant_id'),
+                ]);
+
+                throw HttpException::fromStatusCode(
+                    Response::HTTP_BAD_REQUEST,
+                    'Invalid transaction'
+                );
+            }
+
+            Profiler::trace(
+                'quickpay-callback-state-transition',
+                function () use ($context, $request, $order, $transaction, $currentOperation, $operations) {
+                    $context->state(function (Context $context) use (
+                        $request,
+                        $order,
+                        $transaction,
+                        $currentOperation,
+                        $operations
+                    ): void {
+                        $type = $currentOperation['type'] ?? null;
+                        if ($type === 'authorize') {
+                            $this->stateTransition(
+                                entity: $transaction,
+                                entityName: OrderTransactionDefinition::ENTITY_NAME,
+                                transitionName: OrderTransactionStates::STATE_AUTHORIZED,
+                                context: $context
+                            );
+                            $this->stateTransition(
+                                entity: $order,
+                                entityName: OrderDefinition::ENTITY_NAME,
+                                transitionName: OrderStates::STATE_IN_PROGRESS,
+                                context: $context
+                            );
+                        } elseif ($type === 'capture') {
+                            $authorized = array_reduce($operations, function (int $carry, array $operation) {
+                                if ((int)($operation['qp_status_code'] ?? 0) !== 20000) {
+                                    return $carry;
+                                }
+
+                                if (($operation['type'] ?? null) === 'authorize') {
+                                    return $carry + (int)($operation['amount'] ?? 0);
+                                }
+
+                                return $carry;
+                            }, 0);
+
+                            $isPaid = $request->request->getInt('balance') === $authorized;
+                            $state = $isPaid ?
+                                OrderTransactionStates::STATE_PAID :
+                                OrderTransactionStates::STATE_PARTIALLY_PAID;
+
+                            $this->stateTransition(
+                                entity: $transaction,
+                                entityName: OrderTransactionDefinition::ENTITY_NAME,
+                                transitionName: $state,
+                                context: $context
+                            );
+
+                            if ($isPaid) {
+                                $this->stateTransition(
+                                    entity: $order,
+                                    entityName: OrderDefinition::ENTITY_NAME,
+                                    transitionName: OrderStates::STATE_COMPLETED,
+                                    context: $context
+                                );
+
+                                $updateShipping = $this->configService->get(
+                                    'WexoQuickpay.config.quickpayUpdateShipping',
+                                    $order->get('salesChannelId')
+                                );
+                                /** @var PartialEntity|null $delivery */
+                                $delivery = $order->get('deliveries')?->first();
+
+                                if ($updateShipping && $delivery) {
+                                    $this->stateTransition(
+                                        entity: $delivery,
+                                        entityName: OrderDeliveryDefinition::ENTITY_NAME,
+                                        transitionName: OrderDeliveryStates::STATE_SHIPPED,
+                                        context: $context
+                                    );
+                                }
+                            }
+                        } elseif ($type === 'refund') {
+                            $state = $request->request->getInt('balance') === 0 ?
+                                OrderTransactionStates::STATE_REFUNDED :
+                                OrderTransactionStates::STATE_PARTIALLY_REFUNDED;
+
+                            $this->stateTransition(
+                                entity: $transaction,
+                                entityName: OrderTransactionDefinition::ENTITY_NAME,
+                                transitionName: $state,
+                                context: $context
+                            );
+                        } elseif ($type === 'cancel') {
+                            $this->stateTransition(
+                                entity: $transaction,
+                                entityName: OrderTransactionDefinition::ENTITY_NAME,
+                                transitionName: OrderTransactionStates::STATE_CANCELLED,
+                                context: $context
+                            );
+                            $this->stateTransition(
+                                entity: $order,
+                                entityName: OrderDefinition::ENTITY_NAME,
+                                transitionName: OrderStates::STATE_CANCELLED,
+                                context: $context
+                            );
+                        }
+                    }, SetOrderStateAction::FORCE_TRANSITION);
+                }
+            );
+
+            return new Response(null, Response::HTTP_NO_CONTENT);
+        }, 'Quickpay');
+    }
+
+    protected function stateTransition(
+        PartialEntity|Entity $entity,
+        string $entityName,
+        string $transitionName,
+        Context $context
+    ): void {
+        /** @var PartialEntity|Entity|null $state */
+        $state = $entity->get('stateMachineState');
+
+        if ($state?->get('technicalName') !== $transitionName) {
+            $this->stateMachineRegistry->transition(
+                transition: new Transition(
+                    entityName: $entityName,
+                    entityId: $entity->getId(),
+                    transitionName: $transitionName,
+                    stateFieldName: 'stateId'
+                ),
+                context: $context
+            );
+        }
     }
 }

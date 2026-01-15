@@ -1,0 +1,23 @@
+monolog:
+  channels:
+    - quickpay
+
+  handlers:
+    quickpay:
+      channels: quickpay
+      path: "%kernel.logs_dir%/quickpay_%kernel.environment%.log"
+      type: rotating_file
+      date_format: Y-m
+      max_files: 6
+      level: error
+
+    # Omit QuickPay logging in main log.
+    main:
+      channels:
+        elements: [ "!quickpay" ]
+
+when@dev:
+  monolog:
+    handlers:
+      quickpay:
+        type: stream
