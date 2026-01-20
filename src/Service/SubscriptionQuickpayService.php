@@ -15,6 +15,7 @@ use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryDefinition
 use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryStates;
 use Monolog\Level;
 use Random\RandomException;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
 use Shopware\Core\Checkout\Order\OrderDefinition;
@@ -423,6 +424,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         ];
 
         $transaction = null;
+        /** @var OrderTransactionCollection|null $transactions */
         $transactions = $order->getTransactions();
 
         if ($transactions !== null) {
@@ -673,11 +675,14 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             return false;
         }
 
-        $paymentResponse = $this->updateResponse($orderId);
-        $paymentResponse = $paymentResponse ? json_decode($paymentResponse) : null;
-        if (!$paymentResponse
-            || !property_exists($paymentResponse, 'id')
-            || !property_exists($paymentResponse, 'order_id')
+        $paymentResponse = $this->updateResponse($orderId, $context);
+        $paymentResponseData = $paymentResponse !== '' && $paymentResponse !== null
+            ? json_decode($paymentResponse, true)
+            : null;
+        if ($paymentResponseData === null
+            || $paymentResponseData === false
+            || !isset($paymentResponseData['id'])
+            || !isset($paymentResponseData['order_id'])
         ) {
             $this->paymentLogger(
                 WexoQuickpay::ORDER_COMPLETE_ERROR,
@@ -765,8 +770,8 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                 Level::Info
             );
 
-            if (! $responseBody) {
-                $responseBody = $this->updateResponse($orderId, $paymentResponse->id);
+            if (!$responseBody) {
+                $responseBody = $this->updateResponse($orderId, $context, $paymentResponse->id);
             } else {
                 $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $responseBody;
                 $this->setOrderCustomFields($orderId, $customFields, $context);
