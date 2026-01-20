@@ -27,6 +27,7 @@ use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Struct\ArrayEntity;
 use Shopware\Core\Framework\Struct\ArrayStruct;
+use Shopware\Core\Framework\Util\FloatComparator;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineTransition\StateMachineTransitionActions;
 use Shopware\Core\System\StateMachine\Transition;
@@ -645,7 +646,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         )->first();
 
         // TODO: Send emails to shop admin on payment error
-        if (! $order) {
+        if ($order === null) {
             $this->paymentLogger(
                 WexoQuickpay::ORDER_COMPLETE_ERROR,
                 [
@@ -664,12 +665,14 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         ];
 
         $transaction = null;
+        $transactions = $order->getTransactions();
 
-        /** @var OrderTransactionEntity|null $transaction */
-        foreach ($states as $state) {
-            $transaction = $order->getTransactions()?->filterByState($state)->first();
-            if ($transaction) {
-                break;
+        if ($transactions !== null) {
+            foreach ($states as $state) {
+                $transaction = $transactions->filterByState($state)->first();
+                if ($transaction !== null) {
+                    break;
+                }
             }
         }
 
@@ -728,8 +731,8 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             }
         }
 
-        $availableAmount = $this->getAvailableAmount($paymentResponse);
-        if (! $amount) {
+        $availableAmount = $this->getAvailableAmount($paymentResponseData);
+        if ($amount === null || $amount === 0.0) {
             $amount = $availableAmount;
         } elseif ($amount > $availableAmount) {
             $this->paymentLogger(
@@ -737,7 +740,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                 [
                     'error'           => 'The amount: "' . $amount . '", is not available to capture.',
                     'orderId'         => $orderId,
-                    'orderNumber'     => $order->getOrderNumber() ?? null,
+                    'orderNumber'     => $order->getOrderNumber(),
                     'paymentResponse' => $paymentResponse
                 ],
                 $context
@@ -763,10 +766,10 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         $responseBody = $response->getBody()->getContents();
         $logEntry = [
             'orderId'            => $orderId,
-            'orderNumber'        => $order->getOrderNumber() ?? null,
-            'paymentId'          => $paymentResponse,
+            'orderNumber'        => $order->getOrderNumber(),
+            'paymentId'          => $paymentResponseData['id'],
             'responseStatusCode' => $statusCode,
-            'response'           => json_decode($response->getBody()->getContents())
+            'response'           => json_decode($response->getBody()->getContents(), true)
         ];
 
         if ($statusCode === 202) {
@@ -777,15 +780,18 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                 Level::Info
             );
 
-            if (!$responseBody) {
-                $responseBody = $this->updateResponse($orderId, $context, $paymentResponse);
+            if ($responseBody === '') {
+                $responseBody = $this->updateResponse($orderId, $context, $paymentResponseData['id']);
             } else {
+                $customFields = [];
                 $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $responseBody;
                 $this->setOrderCustomFields($orderId, $customFields, $context);
             }
 
-            $availableAmount = $this->getAvailableAmount(json_decode((string) $responseBody)) - $amount;
-            $stateName = $transaction->getStateMachineState()?->getTechnicalName();
+            $responseData = json_decode($responseBody ?? '', true);
+            $availableAmount = $this->getAvailableAmount($responseData) - $amount;
+            $stateMachineState = $transaction->getStateMachineState();
+            $stateName = $stateMachineState !== null ? $stateMachineState->getTechnicalName() : null;
             if ($availableAmount === 0.0 && $stateName !== OrderTransactionStates::STATE_PAID) {
                 if ($stateName !== OrderTransactionStates::STATE_AUTHORIZED) {
                     $this->transactionStateHandler->process(
@@ -800,7 +806,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                 );
             } elseif ($stateName !== OrderTransactionStates::STATE_PAID &&
                 $stateName !== OrderTransactionStates::STATE_PARTIALLY_PAID) {
-                $this->transactionStateHandler->payPartially(
+                $this->transactionStateHandler->paidPartially(
                     $transaction->getId(),
                     $context
                 );
@@ -817,14 +823,11 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                 $logEntry,
                 $context
             );
-
-            if (!isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
-                return false;
-            }
+            $customFields = $order->getCustomFields() ?? [];
 
             $quickPayResponse = json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
             $availableAmount = $this->getAvailableAmount($quickPayResponse);
-            if ($availableAmount !== 0) {
+            if (FloatComparator::notEquals($availableAmount, 0)) {
                 $this->transactionStateHandler->reopen(
                     $transaction->getId(),
                     $context
@@ -850,11 +853,14 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                 $context
             );
 
-            $updateShipping = $this->systemConfigService->get('WexoQuickpay.config.quickpayUpdateShipping');
-            $delivery = $order->getDeliveries()?->first();
+            $updateShipping = $this->systemConfigService->getBool('WexoQuickpay.config.quickpayUpdateShipping');
+            $deliveries = $order->getDeliveries();
+            $delivery = $deliveries !== null ? $deliveries->first() : null;
+
             if ($updateShipping &&
-                $delivery &&
-                $delivery->getStateMachineState()?->getTechnicalName() !== OrderDeliveryStates::STATE_SHIPPED
+                $delivery !== null &&
+                $delivery->getStateMachineState() !== null &&
+                $delivery->getStateMachineState()->getTechnicalName() !== OrderDeliveryStates::STATE_SHIPPED
             ) {
                 $this->stateMachineRegistry->transition(
                     new Transition(
