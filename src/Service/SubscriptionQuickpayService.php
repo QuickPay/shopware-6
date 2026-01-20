@@ -663,6 +663,9 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             OrderTransactionStates::STATE_AUTHORIZED
         ];
 
+        $transaction = null;
+
+        /** @var OrderTransactionEntity|null $transaction */
         foreach ($states as $state) {
             $transaction = $order->getTransactions()?->filterByState($state)->first();
             if ($transaction) {
@@ -670,9 +673,10 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             }
         }
 
-        if (!$transaction) {
+        if ($transaction === null) {
             return false;
         }
+
 
         $paymentResponse = $this->updateResponse($orderId, $context);
         $paymentResponseData = $paymentResponse !== '' && $paymentResponse !== null
@@ -782,7 +786,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
 
             $availableAmount = $this->getAvailableAmount(json_decode((string) $responseBody)) - $amount;
             $stateName = $transaction->getStateMachineState()?->getTechnicalName();
-            if ($availableAmount == 0.0 && $stateName !== OrderTransactionStates::STATE_PAID) {
+            if ($availableAmount === 0.0 && $stateName !== OrderTransactionStates::STATE_PAID) {
                 if ($stateName !== OrderTransactionStates::STATE_AUTHORIZED) {
                     $this->transactionStateHandler->process(
                         $transaction->getId(),
@@ -820,7 +824,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
 
             $quickPayResponse = json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
             $availableAmount = $this->getAvailableAmount($quickPayResponse);
-            if ($availableAmount != 0) {
+            if ($availableAmount !== 0) {
                 $this->transactionStateHandler->reopen(
                     $transaction->getId(),
                     $context
@@ -866,6 +870,11 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
 
         return $payment;
     }
+
+    /**
+     * @param array<string, mixed> $quickpayResponse
+     * @return float
+     */
     private function getAvailableAmount(array $quickpayResponse): float
     {
         $capturedAmount   = 0.0;
