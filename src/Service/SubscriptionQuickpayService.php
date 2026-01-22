@@ -260,6 +260,8 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             'transactions' => $transactions,
             'stateId' => $originalOrder->getStateId(),
             'customFields' => $originalOrder->getCustomFields() ?? [],
+            'primaryOrderDeliveryId' => $originalOrder->getPrimaryOrderDeliveryId(),
+            'primaryOrderTransactionId' => $originalOrder->getPrimaryOrderTransactionId()
         ];
 
         $this->orderRepository->upsert([$newOrderData], $context);
@@ -267,7 +269,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         $criteria = new Criteria();
         $criteria->addFilter(new EqualsFilter('salesChannelId', $originalOrder->getSalesChannelId()));
         $criteria->addFilter(new EqualsFilter('orderNumber', $newOrderNumber));
-        $criteria->addAssociations(['lineItems', 'deliveries', 'transactions']);
+        $criteria->addAssociations(['lineItems', 'deliveries', 'transactions', 'currency']);
         $newOrder = $this->orderRepository->search($criteria, $context)->first();
 
         if ($newOrder === null) {
@@ -680,7 +682,6 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             return false;
         }
 
-
         $paymentResponse = $this->updateResponse($orderId, $context);
         $paymentResponseData = $paymentResponse !== '' && $paymentResponse !== null
             ? json_decode($paymentResponse, true)
@@ -741,7 +742,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
                     'error'           => 'The amount: "' . $amount . '", is not available to capture.',
                     'orderId'         => $orderId,
                     'orderNumber'     => $order->getOrderNumber(),
-                    'paymentResponse' => $paymentResponse
+                    'paymentResponse' => $paymentResponseData
                 ],
                 $context
             );
@@ -754,7 +755,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
 
         $response = $this->getClient($order->getSalesChannelId())->request(
             'POST',
-            'payments/' . $paymentResponse . '/capture',
+            'payments/' . $paymentResponseData['id'] . '/capture',
             [
                 'form_params' => [
                     'amount' => $amount
@@ -825,7 +826,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             );
             $customFields = $order->getCustomFields() ?? [];
 
-            $quickPayResponse = json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
+            $quickPayResponse = json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
             $availableAmount = $this->getAvailableAmount($quickPayResponse);
             if (FloatComparator::notEquals($availableAmount, 0)) {
                 $this->transactionStateHandler->reopen(
@@ -945,7 +946,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
 
     /**
      * Build CartPrice using adjusted line totals + shipping
-     * Modified @see RecurringOrderService::setCartItems for recalculating price
+     * Modified @see RecurringOrderService::addSubscriptionItemsToCart for recalculating price
      *
      * @param array<int, array{price: CalculatedPrice}> $adjustedLineItems
      */
