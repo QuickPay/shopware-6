@@ -60,7 +60,6 @@ class QuickpayStorefrontController extends AbstractController
         protected SystemConfigService $configService,
         protected StateMachineRegistry $stateMachineRegistry,
         protected LoggerInterface $logger
-
     ) {
     }
 
@@ -515,5 +514,4 @@ class QuickpayStorefrontController extends AbstractController
             );
         }
     }
-
 }
