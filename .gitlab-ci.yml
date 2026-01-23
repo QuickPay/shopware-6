@@ -27,6 +27,13 @@ sync_to_github:
   except:
     - branches
 
+# TEMP Untill shopware-cli is used in shared pipeline
+codesniffer:
+  stage: lint
+  image: registry.services.wexo.dk:4567/wexo-services/docker-magento/shopware-plugins-quality-php:8.4-fpm
+  script:
+    - ~/phpcs.sh
+  allow_failure: false
 
 PHP Static Analysis:
   stage: lint
