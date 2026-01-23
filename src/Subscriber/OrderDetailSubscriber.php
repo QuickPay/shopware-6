@@ -15,6 +15,7 @@ use Shopware\Core\Framework\Struct\ArrayStruct;
 use Shopware\Core\System\StateMachine\Event\StateMachineTransitionEvent;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Wexo\Quickpay\Controller\QuickpayStorefrontController;
 use Wexo\Quickpay\Service\PaymentQuickpayService;
 use Wexo\Quickpay\Service\SubscriptionQuickpayService;
 use Wexo\Quickpay\Service\SwishPayment;
@@ -51,6 +52,11 @@ class OrderDetailSubscriber implements EventSubscriberInterface
      */
     public function onStateMachineTransitionEvent(StateMachineTransitionEvent $event): void
     {
+
+        if ($event->getContext()->hasState(QuickpayStorefrontController::CALLBACK)) {
+            return;
+        }
+
         $eventName = $event->getToPlace()->getTechnicalName();
         $relevantEvent = in_array(
             $eventName,
