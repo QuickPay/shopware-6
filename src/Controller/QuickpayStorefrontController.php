@@ -165,7 +165,7 @@ class QuickpayStorefrontController extends AbstractController
         }
 
         if (count($data) > 0) {
-            if ($request->getContent() !== null && $request->getContent() !== '') {
+            if ($request->getContent()) {
                 $data['content'] = json_decode((string)$request->getContent(), true);
             }
             $errorLevel = Level::Error->value;
@@ -506,7 +506,7 @@ class QuickpayStorefrontController extends AbstractController
             $this->stateMachineRegistry->transition(
                 transition: new Transition(
                     entityName: $entityName,
-                    entityId: $entity->getId(),
+                    entityId: $entity->getUniqueIdentifier(),
                     transitionName: $transitionName,
                     stateFieldName: 'stateId'
                 ),

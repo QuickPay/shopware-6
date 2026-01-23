@@ -234,7 +234,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         $criteria->addAssociation('deliveries');
         $criteria->addAssociation('transactions.stateMachineState.fromStateMachineTransitions');
 
-        /** @var OrderEntity $order */
+        /** @var OrderEntity|null $order */
         $order = $this->orderRepository->search(
             $criteria,
             $context
@@ -335,7 +335,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         try {
             $response = $this->getClient($order->getSalesChannelId())->request(
                 'POST',
-                'payments/' . $paymentResponse->id . '/capture',
+                'payments/' . $paymentResponseData['id'] . '/capture',
                 [
                     'form_params' => [
                         'amount' => $amount
@@ -352,7 +352,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
         $logEntry = [
             'orderId' => $orderId,
             'orderNumber' => $order->getOrderNumber(),
-            'paymentId' => $paymentResponse->id,
+            'paymentId' => $paymentResponseData['id'],
             'responseStatusCode' => $statusCode,
             'response' => $responseBody ? json_decode($responseBody) : null,
         ];

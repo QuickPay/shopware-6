@@ -1,13 +1,14 @@
 stages:
     - lint
     - deploy
-    
-include:
-  # Centralized CI/CD pipeline
-  - project: 'wexo-services/ci-cd-standard-pipelines'
-    ref: master
-    file:
-      - 'shopware/plugin.yml'
+
+# TODO; Replace shared pipeline with "PHP Static Analysis:", and use shopware-cli.
+#include:
+#  # Centralized CI/CD pipeline
+#  - project: 'wexo-services/ci-cd-standard-pipelines'
+#    ref: master
+#    file:
+#      - 'shopware/plugin.yml'
 
 variables:
   BASEBUILD_BRANCH: "master"
@@ -25,3 +26,22 @@ sync_to_github:
     - tags
   except:
     - branches
+
+
+PHP Static Analysis:
+  stage: lint
+
+  variables:
+    VALIDATION_TOOLS: 'phpstan,sw-cli'
+
+  image:
+    name: ghcr.io/shopware/shopware-cli:latest
+    entrypoint: [ "/bin/sh", "-c" ]
+  parallel:
+    matrix:
+      - CHECK_AGAINST: [ 'lowest', 'highest' ]
+  script:
+    - echo "🔎 Validate ${CHECK_AGAINST} with ${VALIDATION_TOOLS}"
+    - set -e
+    - shopware-cli extension validate --full --only=${VALIDATION_TOOLS} --check-against ${CHECK_AGAINST} --reporter=json . | tee output.json
+

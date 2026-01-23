@@ -1,0 +1,7 @@
+validation:
+  ignore:
+    - message: 'Resources/config/plugin.png'
+    - identifier: 'metadata.description'
+    # - identifier: 'snippet.validator'
+    - message: 'tag:v6.8.0' # Ignore 6.8 for now.
+    #- message: 'Unreachable statement - code above always terminates.'

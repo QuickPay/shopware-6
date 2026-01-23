@@ -237,7 +237,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             ],
             'deepLinkCode' => bin2hex(random_bytes(16)),
             'ruleIds' => $originalOrder->getRuleIds(),
-            'currencyFactor' => $originalOrder->getCurrencyFactor() ?? 1.0,
+            'currencyFactor' => $originalOrder->getCurrencyFactor(),
             'itemRounding' => $originalOrder->getItemRounding()?->jsonSerialize(),
             'totalRounding' => $originalOrder->getTotalRounding()?->jsonSerialize(),
             'lineItems' => $lineItems,
