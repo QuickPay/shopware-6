@@ -648,7 +648,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         $criteria->addAssociation('transactions.stateMachineState');
         $criteria->addAssociation('deliveries.shippingOrderAddress');
 
-        /** @var OrderEntity $order */
+        /** @var OrderEntity|null $order */
         $order = $this->orderRepository->search(
             $criteria,
             $context
