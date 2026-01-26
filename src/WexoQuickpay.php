@@ -13,6 +13,7 @@ use Shopware\Core\System\CustomField\Aggregate\CustomFieldSet\CustomFieldSetEnti
 use Shopware\Core\System\CustomField\CustomFieldTypes;
 use Shopware\Core\Framework\Plugin\Context\InstallContext;
 use Shopware\Core\Framework\Plugin\Context\UninstallContext;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Wexo\Quickpay\Service\AnydayPayment;
 use Wexo\Quickpay\Service\ApplepayPayment;
@@ -86,6 +87,12 @@ class WexoQuickpay extends Plugin
     public function executeComposerCommands(): bool
     {
         return true;
+    }
+
+    public function build(ContainerBuilder $container): void
+    {
+        parent::build($container);
+        $this->buildDefaultConfig($container);
     }
 
     /**

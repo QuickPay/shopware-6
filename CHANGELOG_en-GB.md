@@ -1,5 +1,8 @@
-# 9.0.1
+# 9.0.2
 * Updated SubscriptionQuickpayService for 6.7
+
+# 9.0.1
+* Added QuickPay callback route.
 
 # 9.0.0
 * Shopware 6.7 compatible.

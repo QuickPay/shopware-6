@@ -31,6 +31,7 @@ use Shopware\Core\Framework\Util\FloatComparator;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineTransition\StateMachineTransitionActions;
 use Shopware\Core\System\StateMachine\Transition;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Wexo\Quickpay\ServiceInterface\QuickpayInterface;
 use Wexo\Quickpay\WexoQuickpay;
 use Wexo\Subscription\Service\RecurringOrderService;
@@ -252,7 +253,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             ],
             'deepLinkCode' => bin2hex(random_bytes(16)),
             'ruleIds' => $originalOrder->getRuleIds(),
-            'currencyFactor' => $originalOrder->getCurrencyFactor() ?? 1.0,
+            'currencyFactor' => $originalOrder->getCurrencyFactor(),
             'itemRounding' => $originalOrder->getItemRounding()?->jsonSerialize(),
             'totalRounding' => $originalOrder->getTotalRounding()?->jsonSerialize(),
             'lineItems' => $lineItems,
@@ -299,8 +300,14 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         array $extraParams = []
     ): string {
         $returnUrl = $transaction->getReturnUrl();
+        $someUrl = str_replace('finalize-transaction', 'quickpay-finalize-transaction', $returnUrl);
 
-        $callbackUrl = str_replace('finalize-transaction', 'quickpay-finalize-transaction', (string)$returnUrl);
+        $callbackUrl = $this->router->generate(
+            'quickpay.payment.callback',
+            [],
+            UrlGeneratorInterface::ABSOLUTE_URL
+        );
+
 
         /** @var array<string,mixed>|null $customFields */
         $customFields = $order->getCustomFields();
@@ -329,8 +336,8 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
 
         $updateFormParams = [
             'amount'       => $amountCents,
-            'continue_url' => $callbackUrl . '&status=accepted',
-            'cancel_url'   => $callbackUrl . '&status=cancel',
+            'continue_url' => $someUrl . '&status=accepted',
+            'cancel_url' => $someUrl . '&status=cancel',
             'callback_url' => $callbackUrl,
             'language'     => $language,
         ];

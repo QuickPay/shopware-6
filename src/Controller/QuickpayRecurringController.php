@@ -118,8 +118,8 @@ class QuickpayRecurringController extends AbstractController
             return new JsonResponse([], Response::HTTP_BAD_REQUEST);
         }
 
-        $customFields = $order->getCustomFields() ?? [];
-        if (!\is_array($customFields)) {
+        $customFields = $order->getCustomFields();
+        if (!is_array($customFields)) {
             $customFields = [];
         }
 

@@ -18,6 +18,7 @@ use Shopware\Core\System\Language\LanguageCollection;
 use Shopware\Core\System\Language\LanguageEntity;
 use Shopware\Core\System\StateMachine\StateMachineRegistry;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
+use Symfony\Component\Routing\RouterInterface;
 use Wexo\Quickpay\WexoQuickpay;
 
 class QuickpayService
@@ -41,7 +42,8 @@ class QuickpayService
         protected EntityRepository $languageRepository,
         protected EntityRepository $orderRepository,
         protected OrderTransactionStateHandler $transactionStateHandler,
-        protected StateMachineRegistry $stateMachineRegistry
+        protected StateMachineRegistry $stateMachineRegistry,
+        protected RouterInterface $router,
     ) {
     }
 
