@@ -1,8 +1,14 @@
+# 9.0.2
+* Updated SubscriptionQuickpayService for 6.7
+
 # 9.0.1
 * Added QuickPay callback route.
 
 # 9.0.0
 * Shopware 6.7 compatible.
+
+# 8.1.3
+* Updated SubscriptionQuickpayService for 6.6
 
 # 8.1.2
 * Added missing shippingOrderAddress association on subscriptionQuickpay service
@@ -24,6 +30,12 @@
 
 # 8.0.0
 * Shopware 6.6 compatible.
+
+# 7.1.3
+* Fix renew() to recalculate price on changePayment() in product-subscription plugin
+
+# 7.1.2
+* Added seperate capture for subscription orders only
 
 # 7.1.0
 * Fixed an issue that prevented orders from being cancelled in Quickpay.

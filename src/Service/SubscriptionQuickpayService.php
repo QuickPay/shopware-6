@@ -5,8 +5,17 @@ namespace Wexo\Quickpay\Service;
 use DateTimeInterface;
 use Exception;
 use GuzzleHttp\Exception\GuzzleException;
+use Shopware\Core\Checkout\Cart\Price\Struct\CalculatedPrice;
+use Shopware\Core\Checkout\Cart\Price\Struct\CartPrice;
+use Shopware\Core\Checkout\Cart\Tax\Struct\CalculatedTax;
+use Shopware\Core\Checkout\Cart\Tax\Struct\CalculatedTaxCollection;
+use Shopware\Core\Checkout\Cart\Tax\Struct\TaxRule;
+use Shopware\Core\Checkout\Cart\Tax\Struct\TaxRuleCollection;
+use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryDefinition;
+use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryStates;
 use Monolog\Level;
 use Random\RandomException;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionCollection;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
 use Shopware\Core\Checkout\Order\OrderDefinition;
@@ -17,12 +26,15 @@ use Shopware\Core\Framework\Context;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\Framework\Struct\ArrayEntity;
+use Shopware\Core\Framework\Struct\ArrayStruct;
+use Shopware\Core\Framework\Util\FloatComparator;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineTransition\StateMachineTransitionActions;
 use Shopware\Core\System\StateMachine\Transition;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Wexo\Quickpay\ServiceInterface\QuickpayInterface;
 use Wexo\Quickpay\WexoQuickpay;
+use Wexo\Subscription\Service\RecurringOrderService;
 
 class SubscriptionQuickpayService extends QuickpayService implements QuickpayInterface
 {
@@ -63,10 +75,9 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             ));
         }
 
-        // We're adding a -S to the orderId for the subscription, as the recurring payment will use the orderId.
         $formParams = [
             'currency' => $currency,
-            'order_id' => $order->getOrderNumber() . '-S',
+            'order_id' => $order->getOrderNumber(),
             'description' => $salesChannelName,
             'auto_capture_at' => $autoCaptureAt
         ];
@@ -151,22 +162,25 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             throw new \Exception('Order not found');
         }
 
-        $lineItems = array_map(function ($item) {
+        $lineItems = array_map(function ($item) use ($salesChannelContext) {
             $price = $item->getPrice();
 
             if ($price === null) {
                 throw new \Exception('Price information is missing for an item');
             }
 
+            $quantity = $item->getQuantity();
+            $newPrice = $this->calculateLineItemPriceForQuantity($price, $quantity, $salesChannelContext);
+
             return [
                 'identifier' => $item->getIdentifier(),
                 'productId' => $item->getProductId(),
                 'referencedId' => $item->getReferencedId(),
                 'label' => $item->getLabel(),
-                'quantity' => $item->getQuantity(),
-                'unitPrice' => $price->getUnitPrice(),
-                'totalPrice' => $price->getTotalPrice(),
-                'price' => $price,
+                'quantity' => $quantity,
+                'unitPrice' => $newPrice->getUnitPrice(),
+                'totalPrice' => $newPrice->getTotalPrice(),
+                'price' => $newPrice,
                 'type' => $item->getType(),
                 'payload' => $item->getPayload(),
             ];
@@ -220,12 +234,14 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             throw new \RuntimeException('Order customer is required for creating a new order');
         }
 
+        $newOrderPrice = $this->calculateOrderPriceFromLines($originalOrder, $lineItems, $salesChannelContext);
+
         $newOrderData = [
             'salesChannelId' => $originalOrder->getSalesChannelId(),
             'orderNumber' => $newOrderNumber,
             'billingAddressId' => $originalOrder->getBillingAddressId(),
             'currencyId' => $originalOrder->getCurrencyId(),
-            'price' => $originalOrder->getPrice(),
+            'price' => $newOrderPrice,
             'shippingCosts' => $originalOrder->getShippingCosts(),
             'orderDateTime' => new \DateTime(),
             'orderCustomer' => [
@@ -245,6 +261,8 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             'transactions' => $transactions,
             'stateId' => $originalOrder->getStateId(),
             'customFields' => $originalOrder->getCustomFields() ?? [],
+            'primaryOrderDeliveryId' => $originalOrder->getPrimaryOrderDeliveryId(),
+            'primaryOrderTransactionId' => $originalOrder->getPrimaryOrderTransactionId()
         ];
 
         $this->orderRepository->upsert([$newOrderData], $context);
@@ -252,7 +270,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         $criteria = new Criteria();
         $criteria->addFilter(new EqualsFilter('salesChannelId', $originalOrder->getSalesChannelId()));
         $criteria->addFilter(new EqualsFilter('orderNumber', $newOrderNumber));
-        $criteria->addAssociations(['lineItems', 'deliveries', 'transactions']);
+        $criteria->addAssociations(['lineItems', 'deliveries', 'transactions', 'currency']);
         $newOrder = $this->orderRepository->search($criteria, $context)->first();
 
         if ($newOrder === null) {
@@ -325,7 +343,6 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         ];
 
         if ($extraParams !== []) {
-            /** @var array<string,mixed> $updateFormParams */
             $updateFormParams = array_merge($updateFormParams, $extraParams);
         }
 
@@ -386,8 +403,9 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
     ): void {
 
         $criteria = new Criteria([$orderId]);
-        $criteria->addAssociation('transactions');
-        $criteria->addAssociation('deliveries');
+        $criteria->addAssociation('stateMachineState');
+        $criteria->addAssociation('transactions.stateMachineState');
+        $criteria->addAssociation('deliveries.shippingOrderAddress');
         $criteria->addAssociation('salesChannel.domains');
 
         /** @var OrderEntity|null $order */
@@ -415,6 +433,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
         ];
 
         $transaction = null;
+        /** @var OrderTransactionCollection|null $transactions */
         $transactions = $order->getTransactions();
 
         if ($transactions !== null) {
@@ -469,11 +488,8 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
             ->format(DateTimeInterface::ATOM);
 
         // We're adding a -S to the orderId for the subscription, as the recurring payment will use the orderId.
-        if ($initial === true) {
-            $recurringOrderNumber = $order->getOrderNumber() . '-S-Initial';
-        } else {
-            $recurringOrderNumber = $order->getOrderNumber() . '-S';
-        }
+
+        $recurringOrderNumber = $order->getOrderNumber() . '-S';
 
         $data = [
             'amount' => $order->getAmountTotal() * 100,
@@ -610,5 +626,406 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
 
         $content = $subscriptionResponse->getBody()->getContents();
         return json_decode($content, true);
+    }
+
+    /**
+     * @throws GuzzleException
+     * Based on @see PaymentQuickpayService::capture,
+     * separated to preserve the main payment flow and adjusted for subscription payment.
+     * @param Context $context
+     **/
+    public function subscriptionCapture(
+        string $orderId,
+        Context $context,
+        ?float $amount = null
+    ): ?bool {
+        $context->addExtension('capture', new ArrayStruct([
+            'amount' => false
+        ]));
+
+        $criteria = new Criteria([$orderId]);
+        $criteria->addAssociation('stateMachineState');
+        $criteria->addAssociation('transactions.stateMachineState');
+        $criteria->addAssociation('deliveries.shippingOrderAddress');
+
+        /** @var OrderEntity|null $order */
+        $order = $this->orderRepository->search(
+            $criteria,
+            $context
+        )->first();
+
+        // TODO: Send emails to shop admin on payment error
+        if ($order === null) {
+            $this->paymentLogger(
+                WexoQuickpay::ORDER_COMPLETE_ERROR,
+                [
+                    'error' => 'Order with ID ' . $orderId . ' could no be found'
+                ],
+                $context
+            );
+
+            return null;
+        }
+
+        $states = [
+            OrderTransactionStates::STATE_PAID,
+            OrderTransactionStates::STATE_PARTIALLY_PAID,
+            OrderTransactionStates::STATE_AUTHORIZED
+        ];
+
+        $transaction = null;
+        $transactions = $order->getTransactions();
+
+        if ($transactions !== null) {
+            foreach ($states as $state) {
+                $transaction = $transactions->filterByState($state)->first();
+                if ($transaction !== null) {
+                    break;
+                }
+            }
+        }
+
+        if ($transaction === null) {
+            return false;
+        }
+
+        $paymentResponse = $this->updateResponse($orderId, $context);
+        $paymentResponseData = $paymentResponse !== '' && $paymentResponse !== null
+            ? json_decode($paymentResponse, true)
+            : null;
+        if ($paymentResponseData === null
+            || $paymentResponseData === false
+            || !isset($paymentResponseData['id'])
+            || !isset($paymentResponseData['order_id'])
+        ) {
+            $this->paymentLogger(
+                WexoQuickpay::ORDER_COMPLETE_ERROR,
+                [
+                    'error' => 'QuickPay ID or order ID could not be found in the orders QuickPay response',
+                    'orderId' => $orderId,
+                    'orderNumber' => $order->getOrderNumber() ?? null,
+                    'paymentResponse' => $paymentResponse ?? null
+                ],
+                $context
+            );
+
+            return null;
+        }
+
+        $paymentId = (int) $paymentResponseData['id'];
+
+        // Ensure it's the correct QuickPay payment by comparing paymentid
+        $customFields = $order->getCustomFields();
+        if ($customFields && isset($customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD])) {
+            $data = json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD]);
+
+            if (is_object($data) && property_exists($data, 'id')) {
+                $expectedPaymentId = (int) $data->id;
+
+                if ($paymentId !== $expectedPaymentId) {
+                    $this->paymentLogger(
+                        WexoQuickpay::ORDER_COMPLETE_ERROR,
+                        [
+                            'error'             => 'QuickPay payment id mismatch',
+                            'orderId'           => $orderId,
+                            'orderNumber'       => $order->getOrderNumber() ?? null,
+                            'expectedPaymentId' => $expectedPaymentId,
+                            'actualPaymentId'   => $paymentId,
+                        ],
+                        $context
+                    );
+                    return null;
+                }
+            }
+        }
+
+        $availableAmount = $this->getAvailableAmount($paymentResponseData);
+        if ($amount === null || $amount === 0.0) {
+            $amount = $availableAmount;
+        } elseif ($amount > $availableAmount) {
+            $this->paymentLogger(
+                WexoQuickpay::ORDER_COMPLETE_ERROR,
+                [
+                    'error'           => 'The amount: "' . $amount . '", is not available to capture.',
+                    'orderId'         => $orderId,
+                    'orderNumber'     => $order->getOrderNumber(),
+                    'paymentResponse' => $paymentResponseData
+                ],
+                $context
+            );
+
+            return false;
+        }
+
+        $payment = false;
+        $orderComplete = true;
+
+        $response = $this->getClient($order->getSalesChannelId())->request(
+            'POST',
+            'payments/' . $paymentResponseData['id'] . '/capture',
+            [
+                'form_params' => [
+                    'amount' => $amount
+                ]
+            ]
+        );
+
+        $statusCode = $response->getStatusCode();
+        $responseBody = $response->getBody()->getContents();
+        $logEntry = [
+            'orderId'            => $orderId,
+            'orderNumber'        => $order->getOrderNumber(),
+            'paymentId'          => $paymentResponseData['id'],
+            'responseStatusCode' => $statusCode,
+            'response'           => json_decode($response->getBody()->getContents(), true)
+        ];
+
+        if ($statusCode === 202) {
+            $this->paymentLogger(
+                WexoQuickpay::ORDER_COMPLETE_SUCCESS,
+                $logEntry,
+                $context,
+                Level::Info
+            );
+
+            if ($responseBody === '') {
+                $responseBody = $this->updateResponse($orderId, $context, $paymentResponseData['id']);
+            } else {
+                $customFields = [];
+                $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD] = $responseBody;
+                $this->setOrderCustomFields($orderId, $customFields, $context);
+            }
+
+            $responseData = json_decode($responseBody ?? '', true);
+            $availableAmount = $this->getAvailableAmount($responseData) - $amount;
+            $stateMachineState = $transaction->getStateMachineState();
+            $stateName = $stateMachineState !== null ? $stateMachineState->getTechnicalName() : null;
+            if ($availableAmount === 0.0 && $stateName !== OrderTransactionStates::STATE_PAID) {
+                if ($stateName !== OrderTransactionStates::STATE_AUTHORIZED) {
+                    $this->transactionStateHandler->process(
+                        $transaction->getId(),
+                        $context
+                    );
+                }
+
+                $this->transactionStateHandler->paid(
+                    $transaction->getId(),
+                    $context
+                );
+            } elseif ($stateName !== OrderTransactionStates::STATE_PAID &&
+                $stateName !== OrderTransactionStates::STATE_PARTIALLY_PAID) {
+                $this->transactionStateHandler->paidPartially(
+                    $transaction->getId(),
+                    $context
+                );
+
+                $orderComplete = false;
+            } elseif ($stateName === OrderTransactionStates::STATE_PARTIALLY_PAID) {
+                $orderComplete = false;
+            }
+
+            $payment = true;
+        } else {
+            $this->paymentLogger(
+                WexoQuickpay::ORDER_COMPLETE_ERROR,
+                $logEntry,
+                $context
+            );
+            $customFields = $order->getCustomFields() ?? [];
+
+            $quickPayResponse = json_decode((string) $customFields[WexoQuickpay::QUICKPAY_RESPONSE_FIELD], true);
+            $availableAmount = $this->getAvailableAmount($quickPayResponse);
+            if (FloatComparator::notEquals($availableAmount, 0)) {
+                $this->transactionStateHandler->reopen(
+                    $transaction->getId(),
+                    $context
+                );
+
+                $this->transactionStateHandler->fail(
+                    $transaction->getId(),
+                    $context
+                );
+
+                $orderComplete = false;
+            }
+        }
+
+        if ($orderComplete) {
+            $this->stateMachineRegistry->transition(
+                new Transition(
+                    OrderDefinition::ENTITY_NAME,
+                    $order->getId(),
+                    StateMachineTransitionActions::ACTION_COMPLETE,
+                    'stateId'
+                ),
+                $context
+            );
+
+            $updateShipping = $this->systemConfigService->getBool('WexoQuickpay.config.quickpayUpdateShipping');
+            $deliveries = $order->getDeliveries();
+            $delivery = $deliveries !== null ? $deliveries->first() : null;
+
+            if ($updateShipping &&
+                $delivery !== null &&
+                $delivery->getStateMachineState() !== null &&
+                $delivery->getStateMachineState()->getTechnicalName() !== OrderDeliveryStates::STATE_SHIPPED
+            ) {
+                $this->stateMachineRegistry->transition(
+                    new Transition(
+                        OrderDeliveryDefinition::ENTITY_NAME,
+                        $delivery->getId(),
+                        StateMachineTransitionActions::ACTION_SHIP,
+                        'stateId'
+                    ),
+                    $context
+                );
+            }
+        }
+
+        return $payment;
+    }
+
+    /**
+     * @param array<string, mixed> $quickpayResponse
+     * @return float
+     */
+    private function getAvailableAmount(array $quickpayResponse): float
+    {
+        $capturedAmount   = 0.0;
+        $authorizedAmount = 0.0;
+
+        $ops = $quickpayResponse['operations'] ?? null;
+        if (!is_iterable($ops)) {
+            return 0.0;
+        }
+
+        foreach ($ops as $operation) {
+            if (!is_array($operation)) {
+                continue;
+            }
+
+            $approved = (($operation['qp_status_msg'] ?? null) === 'Approved')
+                || (($operation['aq_status_msg'] ?? null) === 'Approved');
+            if (!$approved || !isset($operation['type'], $operation['amount'])) {
+                continue;
+            }
+
+            $type   = (string) $operation['type'];
+            $amount = (float) $operation['amount'];
+
+            switch ($type) {
+                case 'capture':
+                    $capturedAmount += $amount;
+                    break;
+
+                case 'authorize':
+                case 'recurring':
+                    $authorizedAmount += $amount;
+                    break;
+
+                default:
+                    // ignore unknown operation types
+                    break;
+            }
+        }
+
+        return $authorizedAmount - $capturedAmount;
+    }
+    public function calculateLineItemPriceForQuantity(
+        CalculatedPrice $originalPrice,
+        int $quantity,
+        SalesChannelContext $context
+    ): CalculatedPrice {
+        $unit  = $originalPrice->getUnitPrice();
+        $total = $unit * $quantity;
+
+        $taxes = $this->calculateTax($total, $context);
+        $taxRules = $this->taxRuleCollection($context);
+
+        return new CalculatedPrice(
+            $unit,
+            $total,
+            $taxes,
+            $taxRules,
+            $quantity
+        );
+    }
+
+    /**
+     * Build CartPrice using adjusted line totals + shipping
+     * Modified @see RecurringOrderService::addSubscriptionItemsToCart for recalculating price
+     *
+     * @param array<int, array{price: CalculatedPrice}> $adjustedLineItems
+     */
+    public function calculateOrderPriceFromLines(
+        OrderEntity $originalOrder,
+        array $adjustedLineItems,
+        SalesChannelContext $context
+    ): CartPrice {
+        $itemsTotal = 0.0;
+        foreach ($adjustedLineItems as $lineItemData) {
+            /** @var CalculatedPrice $lineItemPrice */
+            $lineItemPrice = $lineItemData['price'];
+            $itemsTotal += $lineItemPrice->getTotalPrice();
+        }
+
+        $shipping      = $originalOrder->getShippingCosts();
+        $shippingGross = $shipping->getTotalPrice();
+
+        $totalGross = $itemsTotal + $shippingGross;
+
+        $orderTaxes = $this->calculateTax($totalGross, $context);
+        $taxRules   = $this->taxRuleCollection($context);
+
+        $taxRule   = $context->getTaxRules()->first();
+        $netPrice  = $taxRule
+            ? $totalGross / (1 + ($taxRule->getTaxRate() / 100))
+            : $totalGross;
+
+        return new CartPrice(
+            $netPrice,
+            $totalGross,
+            $itemsTotal,
+            $orderTaxes,
+            $taxRules,
+            $context->getTaxState()
+        );
+    }
+
+    /** Taken one-to-one from  @see RecurringOrderService::calculateTax() */
+    protected function calculateTax(
+        float               $totalPrice,
+        SalesChannelContext $salesChannelContext
+    ): CalculatedTaxCollection {
+
+        $taxRule = $salesChannelContext->getTaxRules()->first();
+
+        if (!$taxRule) {
+            throw new \RuntimeException('Invalid tax rule.');
+        }
+
+        $taxRuleRate = $taxRule->getTaxRate();
+        $netPrice = $totalPrice / (1 + ($taxRule->getTaxRate() / 100));
+        $calculatedTax = new CalculatedTax($totalPrice - $netPrice, $taxRuleRate, $totalPrice);
+        $calculatedTaxCollection = new CalculatedTaxCollection();
+        $calculatedTaxCollection->add($calculatedTax);
+        return $calculatedTaxCollection;
+    }
+
+    /** Taken one-to-one from  @see RecurringOrderService::taxRuleCollection(), */
+    protected function taxRuleCollection(SalesChannelContext $salesChannelContext): TaxRuleCollection
+    {
+        $taxRule = $salesChannelContext->getTaxRules()->first();
+
+        if (!$taxRule) {
+            throw new \RuntimeException('Invalid tax rule.');
+        }
+
+        $taxRuleRate = $taxRule->getTaxRate();
+        $taxRule = new TaxRule($taxRuleRate);
+        $taxRulesCollection = new TaxRuleCollection();
+        $taxRulesCollection->add($taxRule);
+
+        return $taxRulesCollection;
     }
 }
