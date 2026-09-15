@@ -21,6 +21,7 @@ use Wexo\Quickpay\Controller\QuickpayStorefrontController;
 use Wexo\Quickpay\Service\PaymentQuickpayService;
 use Wexo\Quickpay\Service\SubscriptionQuickpayService;
 use Wexo\Quickpay\Service\SwishPayment;
+use Wexo\Quickpay\WexoQuickpay;
 
 class OrderDetailSubscriber implements EventSubscriberInterface
 {
@@ -58,6 +59,11 @@ class OrderDetailSubscriber implements EventSubscriberInterface
     {
 
         if ($event->getContext()->hasState(QuickpayStorefrontController::CALLBACK)) {
+            return;
+        }
+
+        // A capture we started ourselves must not re-enter here via the states that capture changes
+        if ($event->getContext()->hasState(self::AUTO_CAPTURE_IN_PROGRESS)) {
             return;
         }
 
@@ -169,10 +175,6 @@ class OrderDetailSubscriber implements EventSubscriberInterface
     private function handleStatusAutoCapture(StateMachineTransitionEvent $event): void
     {
         $context = $event->getContext();
-        // Guard against re-entrancy if capturing triggers further transitions in the same context
-        if ($context->hasState(self::AUTO_CAPTURE_IN_PROGRESS)) {
-            return;
-        }
 
         $configuredStatus = $this->systemConfigService->getString(
             'WexoQuickpay.config.quickpayCaptureOnOrderStatus'
@@ -204,6 +206,18 @@ class OrderDetailSubscriber implements EventSubscriberInterface
         $context->addState(self::AUTO_CAPTURE_IN_PROGRESS);
         try {
             $this->paymentService->capture($order->getId(), $context);
+        } catch (\Throwable $throwable) {
+            // A failed auto-capture must never break the status change the merchant just made
+            $this->paymentService->paymentLogger(
+                WexoQuickpay::ORDER_COMPLETE_ERROR,
+                [
+                    'error' => 'Auto-capture on status "' . $configuredStatus . '" failed: '
+                        . $throwable->getMessage(),
+                    'orderId' => $order->getId(),
+                    'orderNumber' => $order->getOrderNumber()
+                ],
+                $context
+            );
         } finally {
             $context->removeState(self::AUTO_CAPTURE_IN_PROGRESS);
         }
