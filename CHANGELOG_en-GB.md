@@ -1,3 +1,8 @@
+# 9.0.3
+* Added `quickpayCaptureOnOrderStatus` plugin setting: select an order status or delivery status that automatically captures the authorized QuickPay payment when the order (or its delivery) transitions to it. Leave the field empty to disable the feature.
+  * Values are entity-prefixed (`order:*` / `order_delivery:*`) so shared state names like `open` and `cancelled` cannot collide.
+  * Only orders paid with a QuickPay payment handler are captured, and a re-entrancy guard prevents a loop if the capture itself triggers further state transitions.
+
 # 9.0.2
 * Updated SubscriptionQuickpayService for 6.7
 

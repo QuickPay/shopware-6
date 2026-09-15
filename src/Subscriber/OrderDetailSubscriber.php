@@ -6,7 +6,9 @@ use Shopware\Core\Checkout\Order\OrderCollection;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepository;
 use GuzzleHttp\Exception\GuzzleException;
 use Shopware\Core\Checkout\Cart\Order\OrderConvertedEvent;
+use Shopware\Core\Checkout\Order\Aggregate\OrderDelivery\OrderDeliveryDefinition;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStates;
+use Shopware\Core\Checkout\Order\OrderDefinition;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
 use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\ContainsFilter;
@@ -22,6 +24,8 @@ use Wexo\Quickpay\Service\SwishPayment;
 
 class OrderDetailSubscriber implements EventSubscriberInterface
 {
+    private const AUTO_CAPTURE_IN_PROGRESS = 'quickpayAutoCaptureInProgress';
+
     /**
      * @param EntityRepository<OrderCollection> $orderRepository
      * @param SystemConfigService $systemConfigService
@@ -54,6 +58,16 @@ class OrderDetailSubscriber implements EventSubscriberInterface
     {
 
         if ($event->getContext()->hasState(QuickpayStorefrontController::CALLBACK)) {
+            return;
+        }
+
+        // Order & delivery status transitions are handled separately for the configurable auto-capture feature
+        if (in_array(
+            $event->getEntityName(),
+            [OrderDefinition::ENTITY_NAME, OrderDeliveryDefinition::ENTITY_NAME],
+            true
+        )) {
+            $this->handleStatusAutoCapture($event);
             return;
         }
 
@@ -142,6 +156,56 @@ class OrderDetailSubscriber implements EventSubscriberInterface
                     (float) $capture->get('amount')
                 );
             }
+        }
+    }
+
+    /**
+     * Auto-captures the QuickPay payment when the order (or its delivery) transitions to the
+     * status configured in the plugin settings. The configured value is entity-prefixed
+     * (e.g. "order:completed" or "order_delivery:shipped") to disambiguate shared state names.
+     *
+     * @throws GuzzleException
+     */
+    private function handleStatusAutoCapture(StateMachineTransitionEvent $event): void
+    {
+        $context = $event->getContext();
+        // Guard against re-entrancy if capturing triggers further transitions in the same context
+        if ($context->hasState(self::AUTO_CAPTURE_IN_PROGRESS)) {
+            return;
+        }
+
+        $configuredStatus = $this->systemConfigService->getString(
+            'WexoQuickpay.config.quickpayCaptureOnOrderStatus'
+        );
+        if ($configuredStatus === '') {
+            return;
+        }
+
+        $currentStatus = $event->getEntityName() . ':' . $event->getToPlace()->getTechnicalName();
+        if ($currentStatus !== $configuredStatus) {
+            return;
+        }
+
+        $criteria = new Criteria();
+        $criteria->addAssociation('transactions.paymentMethod');
+        $criteria->addFilter(new ContainsFilter('transactions.paymentMethod.handlerIdentifier', 'Quickpay'));
+        if ($event->getEntityName() === OrderDeliveryDefinition::ENTITY_NAME) {
+            $criteria->addFilter(new EqualsFilter('deliveries.id', $event->getEntityId()));
+        } else {
+            $criteria->addFilter(new EqualsFilter('id', $event->getEntityId()));
+        }
+
+        /** @var OrderEntity|null $order */
+        $order = $this->orderRepository->search($criteria, $context)->first();
+        if ($order === null) {
+            return;
+        }
+
+        $context->addState(self::AUTO_CAPTURE_IN_PROGRESS);
+        try {
+            $this->paymentService->capture($order->getId(), $context);
+        } finally {
+            $context->removeState(self::AUTO_CAPTURE_IN_PROGRESS);
         }
     }
 
