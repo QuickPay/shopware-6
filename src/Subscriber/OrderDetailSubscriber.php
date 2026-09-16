@@ -194,7 +194,7 @@ class OrderDetailSubscriber implements EventSubscriberInterface
         if ($event->getEntityName() === OrderDeliveryDefinition::ENTITY_NAME) {
             $criteria->addFilter(new EqualsFilter('deliveries.id', $event->getEntityId()));
         } else {
-            $criteria->addFilter(new EqualsFilter('id', $event->getEntityId()));
+            $criteria->setIds([$event->getEntityId()]);
         }
 
         /** @var OrderEntity|null $order */
