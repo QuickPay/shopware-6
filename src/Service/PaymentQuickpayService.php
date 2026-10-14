@@ -410,7 +410,7 @@ class PaymentQuickpayService extends QuickpayService implements QuickpayInterfac
                 $context
             );
 
-            $quickPayResponse = json_decode((string)$order->getCustomFieldsValue(WexoQuickpay::QUICKPAY_RESPONSE_FIELD)); // phpcs:disable Generic.Files.LineLength.TooLong
+            $quickPayResponse = json_decode((string)$order->getCustomFieldsValue(WexoQuickpay::QUICKPAY_RESPONSE_FIELD), true); // phpcs:disable Generic.Files.LineLength.TooLong
             $availableAmount = $this->getAvailableAmount($quickPayResponse);
             if (FloatComparator::notEquals($availableAmount, 0)) {
                 $isFailed = $transaction->getStateMachineState()?->getTechnicalName() === OrderTransactionStates::STATE_FAILED; // phpcs:disable Generic.Files.LineLength.TooLong

@@ -955,7 +955,7 @@ class SubscriptionQuickpayService extends QuickpayService implements QuickpayInt
      * Build CartPrice using adjusted line totals + shipping
      * Modified @see RecurringOrderService::addSubscriptionItemsToCart for recalculating price
      *
-     * @param array<int, array{price: CalculatedPrice}> $adjustedLineItems
+     * @param array<array-key, array{price: CalculatedPrice}> $adjustedLineItems
      */
     public function calculateOrderPriceFromLines(
         OrderEntity $originalOrder,
