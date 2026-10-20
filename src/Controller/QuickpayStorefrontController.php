@@ -244,7 +244,7 @@ class QuickpayStorefrontController extends AbstractController
                     'status_code' => Response::HTTP_NOT_IMPLEMENTED,
                 ]);
 
-                return new Response(null, Response::HTTP_NOT_IMPLEMENTED);
+                return new Response('Unsupported QuickPay resource type', Response::HTTP_NOT_IMPLEMENTED);
             }
 
             /** @var array<int, array> $operations */

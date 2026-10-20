@@ -49,5 +49,76 @@
             <label>Cancel payment in QuickPay when order is cancelled in Shopware</label>
             <label lang="de-DE">Zahlung in QuickPay stornieren, wenn die Bestellung in Shopware storniert wird</label>
         </input-field>
+        <input-field type="single-select">
+            <name>quickpayCaptureOnOrderStatus</name>
+            <label>Auto-capture payment in QuickPay when order/delivery reaches this status</label>
+            <label lang="de-DE">Zahlung in QuickPay automatisch erfassen, wenn Bestellung/Lieferung diesen Status erreicht</label>
+            <label lang="da-DK">Hæv automatisk betalingen i QuickPay, når ordre/levering når denne status</label>
+            <helpText>Leave empty to disable. When an order or its delivery transitions to the selected status, its authorized QuickPay payment is captured automatically.</helpText>
+            <helpText lang="de-DE">Leer lassen zum Deaktivieren. Wenn eine Bestellung oder ihre Lieferung in den ausgewählten Status wechselt, wird die autorisierte QuickPay-Zahlung automatisch erfasst.</helpText>
+            <helpText lang="da-DK">Lad feltet stå tomt for at deaktivere. Når en ordre eller dens levering skifter til den valgte status, hæves den autoriserede QuickPay-betaling automatisk.</helpText>
+            <options>
+                <option>
+                    <id>order:open</id>
+                    <name>Order status: Open</name>
+                    <name lang="de-DE">Bestellstatus: Offen</name>
+                    <name lang="da-DK">Ordrestatus: Åben</name>
+                </option>
+                <option>
+                    <id>order:in_progress</id>
+                    <name>Order status: In progress</name>
+                    <name lang="de-DE">Bestellstatus: In Bearbeitung</name>
+                    <name lang="da-DK">Ordrestatus: I gang</name>
+                </option>
+                <option>
+                    <id>order:completed</id>
+                    <name>Order status: Done</name>
+                    <name lang="de-DE">Bestellstatus: Abgeschlossen</name>
+                    <name lang="da-DK">Ordrestatus: Udført</name>
+                </option>
+                <option>
+                    <id>order:cancelled</id>
+                    <name>Order status: Cancelled</name>
+                    <name lang="de-DE">Bestellstatus: Abgebrochen</name>
+                    <name lang="da-DK">Ordrestatus: Annulleret</name>
+                </option>
+                <option>
+                    <id>order_delivery:open</id>
+                    <name>Delivery status: Open</name>
+                    <name lang="de-DE">Lieferstatus: Offen</name>
+                    <name lang="da-DK">Leveringsstatus: Åben</name>
+                </option>
+                <option>
+                    <id>order_delivery:shipped_partially</id>
+                    <name>Delivery status: Partially shipped</name>
+                    <name lang="de-DE">Lieferstatus: Teilweise versandt</name>
+                    <name lang="da-DK">Leveringsstatus: Delvist afsendt</name>
+                </option>
+                <option>
+                    <id>order_delivery:shipped</id>
+                    <name>Delivery status: Shipped</name>
+                    <name lang="de-DE">Lieferstatus: Versandt</name>
+                    <name lang="da-DK">Leveringsstatus: Afsendt</name>
+                </option>
+                <option>
+                    <id>order_delivery:returned</id>
+                    <name>Delivery status: Returned</name>
+                    <name lang="de-DE">Lieferstatus: Zurückgesendet</name>
+                    <name lang="da-DK">Leveringsstatus: Returneret</name>
+                </option>
+                <option>
+                    <id>order_delivery:returned_partially</id>
+                    <name>Delivery status: Partially returned</name>
+                    <name lang="de-DE">Lieferstatus: Teilweise zurückgesendet</name>
+                    <name lang="da-DK">Leveringsstatus: Delvist returneret</name>
+                </option>
+                <option>
+                    <id>order_delivery:cancelled</id>
+                    <name>Delivery status: Cancelled</name>
+                    <name lang="de-DE">Lieferstatus: Abgebrochen</name>
+                    <name lang="da-DK">Leveringsstatus: Annulleret</name>
+                </option>
+            </options>
+        </input-field>
     </card>
 </config>
