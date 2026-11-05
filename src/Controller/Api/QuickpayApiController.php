@@ -37,7 +37,7 @@ class QuickpayApiController
     /**
      * @throws GuzzleException
      */
-    #[Route(path: '/api/_action/quickpay-api/capture', defaults: ['auth_required' => false], methods: ['POST'])]
+    #[Route(path: '/api/_action/quickpay-api/capture', methods: ['POST'])]
     public function capture(RequestDataBag $dataBag, Context $context): JsonResponse
     {
         $amount = $dataBag->get('amount');
@@ -53,7 +53,7 @@ class QuickpayApiController
     /**
      * @throws GuzzleException
      */
-    #[Route(path: '/api/_action/quickpay-api/update', defaults: ['auth_required' => false], methods: ['POST'])]
+    #[Route(path: '/api/_action/quickpay-api/update', methods: ['POST'])]
     public function update(RequestDataBag $dataBag, Context $context): JsonResponse
     {
         $orderId = $dataBag->get('orderId');

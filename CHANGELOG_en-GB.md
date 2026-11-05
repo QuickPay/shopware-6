@@ -1,3 +1,8 @@
+# 9.2.0
+* The `/api/_action/quickpay-api/capture` and `/api/_action/quickpay-api/update` routes now require an authenticated admin API token.
+* The administration order tab now sends the admin auth header on capture and update calls.
+* Added a "Disabled" option to the `quickpayCaptureOnOrderStatus` setting, so auto-capture can be switched off again after a status has been selected.
+
 # 9.0.3
 * Added `quickpayCaptureOnOrderStatus` plugin setting: select an order status or delivery status that automatically captures the authorized QuickPay payment when the order (or its delivery) transitions to it. Leave the field empty to disable the feature.
   * Values are entity-prefixed (`order:*` / `order_delivery:*`) so shared state names like `open` and `cancelled` cannot collide.

@@ -28,7 +28,7 @@ class QuickpayApiService extends ApiService {
             .post(
                 `_action/${this.getApiBasePath()}/capture`,
                 data,
-                headers
+                { headers }
             )
             .then((response) => {
                 return ApiService.handleResponse(response);
@@ -42,7 +42,7 @@ class QuickpayApiService extends ApiService {
             .post(
                 `_action/${this.getApiBasePath()}/update`,
                 data,
-                headers
+                { headers }
             )
             .then((response) => {
                 return ApiService.handleResponse(response);
